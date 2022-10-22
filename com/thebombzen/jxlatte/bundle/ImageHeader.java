@@ -2,8 +2,8 @@ package com.thebombzen.jxlatte.bundle;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.Bitreader;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ImageHeader {
 
@@ -18,9 +18,8 @@ public class ImageHeader {
 
     public static ImageHeader parse(Bitreader reader) throws IOException, InvalidBitstreamException {
         ImageHeader header = new ImageHeader();
-        int sixteen = reader.readBits(16);
-        if (sixteen != CODESTREAM_HEADER)
-            throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch: %x", sixteen));
+        if (reader.readBits(16) != CODESTREAM_HEADER)
+            throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch"));
         header.size = SizeHeader.parse(reader, header);
 
         // TODO parse rest of image header
