@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte;
 
-public class InvalidBitstreamException extends Exception {
+import java.io.IOException;
+
+public class InvalidBitstreamException extends IOException {
     public InvalidBitstreamException(String s) {
         super(s);
     }

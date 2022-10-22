@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.Bitreader;
+import com.thebombzen.jxlatte.InputStreamBitreader;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 
 public class SizeHeader extends Dimension {

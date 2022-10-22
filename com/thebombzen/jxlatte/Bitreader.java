@@ -1,53 +1,17 @@
 package com.thebombzen.jxlatte;
 
 import java.io.Closeable;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
 
-public class Bitreader implements Closeable {
-    private InputStream in;
-    private long cache = 0;
-    private int cache_bits = 0;
+public interface Bitreader extends Closeable {
 
-    public Bitreader(InputStream in) {
-        this.in = in;
-    }
+    public int readBits(int bits) throws IOException;
 
-    public int readBits(int bits) throws IOException {
-        if (bits == 0)
-            return 0;
-        if (bits < 0 || bits > 32)
-            throw new IllegalArgumentException("Must read between 0-32 bits, inclusive");
-        if (bits <= cache_bits) {
-            int ret = (int)(cache & ~(~0L << bits));
-            cache_bits -= bits;
-            cache >>>= bits;
-            return ret;
-        }
-        int count = in.available();
-        int max = (63 - cache_bits) / 8 + 1;
-        count = count > 0 ? (count < max ? count : max) : 1;
-        boolean eof = false;
-        for (int i = 0; i < count; i++) {
-            int b = in.read();
-            if (b < 0) {
-                eof = true;
-                break;
-            }
-            cache = cache | ((b & 0xFFL) << cache_bits);
-            cache_bits += 8;
-        }
-        if (eof && bits > cache_bits)
-            throw new EOFException("Unable to read enough bits");
-        return readBits(bits);
-    }
-
-    public boolean readBool() throws IOException {
+    public default boolean readBool() throws IOException {
         return readBits(1) != 0;
     }
 
-    public int readU32(int c0, int u0, int c1, int u1, int c2, int u2, int c3, int u3) throws IOException {
+    public default int readU32(int c0, int u0, int c1, int u1, int c2, int u2, int c3, int u3) throws IOException {
         int choice = readBits(2);
         int c, u;
         switch (choice) {
@@ -67,7 +31,7 @@ public class Bitreader implements Closeable {
         return c + readBits(u);
     }
 
-    public long readU64() throws IOException {
+    public default long readU64() throws IOException {
         long value = readBits(12);
         int shift = 12;
         while (readBool()) {
@@ -81,7 +45,7 @@ public class Bitreader implements Closeable {
         return value;
     }
 
-    public float readF16() throws IOException, InvalidBitstreamException {
+    public default float readF16() throws IOException, InvalidBitstreamException {
         int bits16 = readBits(16);
         int mantissa = (bits16 & 0x3FF) << 13;
         int biased_exp = ((bits16 >> 10) & 0x1F) + 112;
@@ -93,24 +57,13 @@ public class Bitreader implements Closeable {
         return Float.intBitsToFloat(total);
     }
 
-    public int readEnum() throws IOException, InvalidBitstreamException {
+    public default int readEnum() throws IOException, InvalidBitstreamException {
         int constant = readU32(0, 0, 1, 0, 2, 4, 18, 6);
         if (constant > 63)
             throw new InvalidBitstreamException("Enum constant > 63");
         return constant;
     }
 
-    public void zeroPadToByte() throws IOException, InvalidBitstreamException {
-        int remaining = 8 - cache_bits % 8;
-        if (remaining < 8) {
-            int padding = readBits(remaining);
-            if (padding != 0)
-                throw new InvalidBitstreamException("Nonzero zero-padding-to-byte");
-        }
-    }
+    public void zeroPadToByte() throws IOException, InvalidBitstreamException;
 
-    @Override
-    public void close() throws IOException {
-        in.close();
-    }
 }

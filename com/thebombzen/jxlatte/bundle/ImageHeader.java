@@ -18,11 +18,12 @@ public class ImageHeader {
 
     public static ImageHeader parse(Bitreader reader) throws IOException, InvalidBitstreamException {
         ImageHeader header = new ImageHeader();
-        if (reader.readBits(16) != CODESTREAM_HEADER)
-            throw new InvalidBitstreamException("Not a JXL Codestream: 0xFF0A magic mismatch");
+        int sixteen = reader.readBits(16);
+        if (sixteen != CODESTREAM_HEADER)
+            throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch: %x", sixteen));
         header.size = SizeHeader.parse(reader, header);
 
-        
+        // TODO parse rest of image header
 
         return header;
     }
