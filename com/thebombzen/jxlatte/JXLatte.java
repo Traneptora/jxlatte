@@ -5,26 +5,29 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.awt.image.BufferedImage;
+
+import com.thebombzen.jxlatte.image.JxlImage;
+import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
+import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
 public class JXLatte {
 
     private ReaderThread readerThread;
-    private JXLDecoder decoder;
+    private JXLCodestreamDecoder decoder;
 
     public JXLatte(InputStream in) {
         this.readerThread = new ReaderThread(in);
         readerThread.start();
-        this.decoder = new JXLDecoder(new InputStreamBitreader(new ByteArrayQueueInputStream(readerThread.getQueue())));
+        this.decoder = new JXLCodestreamDecoder(new InputStreamBitreader(new ByteArrayQueueInputStream(readerThread.getQueue())));
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
         this(new BufferedInputStream(new FileInputStream(filename)));
     }
 
-    public BufferedImage decode() throws IOException {
+    public JxlImage decode() throws IOException {
         IOException error = null;
-        BufferedImage ret = null;
+        JxlImage ret = null;
         try {
             ret = decoder.decode();
         } catch (IOException ex) {
@@ -44,7 +47,7 @@ public class JXLatte {
             args = new String[]{"bbb.jxl"};
         }
         JXLatte jxlatte = new JXLatte(args[0]);
-        BufferedImage image = jxlatte.decode();
+        JxlImage image = jxlatte.decode();
         System.out.format("width, height: %d, %d%n", image.getWidth(), image.getHeight());
     }
 }

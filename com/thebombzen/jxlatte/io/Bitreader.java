@@ -1,7 +1,9 @@
-package com.thebombzen.jxlatte;
+package com.thebombzen.jxlatte.io;
 
 import java.io.Closeable;
 import java.io.IOException;
+
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 
 public interface Bitreader extends Closeable {
 

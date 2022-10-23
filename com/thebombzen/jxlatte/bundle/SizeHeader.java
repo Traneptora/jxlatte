@@ -3,8 +3,7 @@ package com.thebombzen.jxlatte.bundle;
 import java.awt.Dimension;
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.Bitreader;
-import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.io.Bitreader;
 
 public class SizeHeader extends Dimension {
 
@@ -33,7 +32,7 @@ public class SizeHeader extends Dimension {
         }
     }
 
-    public static SizeHeader parse(Bitreader reader, ImageHeader parent) throws IOException, InvalidBitstreamException {
+    public static SizeHeader parse(Bitreader reader, ImageHeader parent) throws IOException {
         SizeHeader header = new SizeHeader();
         boolean div8 = reader.readBool();
         if (div8)

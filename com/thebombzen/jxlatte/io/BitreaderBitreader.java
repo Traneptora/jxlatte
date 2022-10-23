@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte;
+package com.thebombzen.jxlatte.io;
 
 import java.io.IOException;
 
@@ -16,7 +16,7 @@ public class BitreaderBitreader implements Bitreader {
     }
 
     @Override
-    public void zeroPadToByte() throws IOException, InvalidBitstreamException {
+    public void zeroPadToByte() throws IOException {
         this.bitreader.zeroPadToByte();
     }
 
