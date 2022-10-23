@@ -9,7 +9,7 @@ public class JxlImageFormat {
     private JxlChannelType[] channel_types;
 
     public JxlImageFormat(int bit_depth, int row_stride, JxlChannelType... channelTypes) {
-        if (bit_depth != 8 || bit_depth != 16 || bit_depth != 32)
+        if (bit_depth != 8 && bit_depth != 16 && bit_depth != 32)
             throw new IllegalArgumentException("Only 8, 16, and 32 supported.");
         if (channelTypes.length == 0)
             throw new IllegalArgumentException("Must have at least one channel.");

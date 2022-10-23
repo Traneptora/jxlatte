@@ -13,6 +13,7 @@ public class ByteArrayQueueInputStream extends InputStream {
         this.queue = queue;
     }
 
+    /* returns true upon EOF */
     private boolean refillBuffer() throws IOException {
         if (buffer == null || buffer_pos >= buffer.length) {
             try {

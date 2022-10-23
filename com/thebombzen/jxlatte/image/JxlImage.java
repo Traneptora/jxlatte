@@ -28,11 +28,11 @@ public class JxlImage {
     }
 
     public JxlImageFormat getFormat() {
-        return this.imageFormat;
+        return imageFormat;
     }
 
     public JxlChannelType getChannelType(int channel) {
-        return this.imageFormat.getChannelType(channel);
+        return imageFormat.getChannelType(channel);
     }
 
     public byte[] getPixelBuffer() {
