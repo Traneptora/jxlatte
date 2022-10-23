@@ -3,12 +3,42 @@ package com.thebombzen.jxlatte.bundle;
 import java.awt.Dimension;
 import java.io.IOException;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class SizeHeader extends Dimension {
 
-    private SizeHeader() {
+    public SizeHeader(Bitreader reader, ImageHeader parent) throws IOException {
+        boolean div8 = reader.readBool();
+        if (div8)
+            this.height = (1 + reader.readBits(5)) << 3;
+        else
+            this.height = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
+        int ratio = reader.readBits(3);
+        if (ratio != 0) {
+            this.width = getWidthFromRatio(ratio, this.height);
+        } else {
+            if (div8)
+                this.width = (1 + reader.readBits(5)) << 3;
+            else
+                this.width = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
+        }
+        
+        long maxDim;
+        long maxTimes;
 
+        if (parent.getLevel() <= 5) {
+            maxDim = 1L << 18;
+            maxTimes = 1L << 30;
+        } else {
+            maxDim = 1L << 28;
+            maxTimes = 1L << 40;
+        }
+
+        if (this.width > maxDim || this.height > maxDim)
+            throw new InvalidBitstreamException(String.format("Width or height too large: %d, %d", this.width, this.height));
+        if ((long)this.width * (long)this.height > maxTimes)
+            throw new InvalidBitstreamException(String.format("Width times height too large: %d, %d", this.width, this.height));
     }
 
     public static int getWidthFromRatio(int ratio, int height) {
@@ -30,25 +60,5 @@ public class SizeHeader extends Dimension {
             default:
                 throw new IllegalArgumentException();
         }
-    }
-
-    public static SizeHeader parse(Bitreader reader, ImageHeader parent) throws IOException {
-        SizeHeader header = new SizeHeader();
-        boolean div8 = reader.readBool();
-        if (div8)
-            header.height = (1 + reader.readBits(5)) << 3;
-        else
-            header.height = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
-        int ratio = reader.readBits(3);
-        if (ratio != 0) {
-            header.width = getWidthFromRatio(ratio, header.height);
-        } else {
-            if (div8)
-                header.width = (1 + reader.readBits(5)) << 3;
-            else
-                header.width = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
-        }
-        // TODO check level limits
-        return header;
     }
 }

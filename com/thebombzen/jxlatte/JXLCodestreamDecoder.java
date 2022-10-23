@@ -17,7 +17,7 @@ public class JXLCodestreamDecoder {
     }
 
     public JxlImage decode() throws IOException {
-        this.imageHeader = ImageHeader.parse(bitreader);
+        this.imageHeader = ImageHeader.parse(bitreader, 5);
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, JxlChannelType.PACKED_RGB), width, height);

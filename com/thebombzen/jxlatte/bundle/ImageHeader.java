@@ -11,18 +11,38 @@ public class ImageHeader {
 
     private SizeHeader size;
     private int level = 5;
+    private int orientation;
+    private SizeHeader intrinsicSize = null;
+    private PreviewHeader previewHeader = null;
+    private AnimationHeader animationHeader = null;
 
     private ImageHeader() {
 
     }
 
-    public static ImageHeader parse(Bitreader reader) throws IOException, InvalidBitstreamException {
+    public static ImageHeader parse(Bitreader reader, int level) throws IOException {
         ImageHeader header = new ImageHeader();
         if (reader.readBits(16) != CODESTREAM_HEADER)
             throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch"));
-        header.size = SizeHeader.parse(reader, header);
+        header.setLevel(level);
+        header.size = new SizeHeader(reader, header);
 
-        // TODO parse rest of image header
+        boolean allDefault = reader.readBool();
+        boolean extraFields = allDefault ? false : reader.readBool();
+
+        if (extraFields) {
+            header.orientation = 1 + reader.readBits(3);
+            // have intrinsic size
+            if (reader.readBool())
+                header.intrinsicSize = new SizeHeader(reader, header);
+            // have preview header
+            if (reader.readBool())
+                header.previewHeader = new PreviewHeader(reader, header);
+            // have animation header
+            if (reader.readBool())
+                header.animationHeader = new AnimationHeader(reader, header);
+            
+        }
 
         return header;
     }
@@ -33,6 +53,22 @@ public class ImageHeader {
 
     public SizeHeader getSize() {
         return size;
+    }
+
+    public PreviewHeader getPreviewHeader() {
+        return previewHeader;
+    }
+
+    public SizeHeader getIntrinsticSize() {
+        return intrinsicSize;
+    }
+
+    public AnimationHeader getAnimationHeader() {
+        return animationHeader;
+    }
+
+    public int getOrientation() {
+        return orientation;
     }
 
     public void setLevel(int level) throws InvalidBitstreamException {
