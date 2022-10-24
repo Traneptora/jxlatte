@@ -139,15 +139,14 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
                 break;
             }
         }        
-        
-        int[] level2LengthsScrambled = new int[alphabetSize];
-        
+
         if (totalCode != 32768 && level2Counts[0] < alphabetSize - 1)
             throw new InvalidBitstreamException("Invalid Level 2 Prefix Codes");
         
         for (int i = 1; i <= alphabetSize; i++)
             level2Counts[i] += level2Counts[i - 1];
-        
+
+        int[] level2LengthsScrambled = new int[alphabetSize];
         for (int i = alphabetSize - 1; i >= 0; i--) {
             int index = --level2Counts[level2Lengths[i]];
             level2LengthsScrambled[index] = level2Lengths[i];

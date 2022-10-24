@@ -39,8 +39,9 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         this.logAlphabetSize = logAlphabetSize;
         int uniqPos = -1;
         if (reader.readBool()) {
+            System.err.println("simple");
             // simple distribution
-            this.alphabetSize = 256;
+            this.alphabetSize = 1 << logAlphabetSize;
             this.frequencies = new int[alphabetSize];
             if (reader.readBool()) {
                 int v1 = reader.readU8();
@@ -57,14 +58,18 @@ public class ANSSymbolDistribution extends SymbolDistribution {
                 uniqPos = x;
             }
         } else if (reader.readBool()) {
+            System.err.println("flat");
             // flat distribution
-            this.alphabetSize = 1 + reader.readU8();
-            this.frequencies = new int[alphabetSize];
+            alphabetSize = 1 + reader.readU8();
+            if (alphabetSize == 1)
+                uniqPos = 0;
+            frequencies = new int[alphabetSize];
             for (int i = 0; i < alphabetSize; i++)
                 frequencies[i] = (1 << 12) / alphabetSize;
             for (int i = 0; i < (1 << 12) % alphabetSize; i++)
                 frequencies[i]++;
         } else {
+            System.err.println("complex");
             int len = 0;
             do {
                 if (!reader.readBool())
@@ -138,7 +143,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         int symbol = pos >= cutoffs[i] ? symbols[i] : i;
         int offset = pos >= cutoffs[i] ? offsets[i] + pos : pos;
         state = frequencies[symbol] * (state >>> 12) + offset;
-        if (state < (1 << 16))
+        if ((state & 0xFFFF0000) == 0)
             state = (state << 16) | reader.readBits(16);
         this.state.setState(state);
 
@@ -146,6 +151,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     }
 
     private void generateAliasMapping(int uniqPos) throws InvalidBitstreamException {
+
         logBucketSize = 12 - logAlphabetSize;
         Deque<Integer> overfull = new ArrayDeque<>();
         Deque<Integer> underfull = new ArrayDeque<>();
@@ -155,6 +161,9 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         symbols = new int[tableSize];
         cutoffs = new int[tableSize];
         offsets = new int[tableSize];
+
+        System.err.println("uniqPos: " + uniqPos);
+        System.err.println("logAlphabetSize: " + logAlphabetSize);
 
         if (uniqPos >= 0) {
             for (int i = 0; i < tableSize; i++) {
@@ -174,10 +183,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
                 underfull.addFirst(i);
         }
 
-        for (int i = alphabetSize; i < tableSize; i++) {
-            cutoffs[i] = 0;
+        for (int i = alphabetSize; i < tableSize; i++)
             underfull.addFirst(i);
-        }
 
         while (!overfull.isEmpty()) {
             int u = underfull.removeFirst();

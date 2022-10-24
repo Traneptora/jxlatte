@@ -113,6 +113,7 @@ public class DistributionBundle {
             throw new InvalidBitstreamException("Can't have more clusters than dists");
 
         dists = new SymbolDistribution[numClusters];
+        
     }
 
     public DistributionBundle(Bitreader reader, int numDists) throws IOException {
@@ -124,6 +125,7 @@ public class DistributionBundle {
             lz77MinSymbol = reader.readU32(224, 0, 512, 0, 4096, 0, 8, 15);
             lz77MinLength = reader.readU32(3, 0, 4, 0, 5, 2, 9, 8);
             numDists++;
+            lzLengthConfig = new HybridUintConfig(reader, 8);
             window = new int[1 << 20];
         }
 
@@ -143,7 +145,7 @@ public class DistributionBundle {
             for (int i = 0; i < dists.length; i++) {
                 if (reader.readBool()) {
                     int n = reader.readBits(4);
-                    alphabetSizes[i] = 1 + ((1 << n) | reader.readBits(n));
+                    alphabetSizes[i] = 1 + (1 << n) + reader.readBits(n);
                 } else {
                     alphabetSizes[i] = 1;
                 }

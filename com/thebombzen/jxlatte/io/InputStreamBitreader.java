@@ -49,8 +49,8 @@ public class InputStreamBitreader implements Bitreader {
     @Override
     public int showBits(int bits) throws IOException {
         int n = readBits(bits);
-        cache = (cache << bits) | n;
-        cache_bits += n;
+        cache = (cache << bits) | (n & 0xFFFFFFFFL);
+        cache_bits += bits;
         return n;
     }
 

@@ -21,28 +21,29 @@ public class VLCTable {
         int[] nLengths = new int[lengths.length];
         int[] nSymbols = new int[lengths.length];
         int count = 0;
-        int code = 0;
+        long code = 0;
         for (int i = 0; i < lengths.length; i++) {
             int len = lengths[i];
             if (len > 0) {
                 nLengths[count] = len;
                 nSymbols[count] = symbols != null ? symbols[i] : i;
-                codes[count] = code;
+                codes[count] = (int)code;
                 count++;
             } else if (len < 0) {
                 len = -len;
             } else {
                 continue;
             }
-            code += 1 << (32 - len);
-            /* wrap around overflow */
-            if (code < 0)
+            code += 1L << (32 - len);
+            if (code > (1L << 32))
                 throw new IllegalArgumentException("Too many VLC codes");
         }
+        if (code != (1L << 32))
+            throw new IllegalArgumentException("Not enough VLC codes");
         for (int i = 0; i < count; i++) {
             if (nLengths[i] <= bits) {
                 int index = Integer.reverse(codes[i]);
-                int number = 1 << (count - nLengths[i]);
+                int number = 1 << (bits - nLengths[i]);
                 int offset = 1 << nLengths[i];
                 for (int j = 0; j < number; j++) {
                     int oldSymbol = table[index][0];

@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.DistributionBundle;
@@ -60,7 +62,9 @@ public class JXLCodestreamDecoder {
             DistributionBundle iccDistribution = new DistributionBundle(bitreader, 41);
             for (int i = 0; i < encodedSize; i++)
                 encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
-            System.err.println(encodedSize);
+            try (OutputStream o = new FileOutputStream("icc")) {
+                o.write(encodedIcc);
+            }
         }
         bitreader.zeroPadToByte();
         int width = imageHeader.getSize().width;
