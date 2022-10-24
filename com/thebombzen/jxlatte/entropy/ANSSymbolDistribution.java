@@ -2,6 +2,7 @@ package com.thebombzen.jxlatte.entropy;
 
 import java.io.IOException;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ANSSymbolDistribution extends SymbolDistribution {
@@ -29,12 +30,50 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     private int[] cutoffs;
     private int[] symbols;
     private int[] offsets;
-    private int uniqPos;
+    private int uniqPos = -1;
     private ANSState state;
 
     public ANSSymbolDistribution(Bitreader reader, ANSState state, int logAlphabetSize) throws IOException {
         this.state = state;
-        // TODO initialize dist
+        this.logAlphabetSize = logAlphabetSize;
+        if (reader.readBool()) {
+            // simple distribution
+            this.alphabetSize = 256;
+            this.frequencies = new int[alphabetSize];
+            if (reader.readBool()) {
+                int v1 = reader.readU8();
+                int v2 = reader.readU8();
+                if (v1 == v2)
+                    throw new InvalidBitstreamException("Overlapping dual peak distribution");
+                frequencies[v1] = reader.readBits(12);
+                frequencies[v2] = (1 << 12) - frequencies[v1];
+                if (frequencies[v1] == 0)
+                    uniqPos = v2;
+            } else {
+                int x = reader.readU8();
+                frequencies[x] = 1 << 12;
+                uniqPos = x;
+            }
+        } else if (reader.readBool()) {
+            // flat distribution
+            this.alphabetSize = 1 + reader.readU8();
+            this.frequencies = new int[alphabetSize];
+            for (int i = 0; i < alphabetSize; i++)
+                frequencies[i] = (1 << 12) / alphabetSize;
+            for (int i = 0; i < (1 << 12) % alphabetSize; i++)
+                frequencies[i]++;
+        } else {
+            int len = 0;
+            do {
+                if (!reader.readBool())
+                    break;
+            } while (++len < 3);
+            int shift = (reader.readBits(len) | (1 << len)) - 1;
+            if (shift > 13)
+                throw new InvalidBitstreamException("Shift > 13");
+            this.alphabetSize = 3 + reader.readU8();
+            this.frequencies = new int[alphabetSize];
+        }
     }
 
     @Override
