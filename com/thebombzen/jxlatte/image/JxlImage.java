@@ -14,7 +14,7 @@ public class JxlImage {
         strides = new int[channels];
         offsets = new int[channels];
         for (int i = 0; i < channels; i++) {
-            JxlChannelType type = format.getChannelType(i);
+            ChannelType type = format.getChannelType(i);
             strides[i] = format.getRowStride();
             if (strides[i] <= 0) 
                 strides[i] = width * type.width;
@@ -31,7 +31,7 @@ public class JxlImage {
         return imageFormat;
     }
 
-    public JxlChannelType getChannelType(int channel) {
+    public ChannelType getChannelType(int channel) {
         return imageFormat.getChannelType(channel);
     }
 

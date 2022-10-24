@@ -3,7 +3,7 @@ package com.thebombzen.jxlatte;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.image.JxlChannelType;
+import com.thebombzen.jxlatte.image.ChannelType;
 import com.thebombzen.jxlatte.image.JxlImage;
 import com.thebombzen.jxlatte.image.JxlImageFormat;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -20,7 +20,7 @@ public class JXLCodestreamDecoder {
         this.imageHeader = ImageHeader.parse(bitreader, 5);
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
-        JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, JxlChannelType.PACKED_RGB), width, height);
+        JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, ChannelType.PACKED_RGB), width, height);
         return image;
     }
 }

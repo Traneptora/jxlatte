@@ -27,13 +27,9 @@ public enum ExtraChannelType {
         return map.get(Integer.valueOf(index));
     }
 
-    private int index;
+    public final int index;
 
     private ExtraChannelType(int index) {
         this.index = index;
-    }
-
-    public int getIndex() {
-        return index;
     }
 }

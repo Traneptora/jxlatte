@@ -6,9 +6,9 @@ public class JxlImageFormat {
     private int bit_depth;
     private int num_channels;
     private int row_stride;
-    private JxlChannelType[] channel_types;
+    private ChannelType[] channel_types;
 
-    public JxlImageFormat(int bit_depth, int row_stride, JxlChannelType... channelTypes) {
+    public JxlImageFormat(int bit_depth, int row_stride, ChannelType... channelTypes) {
         if (bit_depth != 8 && bit_depth != 16 && bit_depth != 32)
             throw new IllegalArgumentException("Only 8, 16, and 32 supported.");
         if (channelTypes.length == 0)
@@ -23,7 +23,7 @@ public class JxlImageFormat {
         return this.num_channels;
     }
 
-    public JxlChannelType getChannelType(int index) {
+    public ChannelType getChannelType(int index) {
         return this.channel_types[index];
     }
 

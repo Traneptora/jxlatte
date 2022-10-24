@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.bundle;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.bundle.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ImageHeader {
@@ -19,6 +20,7 @@ public class ImageHeader {
     private boolean modular16bitBuffers = true;
     private ExtraChannelInfo[] extraChannelInfo;
     private boolean xybEncoded = true;
+    private ColorEncodingBundle colorEncoding;
 
     private ImageHeader() {
 
@@ -54,6 +56,7 @@ public class ImageHeader {
             header.modular16bitBuffers = true;
             header.extraChannelInfo = new ExtraChannelInfo[0];
             header.xybEncoded = true;
+            header.colorEncoding = new ColorEncodingBundle();
         } else {
             header.bitDepth = new BitDepthHeader(reader);
             header.modular16bitBuffers = reader.readBool();
@@ -63,6 +66,7 @@ public class ImageHeader {
                 header.extraChannelInfo[i] = new ExtraChannelInfo(reader);
             }
             header.xybEncoded = reader.readBool();
+            header.colorEncoding = new ColorEncodingBundle(reader);
         }
 
         return header;
@@ -108,8 +112,12 @@ public class ImageHeader {
         return extraChannelInfo[index];
     }
 
-    public boolean isXybEncoded() {
+    public boolean isXYBEncoded() {
         return xybEncoded;
+    }
+
+    public ColorEncodingBundle getColorEncoding() {
+        return colorEncoding;
     }
 
     public void setLevel(int level) throws InvalidBitstreamException {

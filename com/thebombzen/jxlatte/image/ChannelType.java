@@ -16,5 +16,4 @@ public enum ChannelType {
     private ChannelType(int width) {
         this.width = width;
     }
-
 }
