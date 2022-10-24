@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
+import com.thebombzen.jxlatte.entropy.DistributionBundle;
 import com.thebombzen.jxlatte.image.ChannelType;
 import com.thebombzen.jxlatte.image.JxlImage;
 import com.thebombzen.jxlatte.image.JxlImageFormat;
@@ -16,8 +17,52 @@ public class JXLCodestreamDecoder {
         this.bitreader = in;
     }
 
+    private static int getICCContext(byte[] buffer, int index) {
+        if (index <= 128)
+            return 0;
+        int b1 = (int)buffer[index - 1] & 0xFF;
+        int b2 = (int)buffer[index - 2] & 0xFF;
+        int p1, p2;
+        if (b1 >= 'a' && b1 <= 'z' || b1 >= 'A' && b1 <= 'Z')
+            p1 = 0;
+        else if (b1 >= '0' && b1 <= '9' || b1 == '.' || b1 == ',')
+            p1 = 1;
+        else if (b1 <= 1)
+            p1 = 2 + b1;
+        else if (b1 > 1 && b1 < 16)
+            p1 = 4;
+        else if (b1 > 240 && b1 < 255)
+            p1 = 5;
+        else if (b1 == 255)
+            p1 = 6;
+        else
+            p1 = 7;
+        
+        if (b2 >= 'a' && b2 <= 'z' || b2 >= 'A' && b2 <= 'Z')
+            p2 = 0;
+        else if (b2 >= '0' && b2 <= '9' || b2 == '.' || b2 == ',')
+            p2 = 1;
+        else if (b2 < 16)
+            p2 = 2;
+        else if (b2 > 240)
+            p2 = 3;
+        else
+            p2 = 4;
+
+        return 1 + p1 + 8 * p2;
+    }
+
     public JxlImage decode() throws IOException {
         this.imageHeader = ImageHeader.parse(bitreader, 5);
+        if (imageHeader.getColorEncoding().useIccProfile) {
+            int encodedSize = Math.toIntExact(bitreader.readU64());
+            byte[] encodedIcc = new byte[encodedSize];
+            DistributionBundle iccDistribution = new DistributionBundle(bitreader, 41);
+            for (int i = 0; i < encodedSize; i++)
+                encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
+            System.err.println(encodedSize);
+        }
+        bitreader.zeroPadToByte();
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, ChannelType.PACKED_RGB), width, height);

@@ -19,7 +19,7 @@ public class DistributionBundle {
     private int[] window;
     private ANSState state = new ANSState();
 
-    private int decodeHybridVarlenUint(Bitreader reader, int context) throws IOException {
+    public int readSymbol(Bitreader reader, int context) throws IOException {
         if (numToCopy77 > 0) {
             int hybridUint = window[copyPos77++ & 0xFFFFF];
             numToCopy77--;
@@ -45,7 +45,7 @@ public class DistributionBundle {
             if (distance > numDecoded77)
                 distance = numDecoded77;
             copyPos77 = numDecoded77 - distance;
-            return decodeHybridVarlenUint(reader, context);
+            return readSymbol(reader, context);
         }
 
         int hybridUint = readHybridUint(reader, dist.config, token);
@@ -84,7 +84,7 @@ public class DistributionBundle {
             boolean useMtf = reader.readBool();
             DistributionBundle nested = new DistributionBundle(reader, 1);
             for (int i = 0; i < numDists; i++)
-                clusterMap[i] = nested.decodeHybridVarlenUint(reader, 0);
+                clusterMap[i] = nested.readSymbol(reader, 0);
             if (useMtf) {
                 int[] mtf = new int[256];
                 for (int i = 0; i < 256; i++)
@@ -153,8 +153,6 @@ public class DistributionBundle {
         } else {
             for (int i = 0; i < dists.length; i++)
                 dists[i] = new ANSSymbolDistribution(reader, state, logAlphabetSize);
-            for (int i = 0; i < dists.length; i++)
-                ((ANSSymbolDistribution)dists[i]).generateAliasMapping();
         }
         for (int i = 0; i < dists.length; i++)
             dists[i].config = configs[i];
