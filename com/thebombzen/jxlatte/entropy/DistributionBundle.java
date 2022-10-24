@@ -156,6 +156,7 @@ public class DistributionBundle {
             for (int i = 0; i < dists.length; i++)
                 ((ANSSymbolDistribution)dists[i]).generateAliasMapping();
         }
-
+        for (int i = 0; i < dists.length; i++)
+            dists[i].config = configs[i];
     }
 }
