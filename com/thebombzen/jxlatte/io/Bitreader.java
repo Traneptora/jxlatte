@@ -21,10 +21,10 @@ public interface Bitreader extends Closeable {
                 c = c1; u = u1;
                 break;
             case 2:
-                c = c1; u = u1;
+                c = c2; u = u2;
                 break;
             case 3:
-                c = c1; u = u1;
+                c = c3; u = u3;
                 break;
             default:
                 c = c0; u = u0;
@@ -34,6 +34,13 @@ public interface Bitreader extends Closeable {
     }
 
     public default long readU64() throws IOException {
+        int index = readBits(2);
+        if (index == 0)
+            return 0L;
+        if (index == 1)
+            return 1L + readBits(4);
+        if (index == 2)
+            return 17L + readBits(8);
         long value = readBits(12);
         int shift = 12;
         while (readBool()) {

@@ -123,6 +123,8 @@ public class ImageHeader {
             header.orientation = 1;
         }
 
+        System.err.format("allDefault: %b, extraFields: %b%n", allDefault, extraFields);
+
         if (allDefault) {
             header.bitDepth = new BitDepthHeader();
             header.modular16bitBuffers = true;
