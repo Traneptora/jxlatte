@@ -8,7 +8,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class PreviewHeader extends Dimension {
 
-    public PreviewHeader(Bitreader reader, ImageHeader parent) throws IOException {
+    public PreviewHeader(Bitreader reader) throws IOException {
         boolean div8 = reader.readBool();
         if (div8)
             this.height = reader.readU32(16, 0, 32, 0, 1, 5, 33, 9);

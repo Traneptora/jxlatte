@@ -44,7 +44,7 @@ public class JXLatte {
         if (args.length == 0) {
             // System.err.println("Usage: jxlatte <input.jxl>");
             // System.exit(1);
-            args = new String[]{"bbb.jxl"};
+            args = new String[]{"samples/quilt.jxl"};
         }
         JXLatte jxlatte = new JXLatte(args[0]);
         JxlImage image = jxlatte.decode();

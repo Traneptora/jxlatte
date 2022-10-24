@@ -8,7 +8,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class SizeHeader extends Dimension {
 
-    public SizeHeader(Bitreader reader, ImageHeader parent) throws IOException {
+    public SizeHeader(Bitreader reader, int level) throws IOException {
         boolean div8 = reader.readBool();
         if (div8)
             this.height = (1 + reader.readBits(5)) << 3;
@@ -27,7 +27,7 @@ public class SizeHeader extends Dimension {
         long maxDim;
         long maxTimes;
 
-        if (parent.getLevel() <= 5) {
+        if (level <= 5) {
             maxDim = 1L << 18;
             maxTimes = 1L << 30;
         } else {
