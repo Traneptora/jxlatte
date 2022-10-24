@@ -47,6 +47,14 @@ public class InputStreamBitreader implements Bitreader {
     }
 
     @Override
+    public int showBits(int bits) throws IOException {
+        int n = readBits(bits);
+        cache = (cache << bits) | n;
+        cache_bits += n;
+        return n;
+    }
+
+    @Override
     public void zeroPadToByte() throws IOException {
         int remaining = 8 - cache_bits % 8;
         if (remaining < 8) {

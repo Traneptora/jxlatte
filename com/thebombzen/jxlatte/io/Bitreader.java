@@ -8,6 +8,7 @@ import com.thebombzen.jxlatte.InvalidBitstreamException;
 public interface Bitreader extends Closeable {
 
     public int readBits(int bits) throws IOException;
+    public int showBits(int bits) throws IOException;
 
     public default boolean readBool() throws IOException {
         return readBits(1) != 0;
@@ -54,7 +55,7 @@ public interface Bitreader extends Closeable {
         return value;
     }
 
-    public default float readF16() throws IOException, InvalidBitstreamException {
+    public default float readF16() throws IOException {
         int bits16 = readBits(16);
         int mantissa = (bits16 & 0x3FF) << 13;
         int biased_exp = ((bits16 >> 10) & 0x1F) + 112;
@@ -66,13 +67,21 @@ public interface Bitreader extends Closeable {
         return Float.intBitsToFloat(total);
     }
 
-    public default int readEnum() throws IOException, InvalidBitstreamException {
+    public default int readEnum() throws IOException {
         int constant = readU32(0, 0, 1, 0, 2, 4, 18, 6);
         if (constant > 63)
             throw new InvalidBitstreamException("Enum constant > 63");
         return constant;
     }
 
-    public void zeroPadToByte() throws IOException, InvalidBitstreamException;
+    /* used with ANS */
+    public default int readU8() throws IOException {
+        if (!readBool())
+            return 0;
+        int n = readBits(3);
+        return readBits(n) | (1 << n);
+    }
+
+    public void zeroPadToByte() throws IOException;
 
 }

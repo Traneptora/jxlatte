@@ -25,4 +25,9 @@ public class BitreaderBitreader implements Bitreader {
         this.bitreader.close();
     }
 
+    @Override
+    public int showBits(int bits) throws IOException {
+        return this.bitreader.showBits(bits);
+    }
+
 }
