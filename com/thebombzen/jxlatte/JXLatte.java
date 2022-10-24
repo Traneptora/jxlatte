@@ -18,7 +18,10 @@ public class JXLatte {
     public JXLatte(InputStream in) {
         this.readerThread = new ReaderThread(in);
         readerThread.start();
-        this.decoder = new JXLCodestreamDecoder(new InputStreamBitreader(new ByteArrayQueueInputStream(readerThread.getQueue())));
+        this.decoder = new JXLCodestreamDecoder(
+            new InputStreamBitreader(
+            new ByteArrayQueueInputStream(
+            readerThread.getQueue())));
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
