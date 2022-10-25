@@ -69,4 +69,19 @@ public class InputStreamBitreader implements Bitreader {
     public void close() throws IOException {
         in.close();
     }
+
+    @Override
+    public long skipBits(long bits) throws IOException {
+        if (bits < 0)
+            throw new IllegalArgumentException();
+        if (bits == 0)
+            return 0;
+        if (bits <= cache_bits) {
+            cache_bits -= bits;
+            return bits;
+        }
+        long skipped = bits - IOHelper.skipFully(in, bits - cache_bits);
+        cache_bits = 0;
+        return skipped;
+    }
 }

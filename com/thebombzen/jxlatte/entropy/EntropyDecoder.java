@@ -7,6 +7,20 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class EntropyDecoder {
 
+    private static final int[][] SPECIAL_DISTANCES = {
+        {0, 1}, {1, 0}, {1, 1}, {-1, 1}, {0, 2}, {2, 0}, {1, 2}, {-1, 2}, {2, 1}, {-2, 1}, {2, 2},
+        {-2, 2}, {0, 3}, {3, 0}, {1, 3}, {-1, 3}, {3, 1}, {-3, 1}, {2, 3}, {-2, 3}, {3, 2},
+        {-3, 2}, {0, 4}, {4, 0}, {1, 4}, {-1, 4}, {4, 1}, {-4, 1}, {3, 3}, {-3, 3}, {2, 4},
+        {-2, 4}, {4, 2}, {-4, 2}, {0, 5}, {3, 4}, {-3, 4}, {4, 3}, {-4, 3}, {5, 0}, {1, 5},
+        {-1, 5}, {5, 1}, {-5, 1}, {2, 5}, {-2, 5}, {5, 2}, {-5, 2}, {4, 4}, {-4, 4}, {3, 5},
+        {-3, 5}, {5, 3}, {-5, 3}, {0, 6}, {6, 0}, {1, 6}, {-1, 6}, {6, 1}, {-6, 1}, {2, 6},
+        {-2, 6}, {6, 2}, {-6, 2}, {4, 5}, {-4, 5}, {5, 4}, {-5, 4}, {3, 6}, {-3, 6}, {6, 3},
+        {-6, 3}, {0, 7}, {7, 0}, {1, 7}, {-1, 7}, {5, 5}, {-5, 5}, {7, 1}, {-7, 1}, {4, 6},
+        {-4, 6}, {6, 4}, {-6, 4}, {2, 7}, {-2, 7}, {7, 2}, {-7, 2}, {3, 7}, {-3, 7}, {7, 3},
+        {-7, 3}, {5, 6}, {-5, 6}, {6, 5}, {-6, 5}, {8, 0}, {4, 7}, {-4, 7}, {7, 4}, {-7, 4},
+        {8, 1}, {8, 2}, {6, 6}, {-6, 6}, {8, 3}, {5, 7}, {-5, 7}, {7, 5}, {-7, 5}, {8, 4}, {6, 7},
+        {-6, 7}, {7, 6}, {-7, 6}, {8, 5}, {7, 7}, {-7, 7}, {8, 6}, {8, 7}};
+
     private boolean usesLZ77;
     private int lz77MinSymbol;
     private int lz77MinLength;
@@ -63,6 +77,10 @@ public class EntropyDecoder {
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
+        return readSymbol(reader, context, 0);
+    }
+
+    public int readSymbol(Bitreader reader, int context, int distanceMultiplier) throws IOException {
         if (numToCopy77 > 0) {
             int hybridInt = window[copyPos77++ & 0xFFFFF];
             numToCopy77--;
@@ -82,7 +100,15 @@ public class EntropyDecoder {
             SymbolDistribution lz77dist = dists[clusterMap[clusterMap.length - 1]];
             numToCopy77 = lz77MinLength + readHybridInteger(reader, lzLengthConfig, token - lz77MinSymbol);
             token = lz77dist.readSymbol(reader);
-            int distance = 1 + readHybridInteger(reader, lz77dist.config, token);
+            int distance = readHybridInteger(reader, lz77dist.config, token);
+            if (distanceMultiplier == 0) {
+                distance++;
+            } else if (distance < 120) {
+                distance = SPECIAL_DISTANCES[distance][0];
+                distance += distanceMultiplier * SPECIAL_DISTANCES[distance][1];
+            } else {
+                distance -= 119;
+            }
             if (distance > (1 << 20))
                 distance = 1 << 20;
             if (distance > numDecoded77)

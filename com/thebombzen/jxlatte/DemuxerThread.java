@@ -7,6 +7,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.thebombzen.jxlatte.io.IOHelper;
+
 public class DemuxerThread extends Thread {
 
     private static final byte[] CONTAINER_SIGNATURE = new byte[]{
@@ -64,57 +66,11 @@ public class DemuxerThread extends Thread {
         }
     }
 
-    // nonzero return value indicates how much wasn't read
-    private int readFully(byte[] buffer) throws IOException {
-        return readFully(buffer, 0, buffer.length);
-    }
-
-    private int readFully(byte[] buffer, int offset, int len) throws IOException {
-        int remaining = len;
-        while (remaining > 0) {
-            int count = in.read(buffer, offset + len - remaining, remaining);
-            if (count <= 0)
-                break;
-            remaining -= count;
-        }
-        return remaining;
-    }
-
-    private long skipFully(long n) throws IOException {
-        
-        long remaining = n;
-
-        while (remaining > 0) {
-            long skipped = in.skip(remaining);
-            remaining -= skipped;
-            if (skipped == 0)
-                break;
-        }
-
-        if (remaining == 0) {
-            return 0;
-        }
-
-        byte[] buffer = new byte[4096];
-
-        while (remaining > buffer.length) {
-            int k = readFully(buffer);
-            if (k != 0)
-                return -1;
-            remaining -= buffer.length;
-        }
-
-        if (readFully(buffer, 0, (int)remaining) != 0)
-            return -1;
-
-        return 0;
-    }
-
     private void containerDemux() throws Throwable {
         byte[] boxSize = new byte[8];
         byte[] boxTag = new byte[4];
         while (true) {
-            int c = readFully(boxSize, 0, 4);
+            int c = IOHelper.readFully(in, boxSize, 0, 4);
             if (c != 0) {
                 if (c < 4) {
                     throw new InvalidBitstreamException("Truncated box size");
@@ -125,13 +81,13 @@ public class DemuxerThread extends Thread {
             }
             long size = makeTag(boxSize, 0, 4);
             if (size == 1) {
-                if (readFully(boxSize, 0, 8) != 0)
+                if (IOHelper.readFully(in, boxSize, 0, 8) != 0)
                     throw new InvalidBitstreamException("Truncated extended size");
                 size = makeTag(boxSize, 0, 8);
                 if (size > 0)
                     size -= 8;
             }
-            if (readFully(boxTag) != 0)
+            if (IOHelper.readFully(in, boxTag) != 0)
                 throw new InvalidBitstreamException("Truncated box tag");
             int tag = (int)makeTag(boxTag);
             if (size > 0)
@@ -147,7 +103,7 @@ public class DemuxerThread extends Thread {
                 level.complete(l);
             }
             if (tag == JXLP) {
-                if (skipFully(4) < 0)
+                if (IOHelper.skipFully(in, 4) != 0)
                     throw new InvalidBitstreamException("Truncated sequence number");
                 size -= 4;
             }
@@ -175,7 +131,7 @@ public class DemuxerThread extends Thread {
                 }
             } else {
                 if (size > 0) {
-                    if (skipFully(size) < 0)
+                    if (IOHelper.skipFully(in, size) != 0)
                         throw new InvalidBitstreamException("Truncated extra box");
                 }
             }           
@@ -184,7 +140,7 @@ public class DemuxerThread extends Thread {
 
     private void run0() throws Throwable {
         byte[] signature = new byte[12];
-        int remaining = readFully(signature);
+        int remaining = IOHelper.readFully(in, signature);
         if (!Arrays.equals(signature, CONTAINER_SIGNATURE)) {
             level.complete(5);
             if (remaining != 0) {
@@ -217,4 +173,3 @@ public class DemuxerThread extends Thread {
         }
     }
 }
-

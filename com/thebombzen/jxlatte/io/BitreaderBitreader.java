@@ -3,7 +3,6 @@ package com.thebombzen.jxlatte.io;
 import java.io.IOException;
 
 public class BitreaderBitreader implements Bitreader {
-
     private Bitreader bitreader;
 
     public BitreaderBitreader(Bitreader bitreader) {
@@ -30,4 +29,8 @@ public class BitreaderBitreader implements Bitreader {
         return this.bitreader.showBits(bits);
     }
 
+    @Override
+    public long skipBits(long bits) throws IOException {
+        return bitreader.skipBits(bits);
+    }
 }
