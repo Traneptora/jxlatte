@@ -12,16 +12,16 @@ import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
 public class JXLatte {
 
-    private ReaderThread readerThread;
+    private DemuxerThread demuxerThread;
     private JXLCodestreamDecoder decoder;
 
     public JXLatte(InputStream in) {
-        this.readerThread = new ReaderThread(in);
-        readerThread.start();
+        this.demuxerThread = new DemuxerThread(in);
+        demuxerThread.start();
         this.decoder = new JXLCodestreamDecoder(
             new InputStreamBitreader(
             new ByteArrayQueueInputStream(
-            readerThread.getQueue())));
+            demuxerThread.getQueue())));
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
@@ -36,8 +36,8 @@ public class JXLatte {
         } catch (IOException ex) {
             error = ex;
         }
-        if (readerThread.getLastError() != null)
-            throw new IOException(readerThread.getLastError());
+        if (demuxerThread.getLastError() != null)
+            throw new IOException(demuxerThread.getLastError());
         if (error != null)
             throw error;
         return ret;
@@ -47,7 +47,7 @@ public class JXLatte {
         if (args.length == 0) {
             // System.err.println("Usage: jxlatte <input.jxl>");
             // System.exit(1);
-            args = new String[]{"samples/bench.jxl"};
+            args = new String[]{"samples/ants.jxl"};
         }
         JXLatte jxlatte = new JXLatte(args[0]);
         JxlImage image = jxlatte.decode();

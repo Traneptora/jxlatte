@@ -4,8 +4,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-
 public class InputStreamBitreader implements Bitreader {
 
     private InputStream in;
@@ -58,9 +56,12 @@ public class InputStreamBitreader implements Bitreader {
     public void zeroPadToByte() throws IOException {
         int remaining = 8 - cache_bits % 8;
         if (remaining < 8) {
+            /*
             int padding = readBits(remaining);
             if (padding != 0)
                 throw new InvalidBitstreamException("Nonzero zero-padding-to-byte");
+            */
+            readBits(remaining);
         }
     }
 
