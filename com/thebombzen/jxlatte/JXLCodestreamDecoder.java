@@ -52,8 +52,8 @@ public class JXLCodestreamDecoder {
         return 1 + p1 + 8 * p2;
     }
 
-    public JxlImage decode() throws IOException {
-        this.imageHeader = ImageHeader.parse(bitreader, 5);
+    public JxlImage decode(int level) throws IOException {
+        this.imageHeader = ImageHeader.parse(bitreader, level);
         if (imageHeader.getColorEncoding().useIccProfile) {
             int encodedSize = Math.toIntExact(bitreader.readU64());
             byte[] encodedIcc = new byte[encodedSize];

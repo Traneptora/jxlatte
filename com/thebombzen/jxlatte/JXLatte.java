@@ -32,7 +32,7 @@ public class JXLatte {
         IOException error = null;
         JxlImage ret = null;
         try {
-            ret = decoder.decode();
+            ret = decoder.decode(demuxerThread.getLevel());;
         } catch (IOException ex) {
             error = ex;
         }

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class DemuxerThread extends Thread {
@@ -12,14 +13,25 @@ public class DemuxerThread extends Thread {
         0x00, 0x00, 0x00, 0x0C, 'J', 'X', 'L', ' ', 0x0D, 0x0A, (byte)0x87, 0x0A
     };
 
-    private static final byte[] JXLC = new byte[]{'j', 'x', 'l', 'c'};
-    private static final byte[] JXLP = new byte[]{'j', 'x', 'l', 'p'};
-    private static final byte[] JXLL = new byte[]{'j', 'x', 'l', 'l'};
+    private static final int JXLC = (int)makeTag(new byte[]{'j', 'x', 'l', 'c'});
+    private static final int JXLP = (int)makeTag(new byte[]{'j', 'x', 'l', 'p'});
+    private static final int JXLL = (int)makeTag(new byte[]{'j', 'x', 'l', 'l'});
+
+    public static long makeTag(byte[] tagArray, int offset, int length) {
+        long tag = 0;
+        for (int i = offset; i < offset + length; i++)
+            tag = (tag << 8) | ((int)tagArray[i] & 0xFF);
+        return tag;
+    }
+
+    public static long makeTag(byte[] tagArray) {
+        return makeTag(tagArray, 0, tagArray.length);
+    }
 
     private InputStream in;
     private BlockingQueue<byte[]> queue = new LinkedBlockingQueue<>();
     private Throwable error = null;
-    private volatile int level = 5;
+    private CompletableFuture<Integer> level = new CompletableFuture<>();
 
     public DemuxerThread(InputStream in) {
         this.in = in;
@@ -34,7 +46,7 @@ public class DemuxerThread extends Thread {
     }
 
     public int getLevel() {
-        return level;
+        return level.join();
     }
 
     private void dummyDemux() throws Throwable {
@@ -99,45 +111,50 @@ public class DemuxerThread extends Thread {
     }
 
     private void containerDemux() throws Throwable {
-        byte[] boxSize = new byte[4];
+        byte[] boxSize = new byte[8];
         byte[] boxTag = new byte[4];
-        byte[] extendedSize = new byte[8];
         while (true) {
-            int c = readFully(boxSize);
+            int c = readFully(boxSize, 0, 4);
             if (c != 0) {
-                if (c < 4)
+                if (c < 4) {
                     throw new InvalidBitstreamException("Truncated box size");
-                else
-                    return; // eof
+                } else {
+                    queue.put(new byte[0]);
+                    return;
+                }
             }
             if (readFully(boxTag) != 0)
                 throw new InvalidBitstreamException("Truncated box tag");
-            long size = 0;
-            for (int i = 0; i < 4; i++)
-                size = (size << 8) | ((int)boxSize[i] & 0xFF);
+            int tag = (int)makeTag(boxTag);
+            long size = makeTag(boxSize, 0, 4);
             if (size == 1) {
-                size = 0;
-                if (readFully(extendedSize) != 0)
+                if (readFully(boxSize, 0, 8) != 0)
                     throw new InvalidBitstreamException("Truncated extended size");
-                for (int i = 0; i < 8; i++)
-                    size = (size << 8) | ((long)extendedSize[i] & 0xFFL);
-                size -= 16;
-            } else {
-                size -= 8;
+                size = makeTag(boxSize, 0, 8);
+                if (size > 0)
+                    size -= 8;
             }
-            if (Arrays.equals(JXLL, boxTag)) {
+            if (size > 0)
+                size -= 8;
+            if (size < 0)
+                throw new InvalidBitstreamException("Illegal box size");
+            if (tag == JXLL) {
                 if (size != 1L)
                     throw new InvalidBitstreamException("jxll box must be size == 1");
-                level = in.read();
-                if (level != 5 && level != 10)
+                int l = in.read();
+                if (l != 5 && l != 10)
                     throw new InvalidBitstreamException(String.format("Invalid level: %d", level));
+                level.complete(l);
             }
-            if (Arrays.equals(JXLP, boxTag)) {
+            if (tag == JXLP) {
                 if (skipFully(4) < 0)
                     throw new InvalidBitstreamException("Truncated sequence number");
             }
-            if (Arrays.equals(JXLP, boxTag) || Arrays.equals(JXLC, boxTag)) {
+            if (tag == JXLP || tag == JXLC) {
+                if (!level.isDone())
+                    level.complete(5);
                 if (size == 0) {
+                    /* box lasts until EOF */
                     dummyDemux();
                     return;
                 } else {
@@ -168,6 +185,7 @@ public class DemuxerThread extends Thread {
         byte[] signature = new byte[12];
         int remaining = readFully(signature);
         if (!Arrays.equals(signature, CONTAINER_SIGNATURE)) {
+            level.complete(5);
             if (remaining != 0) {
                 // shorter than 12 bytes, kinda sus
                 byte[] buf = new byte[signature.length - remaining];
@@ -194,6 +212,7 @@ public class DemuxerThread extends Thread {
                 if (error == null)
                     error = ex;
             }
+            level.complete(5);
         }
     }
 }
