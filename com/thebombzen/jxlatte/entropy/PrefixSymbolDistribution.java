@@ -37,30 +37,44 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
             case 2:
                 bits = 1;
                 lens = new int[]{1, 1, 0, 0};
+                if (symbols[0] > symbols[1]) {
+                    int temp = symbols[1];
+                    symbols[1] = symbols[0];
+                    symbols[0] = temp;
+                }
                 break;
             case 3:
                 bits = 2;
                 lens = new int[]{1, 2, 2, 0};
+                if (symbols[1] > symbols[2]) {
+                    int temp = symbols[2];
+                    symbols[2] = symbols[1];
+                    symbols[1] = temp;
+                }
                 break;
             case 4:
                 if (treeSelect) {
                     bits = 3;
                     lens = new int[]{1, 2, 3, 3};
+                    if (symbols[2] > symbols[3]) {
+                        int temp = symbols[3];
+                        symbols[3] = symbols[2];
+                        symbols[2] = temp;
+                    }
                 } else {
                     bits = 2;
                     lens = new int[]{2, 2, 2, 2};
+                    Arrays.sort(symbols);
                 }
                 break;
         }
-        Arrays.sort(symbols);
         this.table = new VLCTable(bits, lens, symbols);
     }
 
     private void populateComplexPrefix(Bitreader reader, int hskip) throws IOException {
-
         int[] level1Lengths = new int[18];
         int[] level1Codecounts = new int[19];
-        
+
         level1Codecounts[0] = hskip;
 
         int totalCode = 0;
@@ -80,7 +94,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
 
         if (totalCode != 32 && numCodes >= 2 || numCodes < 1)
             throw new InvalidBitstreamException("Invalid Level 1 Prefix codes");
-        
+
         for (int i = 1; i < 19; i++)
             level1Codecounts[i] += level1Codecounts[i - 1];
 
@@ -142,7 +156,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
 
         if (totalCode != 32768 && level2Counts[0] < alphabetSize - 1)
             throw new InvalidBitstreamException("Invalid Level 2 Prefix Codes");
-        
+
         for (int i = 1; i <= alphabetSize; i++)
             level2Counts[i] += level2Counts[i - 1];
 

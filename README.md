@@ -4,7 +4,7 @@ Work-in-progress pure java JPEG XL decoder
 ## Compiling
 JXLatte is built with the [Meson build system](https://mesonbuild.com/).
 
-To build, create a build directory, for example, with `mkdir build`.
+To build, create a build directory, for example, with `mkdir build && cd build`.
 
 Then run `meson ../` to set up the build directory, and `ninja` to compile JXLatte.
 

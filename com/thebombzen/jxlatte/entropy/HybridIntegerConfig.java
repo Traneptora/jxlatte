@@ -6,22 +6,18 @@ import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
 
-public class HybridUintConfig {
-    public int splitExponent;
-    public int msbInToken;
-    public int lsbInToken;
+public class HybridIntegerConfig {
+    public final int splitExponent;
+    public final int msbInToken;
+    public final int lsbInToken;
 
-    public HybridUintConfig() {
-
-    }
-
-    public HybridUintConfig(int splitExponent, int msbInToken, int lsbInToken) {
+    public HybridIntegerConfig(int splitExponent, int msbInToken, int lsbInToken) {
         this.splitExponent = splitExponent;
         this.msbInToken = msbInToken;
         this.lsbInToken = lsbInToken;
     }
 
-    public HybridUintConfig(Bitreader reader, int logAlphabetSize) throws IOException {
+    public HybridIntegerConfig(Bitreader reader, int logAlphabetSize) throws IOException {
         splitExponent = reader.readBits(MathHelper.ceilLog1p(logAlphabetSize));
         if (this.splitExponent == logAlphabetSize) {
             msbInToken = this.lsbInToken = 0;
