@@ -123,9 +123,6 @@ public class DemuxerThread extends Thread {
                     return;
                 }
             }
-            if (readFully(boxTag) != 0)
-                throw new InvalidBitstreamException("Truncated box tag");
-            int tag = (int)makeTag(boxTag);
             long size = makeTag(boxSize, 0, 4);
             if (size == 1) {
                 if (readFully(boxSize, 0, 8) != 0)
@@ -134,6 +131,9 @@ public class DemuxerThread extends Thread {
                 if (size > 0)
                     size -= 8;
             }
+            if (readFully(boxTag) != 0)
+                throw new InvalidBitstreamException("Truncated box tag");
+            int tag = (int)makeTag(boxTag);
             if (size > 0)
                 size -= 8;
             if (size < 0)
@@ -149,6 +149,7 @@ public class DemuxerThread extends Thread {
             if (tag == JXLP) {
                 if (skipFully(4) < 0)
                     throw new InvalidBitstreamException("Truncated sequence number");
+                size -= 4;
             }
             if (tag == JXLP || tag == JXLC) {
                 if (!level.isDone())

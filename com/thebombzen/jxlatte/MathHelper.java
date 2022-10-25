@@ -6,6 +6,12 @@ public final class MathHelper {
 
     }
 
+    public static int unpackSigned(int value) {
+        // prevent overflow and extra casework
+        long v = (long)value & 0xFF_FF_FF_FFL;
+        return (int)((v & 1L) == 0 ? v / 2L : -(v + 1L) / 2L);
+    }
+
     /**
      * @return ceil(log2(x + 1))
      */
