@@ -7,71 +7,73 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ColorEncodingBundle {
     public final boolean useIccProfile;
-    public final EnumColorSpace colorSpace;
-    public final EnumWhitePoint whitePoint;
+    public final int colorSpace;
+    public final int whitePoint;
     public final CIEXY white;
-    public final EnumColorPrimaries primaries;
-    public final CIEXY pRed;
-    public final CIEXY pGreen;
-    public final CIEXY pBlue;
-    public final TransferFunction tf;
-    public final EnumRenderingIntent renderingIntent;
+    public final int primaries;
+    public final CIEPrimaries prim;
+    public final int tf;
+    public final int renderingIntent;
 
     public ColorEncodingBundle() {
         useIccProfile = false;
-        colorSpace = EnumColorSpace.RGB;
-        whitePoint = EnumWhitePoint.D65;
-        white = whitePoint.xy;
-        primaries = EnumColorPrimaries.SRGB;
-        pRed = primaries.red;
-        pGreen = primaries.green;
-        pBlue = primaries.blue;
-        tf = new TransferFunction();
-        renderingIntent = EnumRenderingIntent.RELATIVE;
+        colorSpace = ColorSpace.RGB;
+        whitePoint = WhitePoint.D65;
+        white = WhitePoint.getWhitePoint(whitePoint);
+        primaries = Primaries.SRGB;
+        prim = Primaries.getPrimaries(primaries);
+        tf = TransferFunction.SRGB;
+        renderingIntent = RenderingIntent.RELATIVE;
     }
 
     public ColorEncodingBundle(Bitreader reader) throws IOException {
         boolean allDefault = reader.readBool();
         useIccProfile = allDefault ? false : reader.readBool();
         if (!allDefault)
-            colorSpace = EnumColorSpace.getForIndex(reader.readEnum());
+            colorSpace = reader.readEnum();
         else
-            colorSpace = EnumColorSpace.RGB;
-        if (colorSpace == null)
+            colorSpace = ColorSpace.RGB;
+        if (!ColorSpace.validate(colorSpace))
             throw new InvalidBitstreamException("Invalid ColorSpace enum");
-        if (!allDefault && !useIccProfile && colorSpace != EnumColorSpace.XYB)
-            whitePoint = EnumWhitePoint.getForIndex(reader.readEnum());
+        if (!allDefault && !useIccProfile && colorSpace != ColorSpace.XYB)
+            whitePoint = reader.readEnum();
         else
-            whitePoint = EnumWhitePoint.D65;
-        if (whitePoint == null)
+            whitePoint = WhitePoint.D65;
+        if (!WhitePoint.validate(whitePoint))
             throw new InvalidBitstreamException("Invalid WhitePoint enum");
-        if (whitePoint == EnumWhitePoint.CUSTOM)
+        if (whitePoint == WhitePoint.CUSTOM)
             white = new CustomXY(reader);
         else
-            white = whitePoint.xy;
-        if (!allDefault && !useIccProfile && colorSpace != EnumColorSpace.XYB && colorSpace != EnumColorSpace.GRAY)
-            primaries = EnumColorPrimaries.getForIndex(reader.readEnum());
+            white = WhitePoint.getWhitePoint(whitePoint);
+        if (!allDefault && !useIccProfile && colorSpace != ColorSpace.XYB && colorSpace != ColorSpace.GRAY)
+            primaries = reader.readEnum();
         else
-            primaries = EnumColorPrimaries.SRGB;
-        if (primaries == null)
+            primaries = Primaries.SRGB;
+        if (!Primaries.validate(primaries))
             throw new InvalidBitstreamException("Invalid Primaries enum");
-        if (primaries == EnumColorPrimaries.CUSTOM) {
-            pRed = new CustomXY(reader);
-            pGreen = new CustomXY(reader);
-            pBlue = new CustomXY(reader);
+        if (primaries == Primaries.CUSTOM) {
+            CIEXY pRed = new CustomXY(reader);
+            CIEXY pGreen = new CustomXY(reader);
+            CIEXY pBlue = new CustomXY(reader);
+            prim = new CIEPrimaries(pRed, pGreen, pBlue);
         } else {
-            pRed = primaries.red;
-            pGreen = primaries.green;
-            pBlue = primaries.blue;
+            prim = Primaries.getPrimaries(primaries);
         }
         if (!allDefault && !useIccProfile) {
-            tf = new TransferFunction(reader);
-            renderingIntent = EnumRenderingIntent.getForIndex(reader.readEnum());
-            if (renderingIntent == null)
+            boolean useGamma = reader.readBool();
+            if (useGamma) {
+                tf = reader.readBits(24);
+            } else {
+                tf = (1 << 24) + reader.readEnum();
+            }
+            if (!TransferFunction.validate(tf))
+                throw new InvalidBitstreamException("Illegal transfer function");
+            renderingIntent = reader.readEnum();
+            if (!RenderingIntent.validate(renderingIntent))
                 throw new InvalidBitstreamException("Invalid RenderingIntent enum");
         } else {
-            tf = new TransferFunction();
-            renderingIntent = EnumRenderingIntent.RELATIVE;
+            tf = TransferFunction.SRGB;
+            renderingIntent = RenderingIntent.RELATIVE;
         }
     }
 }

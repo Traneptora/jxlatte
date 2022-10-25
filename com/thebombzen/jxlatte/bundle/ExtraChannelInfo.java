@@ -3,11 +3,12 @@ package com.thebombzen.jxlatte.bundle;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.image.ExtraChannelType;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ExtraChannelInfo {
-    public final ExtraChannelType type;
+    public final int type;
     public final BitDepthHeader bitDepth;
     public final int dimShift;
     public final String name;
@@ -18,7 +19,9 @@ public class ExtraChannelInfo {
     public ExtraChannelInfo(Bitreader reader) throws IOException {
         boolean d_alpha = reader.readBool();
         if (!d_alpha) {
-            type = ExtraChannelType.getForIndex(reader.readEnum());
+            type = reader.readEnum();
+            if (!ExtraChannelType.validate(type))
+                throw new InvalidBitstreamException("Illegal extra channel type");
             bitDepth = new BitDepthHeader(reader);
             dimShift = reader.readU32(0, 0, 3, 0, 4, 0, 1, 3);
             int nameLen = reader.readU32(0, 0, 0, 4, 16, 5, 48, 10);

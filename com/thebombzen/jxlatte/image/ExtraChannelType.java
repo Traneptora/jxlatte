@@ -1,35 +1,18 @@
 package com.thebombzen.jxlatte.image;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+public interface ExtraChannelType {
+    
+    public static final int ALPHA = 0;
+    public static final int DEPTH = 1;
+    public static final int SPOT_COLOR = 2;
+    public static final int SELECTION_MASK = 3;
+    public static final int CMYK_BLACK = 4;
+    public static final int COLOR_FILTER_ARRAY = 5;
+    public static final int THERMAL = 6;
+    public static final int NON_OPTIONAL = 15;
+    public static final int OPTIONAL = 16;
 
-public enum ExtraChannelType {
-    ALPHA(0),
-    DEPTH(1),
-    SPOT_COLOR(2),
-    SELECTION_MASK(3),
-    CMYK_BLACK(4),
-    COLOR_FILTER_ARRAY(5),
-    THERMAL(6),
-    NON_OPTIONAL(7),
-    OPTIONAL(8);
-
-    private static Map<Integer, ExtraChannelType> map = new HashMap<>();
-
-    static {
-        Arrays.asList(ExtraChannelType.values()).stream().forEach(e -> {
-            map.put(e.index, e);
-        });
-    }
-
-    public static ExtraChannelType getForIndex(int index) {
-        return map.get(Integer.valueOf(index));
-    }
-
-    public final int index;
-
-    private ExtraChannelType(int index) {
-        this.index = index;
+    public static boolean validate(int ec) {
+        return ec >= 0 && ec <= 6 || ec == 15 || ec == 16;
     }
 }

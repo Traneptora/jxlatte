@@ -1,7 +1,10 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import com.thebombzen.jxlatte.bundle.FrameHeader;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.image.ChannelType;
@@ -12,6 +15,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
     private ImageHeader imageHeader;
+    private List<FrameHeader> frameHeaders = new ArrayList<>();
 
     public JXLCodestreamDecoder(Bitreader in) {
         this.bitreader = in;
@@ -62,6 +66,9 @@ public class JXLCodestreamDecoder {
                 encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
         }
         bitreader.zeroPadToByte();
+        FrameHeader frameHeader = new FrameHeader(bitreader, imageHeader);
+        frameHeaders.add(frameHeader);
+
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, ChannelType.PACKED_RGB), width, height);
