@@ -1,7 +1,8 @@
-package com.thebombzen.jxlatte.bundle;
+package com.thebombzen.jxlatte.frame;
 
 import java.io.IOException;
 
+import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class RestorationFilter {

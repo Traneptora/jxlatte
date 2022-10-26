@@ -10,6 +10,7 @@ public interface Bitreader extends Closeable {
     public int readBits(int bits) throws IOException;
     public int showBits(int bits) throws IOException;
     public long skipBits(long bits) throws IOException;
+    public long getBitsCount();
 
     public default boolean readBool() throws IOException {
         return readBits(1) != 0;

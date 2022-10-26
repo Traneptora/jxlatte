@@ -1,10 +1,12 @@
-package com.thebombzen.jxlatte.bundle;
+package com.thebombzen.jxlatte.frame;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import com.thebombzen.jxlatte.MathHelper;
+import com.thebombzen.jxlatte.bundle.Extensions;
+import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class FrameHeader {
@@ -17,6 +19,7 @@ public class FrameHeader {
     public final int upsampling;
     public final int[] ecUpsampling;
     public final int groupSizeShift;
+    public final int groupDim;
     public final int xqmScale;
     public final int bqmScale;
     public final Passes passes;
@@ -60,6 +63,7 @@ public class FrameHeader {
             Arrays.fill(ecUpsampling, 1);
         }
         groupSizeShift = encoding == FrameFlags.MODULAR ? reader.readBits(2) : 1;
+        groupDim = 128 << groupSizeShift;
         if (!allDefault && parent.isXYBEncoded() && encoding == FrameFlags.VARDCT) {
             xqmScale = reader.readBits(3);
             bqmScale = reader.readBits(3);

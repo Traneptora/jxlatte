@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.bundle;
+package com.thebombzen.jxlatte.frame;
 
 public interface FrameFlags {
     public static final int REGULAR_FRAME = 0;

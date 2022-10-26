@@ -7,14 +7,14 @@ import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.modular.MATree;
+import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class GlobalModular {
     public final MATree globalTree;
     public final Frame frame;
+    public final ModularStream stream;
     
-    private float[][] decodedChannels;
-
     public GlobalModular(Bitreader reader, Frame parent) throws IOException {
         frame = parent;
         boolean hasGlobalTree = reader.readBool();
@@ -25,13 +25,16 @@ public class GlobalModular {
         }
         int subModularChannelCount = frame.globalMetadata.getExtraChannelCount();
         FrameHeader header = frame.getFrameHeader();
+        int ecStart = 0;
         if (header.encoding == FrameFlags.MODULAR) {
             if (!header.doYCbCr && !frame.globalMetadata.isXYBEncoded()
                     && frame.globalMetadata.getColorEncoding().colorSpace == ColorSpace.GRAY)
-                subModularChannelCount += 1;
+                ecStart = 1;
             else
-                subModularChannelCount += 3;
+                ecStart = 3;
         }
-        decodedChannels = new float[subModularChannelCount][];
+        subModularChannelCount += ecStart;
+        stream = new ModularStream(reader, globalTree, parent, 0, subModularChannelCount, ecStart);
+        stream.decodeChannels(reader, true);
     }
 }

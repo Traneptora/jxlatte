@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
@@ -15,6 +16,7 @@ public class ModularChannel {
     protected int[][] buffer;
     protected int[][] trueError;
     protected int[][][] error;
+    protected int[][] pred;
     private ModularStream parent;
 
     public ModularChannel(ModularStream parent, int width, int height, int dimShift) throws IOException {
@@ -23,14 +25,24 @@ public class ModularChannel {
         this.height = height;
         hshift = dimShift;
         vshift = dimShift;
+        if (hshift > 1)
+            width = Math.ceilDiv(width, 1 << hshift);
+        if (vshift > 1)
+            height = Math.ceilDiv(height, 1 << vshift);
     }
 
     public ModularChannel(ModularChannel copy) {
         this.width = copy.width;
         this.height = copy.height;
-        this.height = copy.hshift;
+        this.hshift = copy.hshift;
         this.vshift = copy.vshift;
         this.parent = copy.parent;
+        if (copy.buffer != null) {
+            this.buffer = new int[width][];
+            for (int i = 0; i < width; i++) {
+                this.buffer[i] = Arrays.copyOf(copy.buffer[i], height);
+            }
+        }
     }
 
     private int west(int x, int y) {
@@ -81,7 +93,7 @@ public class ModularChannel {
         return x + 1 < width && y > 0 ? (e < 0 ? trueError[x + 1][y - 1] : error[x + 1][y - 1][e]) : teNorth(x, y, e);
     }
 
-    private int prediction(int x, int y, int k, int pred) {
+    protected int prediction(int x, int y, int k) {
         int n, v, nw, w;
         switch (k) {
             case 0:
@@ -103,7 +115,7 @@ public class ModularChannel {
                 v = w + n - northWest(x, y);
                 return Math.min(Math.max(v, Math.min(n, w)), Math.max(n, w));
             case 6:
-                return (pred + 3) >> 3;
+                return (pred[x][y] + 3) >> 3;
             case 7:
                 return northEast(x, y);
             case 8:
@@ -126,19 +138,22 @@ public class ModularChannel {
     public void decode(Bitreader reader, MATree tree, int channelIndex, int distMultiplier) throws IOException {
         if (width == 0 || height == 0)
             return;
+        if (buffer != null)
+            return;
         buffer = new int[width][height];
         trueError = new int[width][height];
         error = new int[width][height][4];
+        pred = new int[width][height];
         for (int y0 = 0; y0 < height; y0++) {
             for (int x0 = 0; x0 < width; x0++) {
                 final int y = y0;
                 final int x = x0;
                 
-                int n3 = 3 * north(x, y);
-                int nw3 = 3 * northWest(x, y);
-                int ne3 = 3 * northEast(x, y);
-                int w3 = 3 * west(x, y);
-                int nn3 = 3 * northNorth(x, y);
+                int n3 = 8 * north(x, y);
+                int nw3 = 8 * northWest(x, y);
+                int ne3 = 8 * northEast(x, y);
+                int w3 = 8 * west(x, y);
+                int nn3 = 8 * northNorth(x, y);
                 int tN = teNorth(x, y, -1);
                 int tW = teWest(x, y, -1);
                 int tNE = teNorthEast(x, y, -1);
@@ -177,10 +192,10 @@ public class ModularChannel {
                 for (int e = 0; e < 4; e++) {
                     s += subpred[e] * weight[e];
                 }
-                int pred = s * ((1 << 24) / wSum) >> 24;
+                pred[x][y] = s * ((1 << 24) / wSum) >> 24;
                 if (((tN ^ tW) | (tN ^ tNW)) <= 0)
-                    pred = MathHelper.clamp(pred, MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
-
+                    pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
+                
                 int maxError0 = tW;
                 if (Math.abs(tN) > Math.abs(maxError0))
                     maxError0 = tN;
@@ -210,7 +225,7 @@ public class ModularChannel {
                             return west(x, y);
                         case 8:
                             return x > 0
-                                ? west(x, y) - west(x - 1, y) + north(x - 1, y) - northWest(x - 1, y)
+                                ? west(x, y) - west(x - 1, y) - north(x - 1, y) + northWest(x - 1, y)
                                 : west(x, y);
                         case 9:
                             return west(x, y) + north(x, y) - northWest(x, y);
@@ -234,8 +249,8 @@ public class ModularChannel {
 
                 int diff = tree.stream.readSymbol(reader, node.context, distMultiplier);
                 diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
-                buffer[x][y] = diff + prediction(x, y, node.predictor, pred);
-                trueError[x][y] = pred - (buffer[x][y] << 3);
+                buffer[x][y] = diff + prediction(x, y, node.predictor);
+                trueError[x][y] = pred[x][y] - (buffer[x][y] << 3);
                 for (int e = 0; e < 4; e++)
                     error[x][y][e] = Math.abs((subpred[e] - (buffer[x][y] << 3)) + 3) >> 3;             
             }

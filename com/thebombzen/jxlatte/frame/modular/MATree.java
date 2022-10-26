@@ -3,7 +3,6 @@ package com.thebombzen.jxlatte.frame.modular;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.IntToDoubleFunction;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.MathHelper;
@@ -16,7 +15,7 @@ public class MATree {
     public final EntropyDecoder stream;
 
     public MATree(Bitreader reader) throws IOException {
-        stream = new EntropyDecoder(reader, 6);
+        EntropyDecoder stream = new EntropyDecoder(reader, 6);
         int contextId = 0;
         int nodesRemaining = 1;
         while (nodesRemaining-- > 0) {
@@ -38,6 +37,7 @@ public class MATree {
                 nodes.add(node);
             }
         }
+        this.stream = new EntropyDecoder(reader, (nodes.size() + 1) / 2);
     }
 
     public MALeafNode walk(IntUnaryOperator property) {

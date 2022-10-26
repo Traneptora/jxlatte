@@ -33,4 +33,8 @@ public class BitreaderBitreader implements Bitreader {
     public long skipBits(long bits) throws IOException {
         return bitreader.skipBits(bits);
     }
+
+    public long getBitsCount() {
+        return bitreader.getBitsCount();
+    }
 }

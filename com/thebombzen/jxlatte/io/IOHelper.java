@@ -3,7 +3,11 @@ package com.thebombzen.jxlatte.io;
 import java.io.IOException;
 import java.io.InputStream;
 
-public interface IOHelper {
+public final class IOHelper {
+
+    private IOHelper(){
+        
+    }
 
     // nonzero return value indicates how much wasn't read
     public static int readFully(InputStream in, byte[] buffer) throws IOException {

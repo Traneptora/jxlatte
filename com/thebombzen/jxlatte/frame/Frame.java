@@ -10,6 +10,7 @@ import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
+import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class Frame {
@@ -61,7 +62,7 @@ public class Frame {
             tocEntries = 1 + numLFGroups + 1 + numGroups * header.passes.numPasses;
         }
 
-        if (reader.readBool()) {
+        if (reader.readBool()) {          
             tocPermuation = readPermutation(reader, tocEntries, 0);
         } else {
             tocPermuation = new int[tocEntries];
@@ -106,8 +107,14 @@ public class Frame {
         return permutation;
     }
 
-    public void decodeFrame() throws IOException {
+    public int[][][] decodeFrame() throws IOException {
         lfGlobal = new LFGlobal(reader, this);
+        if (header.groupDim > header.width && header.groupDim > header.height) {
+            ModularStream stream = lfGlobal.gModular.stream;
+            stream.applyTransforms();
+            return stream.getDecodedBuffer();
+        } else {
+            throw new UnsupportedOperationException("LF Groups not yet implemented");
+        }
     }
-
 }

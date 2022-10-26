@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame;
+package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
 

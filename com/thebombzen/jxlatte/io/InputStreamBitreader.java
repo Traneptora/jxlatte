@@ -4,11 +4,14 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
+
 public class InputStreamBitreader implements Bitreader {
 
     private InputStream in;
     private long cache = 0;
     private int cache_bits = 0;
+    private long bitsRead = 0;
 
     public InputStreamBitreader(InputStream in) {
         this.in = in;
@@ -24,6 +27,7 @@ public class InputStreamBitreader implements Bitreader {
             int ret = (int)(cache & ~(~0L << bits));
             cache_bits -= bits;
             cache >>>= bits;
+            bitsRead += bits;
             return ret;
         }
         int count = in.available();
@@ -47,6 +51,7 @@ public class InputStreamBitreader implements Bitreader {
     @Override
     public int showBits(int bits) throws IOException {
         int n = readBits(bits);
+        bitsRead -= bits;
         cache = (cache << bits) | (n & 0xFFFFFFFFL);
         cache_bits += bits;
         return n;
@@ -54,14 +59,11 @@ public class InputStreamBitreader implements Bitreader {
 
     @Override
     public void zeroPadToByte() throws IOException {
-        int remaining = 8 - cache_bits % 8;
-        if (remaining < 8) {
-            /*
+        int remaining = cache_bits % 8;
+        if (remaining > 0) {
             int padding = readBits(remaining);
             if (padding != 0)
                 throw new InvalidBitstreamException("Nonzero zero-padding-to-byte");
-            */
-            readBits(remaining);
         }
     }
 
@@ -78,10 +80,16 @@ public class InputStreamBitreader implements Bitreader {
             return 0;
         if (bits <= cache_bits) {
             cache_bits -= bits;
+            bitsRead += bits;
             return bits;
         }
         long skipped = bits - IOHelper.skipFully(in, bits - cache_bits);
         cache_bits = 0;
+        bitsRead += skipped;
         return skipped;
+    }
+
+    public long getBitsCount() {
+        return bitsRead;
     }
 }

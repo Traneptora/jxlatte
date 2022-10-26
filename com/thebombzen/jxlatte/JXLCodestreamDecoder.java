@@ -1,6 +1,11 @@
 package com.thebombzen.jxlatte;
 
+import java.io.File;
 import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import java.awt.image.BufferedImage;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
@@ -67,7 +72,22 @@ public class JXLCodestreamDecoder {
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
-            frame.skipFrameData();
+            int[][][] buffer = frame.decodeFrame();
+            bitreader.zeroPadToByte();
+            BufferedImage image = new BufferedImage(frame.getFrameHeader().width,
+                frame.getFrameHeader().height, BufferedImage.TYPE_3BYTE_BGR);
+            int bitDepth = imageHeader.getBitDepthHeader().bitsPerSample;
+            int max = (1 << bitDepth) - 1;
+            for (int x = 0; x < image.getWidth(); x++) {
+                for (int y = 0; y < image.getHeight(); y++) {
+                    int r = buffer[0][x][y] * 255 / max;
+                    int g = buffer[0][x][y] * 255 / max;
+                    int b = buffer[0][x][y] * 255 / max;
+                    int rgb = (r << 16) | (g << 8) | b;
+                    image.setRGB(x, y, rgb);
+                }
+            }
+            ImageIO.write(image, "png", new File("output.png"));
         } while (!frame.getFrameHeader().isLast);
 
         int width = imageHeader.getSize().width;
