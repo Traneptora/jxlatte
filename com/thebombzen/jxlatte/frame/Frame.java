@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
+import java.awt.Point;
+import java.awt.image.DataBuffer;
+import java.awt.image.Raster;
+import java.awt.image.WritableRaster;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
@@ -107,12 +111,19 @@ public class Frame {
         return permutation;
     }
 
-    public int[][][] decodeFrame() throws IOException {
+    public WritableRaster decodeFrame() throws IOException {
         lfGlobal = new LFGlobal(reader, this);
         if (header.groupDim > header.width && header.groupDim > header.height) {
             ModularStream stream = lfGlobal.gModular.stream;
             stream.applyTransforms();
-            return stream.getDecodedBuffer();
+            Raster[] channels = stream.getDecodedBuffer();
+            WritableRaster raster = Raster.createBandedRaster(DataBuffer.TYPE_INT, header.width, header.height, channels.length, new Point(header.x0, header.y0));
+            int[] buff = new int[header.width * header.height];
+            for (int i = 0; i < channels.length; i++) {
+                channels[i].getPixels(0, 0, header.width, header.height, buff);
+                raster.setSamples(0, 0, header.width, header.height, i, buff);
+            }
+            return raster;
         } else {
             throw new UnsupportedOperationException("LF Groups not yet implemented");
         }

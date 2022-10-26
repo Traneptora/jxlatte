@@ -1,7 +1,9 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.awt.image.DataBuffer;
+import java.awt.image.Raster;
+import java.awt.image.WritableRaster;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
@@ -13,7 +15,7 @@ public class ModularChannel {
     protected int height;
     protected int hshift;
     protected int vshift;
-    protected int[][] buffer;
+    protected WritableRaster buffer;
     protected int[][] trueError;
     protected int[][][] error;
     protected int[][] pred;
@@ -38,39 +40,45 @@ public class ModularChannel {
         this.vshift = copy.vshift;
         this.parent = copy.parent;
         if (copy.buffer != null) {
-            this.buffer = new int[width][];
-            for (int i = 0; i < width; i++) {
-                this.buffer[i] = Arrays.copyOf(copy.buffer[i], height);
-            }
+            this.buffer = Raster.createBandedRaster(DataBuffer.TYPE_INT, width, height, 1, null);
+            this.buffer.setRect(copy.buffer);
         }
     }
 
+    protected void set(int x, int y, int s) {
+        buffer.setSample(x, y, 0, s);
+    }
+
+    protected int get(int x, int y) {
+        return buffer.getSample(x, y, 0);
+    }
+
     private int west(int x, int y) {
-        return x > 0 ? buffer[x - 1][y] : (y > 0 ? buffer[x][y - 1] : 0);
+        return x > 0 ? get(x - 1, y) : (y > 0 ? get(x, y - 1) : 0);
     }
 
     private int north(int x, int y) {
-        return y > 0 ? buffer[x][y - 1] : west(x, y);
+        return y > 0 ? get(x, y - 1) : west(x, y);
     }
 
     private int northWest(int x, int y) {
-        return x > 0 && y > 0 ? buffer[x - 1][y - 1] : west(x, y);
+        return x > 0 && y > 0 ? get(x - 1, y - 1) : west(x, y);
     }
 
     private int northEast(int x, int y) {
-        return x + 1 < width && y > 0 ? buffer[x + 1][y - 1] : north(x, y);
+        return x + 1 < width && y > 0 ? get(x + 1, y - 1) : north(x, y);
     }
 
     private int northNorth(int x, int y) {
-        return y > 1 ? buffer[x][y - 2] : north(x, y);
+        return y > 1 ? get(x, y - 2) : north(x, y);
     }
 
     private int northEastEast(int x, int y) {
-        return x + 2 < width && y > 0 ? buffer[x + 2][y - 1] : northEast(x, y);
+        return x + 2 < width && y > 0 ? get(x + 2, y - 1) : northEast(x, y);
     }
 
     private int westWest(int x, int y) {
-        return x > 1 ? buffer[x - 2][y] : west(x, y);
+        return x > 1 ? get(x - 2, y) : west(x, y);
     }
 
     private int teWest(int x, int y, int e) {
@@ -140,7 +148,7 @@ public class ModularChannel {
             return;
         if (buffer != null)
             return;
-        buffer = new int[width][height];
+        buffer = Raster.createBandedRaster(DataBuffer.TYPE_INT, width, height, 1, null);
         trueError = new int[width][height];
         error = new int[width][height][4];
         pred = new int[width][height];
@@ -249,10 +257,11 @@ public class ModularChannel {
 
                 int diff = tree.stream.readSymbol(reader, node.context, distMultiplier);
                 diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
-                buffer[x][y] = diff + prediction(x, y, node.predictor);
-                trueError[x][y] = pred[x][y] - (buffer[x][y] << 3);
+                int trueValue = diff + prediction(x, y, node.predictor);
+                set(x, y, trueValue);
+                trueError[x][y] = pred[x][y] - (trueValue << 3);
                 for (int e = 0; e < 4; e++)
-                    error[x][y][e] = Math.abs((subpred[e] - (buffer[x][y] << 3)) + 3) >> 3;             
+                    error[x][y][e] = Math.abs((subpred[e] - (trueValue << 3)) + 3) >> 3;             
             }
         }
     }

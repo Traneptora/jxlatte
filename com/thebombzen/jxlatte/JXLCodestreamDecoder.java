@@ -5,7 +5,9 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
-import java.awt.image.BufferedImage;
+import java.awt.Point;
+import java.awt.color.ColorSpace;
+import java.awt.image.*;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
@@ -72,24 +74,16 @@ public class JXLCodestreamDecoder {
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
-            int[][][] buffer = frame.decodeFrame();
+            WritableRaster buffer = frame.decodeFrame();
             bitreader.zeroPadToByte();
-            BufferedImage image = new BufferedImage(frame.getFrameHeader().width,
-                frame.getFrameHeader().height, BufferedImage.TYPE_3BYTE_BGR);
-            int bitDepth = imageHeader.getBitDepthHeader().bitsPerSample;
-            int max = (1 << bitDepth) - 1;
-            for (int x = 0; x < image.getWidth(); x++) {
-                for (int y = 0; y < image.getHeight(); y++) {
-                    int r = buffer[0][x][y] * 255 / max;
-                    int g = buffer[0][x][y] * 255 / max;
-                    int b = buffer[0][x][y] * 255 / max;
-                    int rgb = (r << 16) | (g << 8) | b;
-                    image.setRGB(x, y, rgb);
-                }
-            }
-            ImageIO.write(image, "png", new File("output.png"));
+            ColorModel cm = new ComponentColorModel(ColorSpace.getInstance(ColorSpace.CS_sRGB),
+                imageHeader.hasAlpha(), imageHeader.isAlphaPremultiplied(),
+                ColorModel.TRANSLUCENT, DataBuffer.TYPE_INT);
+            BufferedImage image = new BufferedImage(cm, buffer, false, null);
+            BufferedImage pngOut = new BufferedImage(buffer.getWidth(), buffer.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+            pngOut.createGraphics().drawImage(image, 0, 0, null);
+            ImageIO.write(pngOut, "png", new File("output.png"));
         } while (!frame.getFrameHeader().isLast);
-
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, ChannelType.PACKED_RGB), width, height);
