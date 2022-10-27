@@ -34,6 +34,51 @@ public class EntropyDecoder {
     private int[] window;
     private ANSState state = new ANSState();
 
+    /**  
+     * returns the number of clusters
+     */
+    public static int readClusterMap(Bitreader reader, int[] clusterMap, int maxClusters) throws IOException {
+        int numDists = clusterMap.length;
+        if (numDists == 1) {
+            clusterMap[0] = 0;
+        } else if (reader.readBool()) {
+            // simple clustering
+            int nbits = reader.readBits(2);
+            for (int i = 0; i < numDists; i++)
+                clusterMap[i] = reader.readBits(nbits);
+        } else {
+            boolean useMtf = reader.readBool();
+            EntropyDecoder nested = new EntropyDecoder(reader, 1);
+            for (int i = 0; i < numDists; i++)
+                clusterMap[i] = nested.readSymbol(reader, 0);
+            if (useMtf) {
+                int[] mtf = new int[256];
+                for (int i = 0; i < 256; i++)
+                    mtf[i] = i;
+                for (int i = 0; i < numDists; i++) {
+                    int index = clusterMap[i];
+                    clusterMap[i] = mtf[index];
+                    if (index != 0) {
+                        int value = mtf[index];
+                        for (int j = index; j > 0; j--)
+                            mtf[j] = mtf[j - 1];
+                        mtf[0] = value;
+                    }
+                }
+            }
+        }
+
+        int numClusters = 0;
+        for (int i = 0; i < numDists; i++) {
+            if (clusterMap[i] >= numClusters)
+                numClusters = clusterMap[i] + 1;
+        }
+        if (numClusters > maxClusters)
+            throw new InvalidBitstreamException("Too many clusters");
+        
+        return numClusters;
+    }
+
     public EntropyDecoder(Bitreader reader, int numDists) throws IOException {
         if (numDists <= 0)
             throw new IllegalArgumentException("Num Dists must be positive");
@@ -47,10 +92,12 @@ public class EntropyDecoder {
             window = new int[1 << 20];
         }
 
-        readClustering(reader, numDists);
+        clusterMap = new int[numDists];
+        int numClusters = readClusterMap(reader, clusterMap, numDists);
+        dists = new SymbolDistribution[numClusters];
 
         boolean prefixCodes = reader.readBool();
-        logAlphabetSize = prefixCodes ? 15 : 5 + reader.readBits(2);      
+        logAlphabetSize = prefixCodes ? 15 : 5 + reader.readBits(2);
         HybridIntegerConfig[] configs = new HybridIntegerConfig[dists.length];
 
         for (int i = 0; i < configs.length; i++)
@@ -137,47 +184,5 @@ public class EntropyDecoder {
         token &= (1 << config.msbInToken) - 1;
         token |= 1 << config.msbInToken;
         return (((token << n) | reader.readBits(n)) << config.lsbInToken) | low;
-    }
-
-    private void readClustering(Bitreader reader, int numDists) throws IOException {
-        clusterMap = new int[numDists];
-        if (numDists == 1) {
-            clusterMap[0] = 0;
-        } else if (reader.readBool()) {
-            // simple clustering
-            int nbits = reader.readBits(2);
-            for (int i = 0; i < numDists; i++)
-                clusterMap[i] = reader.readBits(nbits);
-        } else {
-            boolean useMtf = reader.readBool();
-            EntropyDecoder nested = new EntropyDecoder(reader, 1);
-            for (int i = 0; i < numDists; i++)
-                clusterMap[i] = nested.readSymbol(reader, 0);
-            if (useMtf) {
-                int[] mtf = new int[256];
-                for (int i = 0; i < 256; i++)
-                    mtf[i] = i;
-                for (int i = 0; i < numDists; i++) {
-                    int index = clusterMap[i];
-                    clusterMap[i] = mtf[index];
-                    if (index != 0) {
-                        int value = mtf[index];
-                        for (int j = index; j > 0; j--)
-                            mtf[j] = mtf[j - 1];
-                        mtf[0] = value;
-                    }
-                }
-            }
-        }
-
-        int numClusters = 0;
-        for (int i = 0; i < numDists; i++) {
-            if (clusterMap[i] >= numClusters)
-                numClusters = clusterMap[i] + 1;
-        }
-        if (numClusters > numDists)
-            throw new InvalidBitstreamException("Can't have more clusters than dists");
-
-        dists = new SymbolDistribution[numClusters];
     }
 }
