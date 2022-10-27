@@ -1,5 +1,9 @@
 # build directory
 build/
 builddir/
+
+# output.png
 output.png
 
+# class files
+*.class
