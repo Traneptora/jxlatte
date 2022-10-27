@@ -9,24 +9,37 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class HFBlockContext {
     private int[] clusterMap;
+    private int numClusters;
+    private int[][] lfThresholds = new int[3][];
+    private int[] qfThresholds;
     public HFBlockContext(Bitreader reader) throws IOException {
         boolean useDefault = reader.readBool();
         if (useDefault) {
             clusterMap = new int[]{0, 1, 2, 2, 3, 3, 4, 5, 6, 6, 6, 6, 6,
                 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 14, 14, 14,
                 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 14, 14, 14};
+            numClusters = 15;
+            qfThresholds = new int[0];
+            lfThresholds[0] = lfThresholds[1] = lfThresholds[2] = new int[0];
             return;
         }
         int[] nbLFThresh = new int[3];
-        List<Integer>[] lfThresholds = new List[3];
         for (int i = 0; i < 3; i++) {
-            lfThresholds[i] = new ArrayList<Integer>();
             nbLFThresh[i] = reader.readBits(4);
+            lfThresholds[i] = new int[nbLFThresh[i]];
             for (int j = 0; j < nbLFThresh[i]; j++) {
                 int t = MathHelper.unpackSigned(reader.readU32(0, 4, 16, 8, 272, 16, 65808, 32));
-                lfThresholds[i].add(Integer.valueOf(t));
+                lfThresholds[i][j] = t;
             }
-            // TODO finish
+        }
+        int nbQfThresh = reader.readBits(4);
+        qfThresholds = new int[nbQfThresh];
+        for (int i = 0; i < nbQfThresh; i++) {
+            qfThresholds[i] = reader.readU32(0, 2, 4, 3, 12, 5, 44, 8);
+        }
+        int bSize = 39 * (nbQfThresh + 1);
+        for (int i = 0; i < 3; i++) {
+            bSize *= nbLFThresh[i] + 1;
         }
     }
 }
