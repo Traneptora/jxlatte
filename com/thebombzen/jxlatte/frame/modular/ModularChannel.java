@@ -1,9 +1,7 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
-import java.awt.image.DataBuffer;
-import java.awt.image.Raster;
-import java.awt.image.WritableRaster;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
@@ -15,7 +13,7 @@ public class ModularChannel {
     protected int height;
     protected int hshift;
     protected int vshift;
-    protected WritableRaster buffer;
+    protected int[][] buffer;
     protected int[][] trueError;
     protected int[][][] error;
     protected int[][] pred;
@@ -40,17 +38,19 @@ public class ModularChannel {
         this.vshift = copy.vshift;
         this.parent = copy.parent;
         if (copy.buffer != null) {
-            this.buffer = Raster.createBandedRaster(DataBuffer.TYPE_INT, width, height, 1, null);
-            this.buffer.setRect(copy.buffer);
+            this.buffer = new int[height][];
+            for (int y = 0; y < height; y++) {
+                this.buffer[y] = Arrays.copyOf(copy.buffer[y], width);
+            }
         }
     }
 
     protected void set(int x, int y, int s) {
-        buffer.setSample(x, y, 0, s);
+        buffer[y][x] = s;
     }
 
     protected int get(int x, int y) {
-        return buffer.getSample(x, y, 0);
+        return buffer[y][x];
     }
 
     private int west(int x, int y) {
@@ -121,7 +121,7 @@ public class ModularChannel {
                 w = west(x, y);
                 n = north(x, y);
                 v = w + n - northWest(x, y);
-                return Math.min(Math.max(v, Math.min(n, w)), Math.max(n, w));
+                return MathHelper.clamp(v, Math.min(n, w), Math.max(n, w));
             case 6:
                 return (pred[x][y] + 3) >> 3;
             case 7:
@@ -148,7 +148,7 @@ public class ModularChannel {
             return;
         if (buffer != null)
             return;
-        buffer = Raster.createBandedRaster(DataBuffer.TYPE_INT, width, height, 1, null);
+        buffer = new int[height][width];
         trueError = new int[width][height];
         error = new int[width][height][4];
         pred = new int[width][height];
@@ -156,7 +156,6 @@ public class ModularChannel {
             for (int x0 = 0; x0 < width; x0++) {
                 final int y = y0;
                 final int x = x0;
-                
                 int n3 = 8 * north(x, y);
                 int nw3 = 8 * northWest(x, y);
                 int ne3 = 8 * northEast(x, y);
@@ -168,42 +167,44 @@ public class ModularChannel {
                 int tNW = teNorthWest(x, y, -1);
                 int[] subpred = new int[4];
                 subpred[0] = w3 + ne3 - n3;
-                subpred[1] = n3 - (((tW + tN - tNE) * parent.wpParams.wp_p1) >> 5);
-                subpred[2] = w3 - (((tW + tN - tNW) * parent.wpParams.wp_p2) >> 5);
+                subpred[1] = n3 - (((tW + tN + tNE) * parent.wpParams.wp_p1) >> 5);
+                subpred[2] = w3 - (((tW + tN + tNW) * parent.wpParams.wp_p2) >> 5);
                 subpred[3] = n3 - ((tNW * parent.wpParams.wp_p3a
                     + tN * parent.wpParams.wp_p3b
                     + tNE * parent.wpParams.wp_p3c
                     + (nn3 - n3) * parent.wpParams.wp_p3d
                     + (nw3 - w3) * parent.wpParams.wp_p3e) >> 5);
-                int[] weight = new int[4];
-                int wSum = 0;
+                long[] weight = new long[4];
+                long wSum = 0;
                 for (int e = 0; e < 4; e++) {
-                    int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorth(x, y, e)
+                    int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
                         + teWestWest(x, y, e) + teNorthEast(x, y, e);
                     if (x == width - 1)
                         eSum += teWest(x, y, e);
                     int shift = MathHelper.ceilLog1p(eSum) - 5;
-                    if (Integer.bitCount(eSum + 1) != 1)
+                    if ((eSum & (eSum + 1)) != 0)
                         shift -= 1;
                     if (shift < 0)
                         shift = 0;
-                    weight[e] = 4 + (parent.wpParams.wp_w[e] * ((1 << 24) / ((eSum >> shift) + 1))) >> shift;
+                    weight[e] = 4L + (((long)parent.wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
+                    
                     wSum += weight[e];
                 }
                 int logWeight = MathHelper.ceilLog1p(wSum);
+                
                 wSum = 0;
                 for (int e = 0; e < 4; e++) {
                     weight[e] >>= logWeight - 5;
                     wSum += weight[e];
                 }
-                int s = (wSum >> 1) - 1;
+                long s = (wSum >> 1) - 1L;
                 for (int e = 0; e < 4; e++) {
                     s += subpred[e] * weight[e];
                 }
-                pred[x][y] = s * ((1 << 24) / wSum) >> 24;
+
+                pred[x][y] = (int)(((s * ((1L << 24) / wSum)) >> 24) & 0xFF_FF_FF_FFL);
                 if (((tN ^ tW) | (tN ^ tNW)) <= 0)
                     pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
-                
                 int maxError0 = tW;
                 if (Math.abs(tN) > Math.abs(maxError0))
                     maxError0 = tN;
@@ -214,7 +215,7 @@ public class ModularChannel {
                 final int maxError = maxError0;
 
                 MALeafNode node = tree.walk(k -> {
-                    switch (k){
+                    switch (k) {
                         case 0:
                             return channelIndex;
                         case 1:
@@ -261,7 +262,18 @@ public class ModularChannel {
                 set(x, y, trueValue);
                 trueError[x][y] = pred[x][y] - (trueValue << 3);
                 for (int e = 0; e < 4; e++)
-                    error[x][y][e] = Math.abs((subpred[e] - (trueValue << 3)) + 3) >> 3;             
+                    error[x][y][e] = (Math.abs(subpred[e] - (trueValue * 8)) + 3) >> 3;
+            }
+        }
+    }
+
+    public void clamp() {
+        int maxValue = ~(~0 << parent.frame.globalMetadata.getBitDepthHeader().bitsPerSample);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int value = get(x, y);
+                value = MathHelper.clamp(value, 0, maxValue);
+                set(x, y, value);
             }
         }
     }

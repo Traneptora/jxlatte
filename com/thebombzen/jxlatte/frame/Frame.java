@@ -116,12 +116,13 @@ public class Frame {
         if (header.groupDim > header.width && header.groupDim > header.height) {
             ModularStream stream = lfGlobal.gModular.stream;
             stream.applyTransforms();
-            Raster[] channels = stream.getDecodedBuffer();
+            stream.clamp();
+            int[][][] channels = stream.getDecodedBuffer();
             WritableRaster raster = Raster.createBandedRaster(DataBuffer.TYPE_INT, header.width, header.height, channels.length, new Point(header.x0, header.y0));
-            int[] buff = new int[header.width * header.height];
             for (int i = 0; i < channels.length; i++) {
-                channels[i].getPixels(0, 0, header.width, header.height, buff);
-                raster.setSamples(0, 0, header.width, header.height, i, buff);
+                for (int y = 0; y < channels[i].length; y++) {
+                    raster.setSamples(0, y, channels[i][y].length, 1, i, channels[i][y]);
+                }               
             }
             return raster;
         } else {

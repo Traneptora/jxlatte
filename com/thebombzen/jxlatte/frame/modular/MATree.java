@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -29,6 +30,8 @@ public class MATree {
             } else {
                 int context = contextId++;
                 int predictor = stream.readSymbol(reader, 2);
+                if (predictor > 13)
+                    throw new InvalidBitstreamException("Invalid predictor value");
                 int offset = MathHelper.unpackSigned(stream.readSymbol(reader, 3));
                 int mulLog = stream.readSymbol(reader, 4);
                 int mulBits = stream.readSymbol(reader, 5);

@@ -1,12 +1,10 @@
 package com.thebombzen.jxlatte;
 
-import java.io.File;
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
-import javax.imageio.ImageIO;
-
-import java.awt.Point;
-import java.awt.color.ColorSpace;
 import java.awt.image.*;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -16,6 +14,7 @@ import com.thebombzen.jxlatte.image.ChannelType;
 import com.thebombzen.jxlatte.image.JxlImage;
 import com.thebombzen.jxlatte.image.JxlImageFormat;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.PNGWriter;
 
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
@@ -76,13 +75,10 @@ public class JXLCodestreamDecoder {
             frame.readHeader();
             WritableRaster buffer = frame.decodeFrame();
             bitreader.zeroPadToByte();
-            ColorModel cm = new ComponentColorModel(ColorSpace.getInstance(ColorSpace.CS_sRGB),
-                imageHeader.hasAlpha(), imageHeader.isAlphaPremultiplied(),
-                ColorModel.TRANSLUCENT, DataBuffer.TYPE_INT);
-            BufferedImage image = new BufferedImage(cm, buffer, false, null);
-            BufferedImage pngOut = new BufferedImage(buffer.getWidth(), buffer.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-            pngOut.createGraphics().drawImage(image, 0, 0, null);
-            ImageIO.write(pngOut, "png", new File("output.png"));
+            PNGWriter writer = new PNGWriter(imageHeader.getBitDepthHeader().bitsPerSample, 8, buffer);
+            try (OutputStream out = new BufferedOutputStream(new FileOutputStream("output.png"))) {
+                writer.write(out);
+            }
         } while (!frame.getFrameHeader().isLast);
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;

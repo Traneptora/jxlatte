@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
-import java.awt.image.Raster;
-
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -140,31 +138,38 @@ public class ModularStream {
                 ModularChannel b = channels.get(transforms[i].beginC + 1);
                 ModularChannel c = channels.get(transforms[i].beginC + 2);
                 ModularChannel[] v = new ModularChannel[]{a, b, c};
+                ModularChannel v0 = v[permutation % 3];
+                ModularChannel v1 = v[(permutation + 1 + (permutation / 3)) % 3];
+                ModularChannel v2 = v[(permutation + 2 - (permutation / 3)) % 3];
                 int w = channels.get(transforms[i].beginC).width;
                 int h = channels.get(transforms[i].beginC).height;
-                for (int x = 0; x < w; x++) {
-                    for (int y = 0; y < h; y++) {
-                        int d, e, f;
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        int d = a.get(x, y);
+                        int e = b.get(x, y);
+                        int f = c.get(x, y);
                         if (type == 6) {
-                            int tmp = a.get(x, y) - (c.get(x, y) >> 1);
-                            e = c.get(x, y) + tmp;
+                            int tmp = d - (f >> 1);
+                            e = f + tmp;
                             f = tmp - (b.get(x, y) >> 1);
                             d = f + b.get(x, y);
-                        } else {
-                            d = a.get(x, y);
+                        } else if (type != 5) {
                             if ((type & 1) != 0)
-                                c.set(x, y, c.get(x, y) + d);
+                                f += d;
                             if ((type >> 1) == 1)
-                                b.set(x, y, b.get(x, y) + d);
-                            if ((type >> 1) == 2) 
-                                b.set(x, y, b.get(x, y) + ((d + c.get(x, y)) >> 1));
+                                e += d;
+                            if ((type >> 1) == 2)
+                                e += (d + f) >> 1;
+                        } else {
                             d = a.get(x, y);
                             e = b.get(x, y);
                             f = c.get(x, y);
+                            e += f >> 1;
+                            f += d;
                         }
-                        v[permutation % 3].set(x, y, d);
-                        v[(permutation + 1 + (permutation / 3)) % 3].set(x, y, e);
-                        v[(permutation + 2 - (permutation / 3)) % 3].set(x, y, f);
+                        v0.set(x, y, d);
+                        v1.set(x, y, e);
+                        v2.set(x, y, f);
                     }
                 }
             }
@@ -219,8 +224,12 @@ public class ModularStream {
         }
     }
 
-    public Raster[] getDecodedBuffer() {
-        Raster[] bands = new Raster[channels.size()];
+    public void clamp() {
+        channels.stream().forEach(c -> c.clamp());
+    }
+
+    public int[][][] getDecodedBuffer() {
+        int[][][] bands = new int[channels.size()][][];
         for (int i = 0; i < bands.length; i++)
             bands[i] = channels.get(i).buffer;
         return bands;
