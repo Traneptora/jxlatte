@@ -1,13 +1,11 @@
 package com.thebombzen.jxlatte.frame;
 
+import java.io.ByteArrayInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
-import java.awt.Point;
-import java.awt.image.DataBuffer;
-import java.awt.image.Raster;
-import java.awt.image.WritableRaster;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
@@ -16,12 +14,14 @@ import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
 public class Frame {
     private Bitreader reader;
     private FrameHeader header;
     private int numGroups;
     private int numLFGroups;
+    private byte[][] buffers;
     private int[] tocPermuation;
     private int[] tocLengths;
     private int[] groupOffsets;
@@ -76,6 +76,7 @@ public class Frame {
         
         reader.zeroPadToByte();
         tocLengths = new int[tocEntries];
+        buffers = new byte[tocEntries][];
         int[] unPermgroupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++) {
             if (i > 0)
@@ -86,6 +87,24 @@ public class Frame {
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
         reader.zeroPadToByte();
+    }
+
+    private void readBuffer(Bitreader reader, int index) throws IOException {
+        int length = tocLengths[index];
+        buffers[index] = new byte[length];
+        int read = reader.readBytes(buffers[index]);
+        if (read < buffers[index].length) {
+            throw new EOFException("Unable to read full TOC entry");
+        }
+    }
+
+    private byte[] getBuffer(Bitreader reader, int index) throws IOException {
+        int permutedIndex = tocPermuation[index];
+        for (int i = 0; i <= permutedIndex; i++) {
+            if (buffers[i] == null)
+                readBuffer(reader, i);
+        }
+        return buffers[permutedIndex];
     }
 
     public static int[] readPermutation(Bitreader reader, int size, int skip) throws IOException {
@@ -111,20 +130,15 @@ public class Frame {
         return permutation;
     }
 
-    public WritableRaster decodeFrame() throws IOException {
-        lfGlobal = new LFGlobal(reader, this);
+    public int[][][] decodeFrame() throws IOException {
+        Bitreader globalReader = new InputStreamBitreader(new ByteArrayInputStream(getBuffer(reader, 0)));
+        lfGlobal = new LFGlobal(globalReader, this);
         if (header.groupDim > header.width && header.groupDim > header.height) {
             ModularStream stream = lfGlobal.gModular.stream;
             stream.applyTransforms();
             stream.clamp();
             int[][][] channels = stream.getDecodedBuffer();
-            WritableRaster raster = Raster.createBandedRaster(DataBuffer.TYPE_INT, header.width, header.height, channels.length, new Point(header.x0, header.y0));
-            for (int i = 0; i < channels.length; i++) {
-                for (int y = 0; y < channels[i].length; y++) {
-                    raster.setSamples(0, y, channels[i][y].length, 1, i, channels[i][y]);
-                }               
-            }
-            return raster;
+            return channels;
         } else {
             throw new UnsupportedOperationException("LF Groups not yet implemented");
         }

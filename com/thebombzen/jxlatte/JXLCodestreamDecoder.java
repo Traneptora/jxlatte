@@ -5,8 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.awt.image.*;
-
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.frame.Frame;
@@ -73,7 +71,7 @@ public class JXLCodestreamDecoder {
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
-            WritableRaster buffer = frame.decodeFrame();
+            int[][][] buffer = frame.decodeFrame();
             bitreader.zeroPadToByte();
             PNGWriter writer = new PNGWriter(imageHeader.getBitDepthHeader().bitsPerSample, 8, buffer);
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream("output.png"))) {

@@ -1,6 +1,5 @@
 package com.thebombzen.jxlatte.io;
 
-import java.awt.image.Raster;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -10,29 +9,33 @@ import java.util.zip.DeflaterOutputStream;
 
 public class PNGWriter {
     private int bitDepth;
-    private Raster raster;
+    private int[][][] buffer;
     private DataOutputStream out;
     private int maxValue;
     private int inputMaxValue;
+    private int width;
+    private int height;
     private CRC32 crc32 = new CRC32();
     private static final byte[] IEND = new byte[]{'I', 'E', 'N', 'D'};
     private static final byte[] IHDR = new byte[]{'I', 'H', 'D', 'R'};
 
-    public PNGWriter(int inputBitDepth, int bitDepth, Raster raster) {
+    public PNGWriter(int inputBitDepth, int bitDepth, int[][][] buffer) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException();
         this.bitDepth = bitDepth;
-        this.raster = raster;
+        this.buffer = buffer;
         this.maxValue = ~(~0 << bitDepth);
         this.inputMaxValue = ~(~0 << inputBitDepth);
+        this.width = buffer[0][0].length;
+        this.height = buffer[0].length;
     }
 
     private void writeIHDR() throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(bout);
         dout.write(IHDR);
-        dout.writeInt(raster.getWidth());
-        dout.writeInt(raster.getHeight());
+        dout.writeInt(width);
+        dout.writeInt(height);
         dout.writeByte(bitDepth);
         dout.writeByte(2); // color type == truecolor
         dout.writeByte(0); // compression method
@@ -54,13 +57,11 @@ public class PNGWriter {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         bout.write(new byte[]{'I', 'D', 'A', 'T'});
         DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout));
-        int[] rgb = new int[3];
-        for (int y = 0; y < raster.getHeight(); y++) {
+        for (int y = 0; y < height; y++) {
             dout.writeByte(0); // filter
-            for (int x = 0; x < raster.getWidth(); x++) {
-                raster.getPixel(x, y, rgb);
+            for (int x = 0; x < width; x++) {
                 for (int c = 0; c < 3; c++) {
-                    int s = rgb[c] * maxValue / inputMaxValue;
+                    int s = buffer[c][y][x] * maxValue / inputMaxValue;
                     if (bitDepth == 8)
                         dout.writeByte(s);
                     else

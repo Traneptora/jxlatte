@@ -14,6 +14,9 @@ public final class IOHelper {
         return readFully(in, buffer, 0, buffer.length);
     }
 
+    /**
+     * @return How much wasn't read due to EOF
+     */
     public static int readFully(InputStream in, byte[] buffer, int offset, int len) throws IOException {
         int remaining = len;
         while (remaining > 0) {
