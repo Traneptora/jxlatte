@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
+import com.thebombzen.jxlatte.bundle.color.ColorSpace;
 import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.image.ChannelType;
@@ -73,7 +74,10 @@ public class JXLCodestreamDecoder {
             frame.readHeader();
             int[][][] buffer = frame.decodeFrame();
             bitreader.zeroPadToByte();
-            PNGWriter writer = new PNGWriter(imageHeader.getBitDepthHeader().bitsPerSample, 8, buffer);
+            PNGWriter writer = new PNGWriter(imageHeader.getBitDepthHeader().bitsPerSample,
+                8, buffer,
+                imageHeader.getColorEncoding().colorSpace == ColorSpace.GRAY,
+                imageHeader.getAlphaIndex());
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream("output.png"))) {
                 writer.write(out);
             }

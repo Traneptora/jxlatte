@@ -37,13 +37,13 @@ public class Frame {
         this.header = new FrameHeader(reader, this.globalMetadata);
         int width = header.width;
         int height = header.height;
-        width = Math.ceilDiv(width, header.upsampling);
-        height = Math.ceilDiv(height, header.upsampling);
-        width = Math.ceilDiv(width, 1 << (3 * header.lfLevel));
-        height = Math.ceilDiv(height, 1 << (3 * header.lfLevel));
+        width = MathHelper.ceilDiv(width, header.upsampling);
+        height = MathHelper.ceilDiv(height, header.upsampling);
+        width = MathHelper.ceilDiv(width, 1 << (3 * header.lfLevel));
+        height = MathHelper.ceilDiv(height, 1 << (3 * header.lfLevel));
         int groupDim = 128 << header.groupSizeShift;
-        numGroups = Math.ceilDiv(width, groupDim) * Math.ceilDiv(height, groupDim);
-        numLFGroups = Math.ceilDiv(width, groupDim * 8) * Math.ceilDiv(height, groupDim * 8);
+        numGroups = MathHelper.ceilDiv(width, groupDim) * MathHelper.ceilDiv(height, groupDim);
+        numLFGroups = MathHelper.ceilDiv(width, groupDim * 8) * MathHelper.ceilDiv(height, groupDim * 8);
         readTOC();
     }
 
@@ -136,7 +136,6 @@ public class Frame {
         if (header.groupDim > header.width && header.groupDim > header.height) {
             ModularStream stream = lfGlobal.gModular.stream;
             stream.applyTransforms();
-            stream.clamp();
             int[][][] channels = stream.getDecodedBuffer();
             return channels;
         } else {

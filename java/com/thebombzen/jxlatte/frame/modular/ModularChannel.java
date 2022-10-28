@@ -26,9 +26,9 @@ public class ModularChannel {
         hshift = dimShift;
         vshift = dimShift;
         if (hshift > 1)
-            width = Math.ceilDiv(width, 1 << hshift);
+            width = MathHelper.ceilDiv(width, 1 << hshift);
         if (vshift > 1)
-            height = Math.ceilDiv(height, 1 << vshift);
+            height = MathHelper.ceilDiv(height, 1 << vshift);
     }
 
     public ModularChannel(ModularChannel copy) {

@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.bundle.color.ColorEncodingBundle;
+import com.thebombzen.jxlatte.bundle.color.ColorSpace;
 import com.thebombzen.jxlatte.bundle.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.bundle.color.ToneMapping;
 import com.thebombzen.jxlatte.image.ExtraChannelType;
@@ -95,6 +96,7 @@ public class ImageHeader {
     private float[] up4weights;
     private float[] up8weights;
     private boolean hasAlpha = false;
+    private int alphaIndex = -1;
     private boolean preMultipliedAlpha = false;
 
     private ImageHeader() {
@@ -142,7 +144,8 @@ public class ImageHeader {
                 if (header.extraChannelInfo[i].type == ExtraChannelType.ALPHA) {
                     header.hasAlpha = true;
                     header.preMultipliedAlpha = header.extraChannelInfo[i].alphaAssociated;
-                }      
+                    header.alphaIndex = i + (header.colorEncoding.colorSpace ==  ColorSpace.GRAY ? 1 : 3);
+                }
             }
             header.xybEncoded = reader.readBool();
             header.colorEncoding = new ColorEncodingBundle(reader);
@@ -234,6 +237,10 @@ public class ImageHeader {
 
     public boolean isAlphaPremultiplied() {
         return preMultipliedAlpha;
+    }
+
+    public int getAlphaIndex() {
+        return alphaIndex;
     }
 
     public boolean isXYBEncoded() {
