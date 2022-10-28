@@ -21,17 +21,20 @@ public class LFGlobal {
     public LFGlobal(Bitreader reader, Frame parent) throws IOException {
         this.frame = parent;
         if ((frame.getFrameHeader().flags & FrameFlags.PATCHES) != 0) {
-            patches = new Patches(reader);
+            throw new UnsupportedOperationException("Patches");
+            //patches = new Patches(reader);
         } else {
             patches = null;
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
-            splines = new Splines(reader);
+            throw new UnsupportedOperationException("Splines");
+            //splines = new Splines(reader);
         } else {
             splines = null;
         }
         if ((frame.getFrameHeader().flags & FrameFlags.NOISE) != 0) {
-            noiseParamters = new NoiseParamters(reader);
+            throw new UnsupportedOperationException("Noise");
+            //noiseParamters = new NoiseParamters(reader);
         } else {
             noiseParamters = null;
         }

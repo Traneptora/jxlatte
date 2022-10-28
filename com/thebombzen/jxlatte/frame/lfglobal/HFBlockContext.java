@@ -1,17 +1,17 @@
 package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
+import com.thebombzen.jxlatte.entropy.EntropyDecoder;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class HFBlockContext {
-    private int[] clusterMap;
-    private int numClusters;
-    private int[][] lfThresholds = new int[3][];
-    private int[] qfThresholds;
+    public final int[] clusterMap;
+    public final int numClusters;
+    public final int[][] lfThresholds = new int[3][];
+    public final int[] qfThresholds;
     public HFBlockContext(Bitreader reader) throws IOException {
         boolean useDefault = reader.readBool();
         if (useDefault) {
@@ -41,5 +41,10 @@ public class HFBlockContext {
         for (int i = 0; i < 3; i++) {
             bSize *= nbLFThresh[i] + 1;
         }
+        if (bSize > 39 * 64) {
+            throw new InvalidBitstreamException("bSize too large");
+        }
+        clusterMap = new int[bSize];
+        numClusters = EntropyDecoder.readClusterMap(reader, clusterMap, 16);
     }
 }
