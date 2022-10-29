@@ -7,7 +7,7 @@ import java.io.OutputStream;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.bundle.color.ColorSpace;
-import com.thebombzen.jxlatte.entropy.EntropyDecoder;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.image.ChannelType;
 import com.thebombzen.jxlatte.image.JxlImage;
@@ -63,7 +63,7 @@ public class JXLCodestreamDecoder {
         if (imageHeader.getColorEncoding().useIccProfile) {
             int encodedSize = Math.toIntExact(bitreader.readU64());
             byte[] encodedIcc = new byte[encodedSize];
-            EntropyDecoder iccDistribution = new EntropyDecoder(bitreader, 41);
+            EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
             for (int i = 0; i < encodedSize; i++)
                 encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
         }

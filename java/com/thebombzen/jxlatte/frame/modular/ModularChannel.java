@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
+import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -139,7 +140,7 @@ public class ModularChannel {
             case 13:
                 return (6*north(x, y) - 2*northNorth(x, y) + 7*west(x, y) + westWest(x, y) + northEastEast(x, y) + 3*northEast(x, y)+8) / 16;
             default:
-                return 0;
+                throw new IllegalStateException();
         }
     }
 
@@ -156,11 +157,11 @@ public class ModularChannel {
             for (int x0 = 0; x0 < width; x0++) {
                 final int y = y0;
                 final int x = x0;
-                int n3 = 8 * north(x, y);
-                int nw3 = 8 * northWest(x, y);
-                int ne3 = 8 * northEast(x, y);
-                int w3 = 8 * west(x, y);
-                int nn3 = 8 * northNorth(x, y);
+                int n3 = north(x, y) << 3;
+                int nw3 = northWest(x, y) << 3;
+                int ne3 = northEast(x, y) << 3;
+                int w3 = west(x, y) << 3;
+                int nn3 = northNorth(x, y) << 3;
                 int tN = teNorth(x, y, -1);
                 int tW = teWest(x, y, -1);
                 int tNE = teNorthEast(x, y, -1);
@@ -187,11 +188,9 @@ public class ModularChannel {
                     if (shift < 0)
                         shift = 0;
                     weight[e] = 4L + (((long)parent.wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
-                    
                     wSum += weight[e];
                 }
                 int logWeight = MathHelper.ceilLog1p(wSum);
-                
                 wSum = 0;
                 for (int e = 0; e < 4; e++) {
                     weight[e] >>= logWeight - 5;
@@ -201,7 +200,6 @@ public class ModularChannel {
                 for (int e = 0; e < 4; e++) {
                     s += subpred[e] * weight[e];
                 }
-
                 pred[x][y] = (int)(((s * ((1L << 24) / wSum)) >> 24) & 0xFF_FF_FF_FFL);
                 if (((tN ^ tW) | (tN ^ tNW)) <= 0)
                     pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
@@ -251,8 +249,7 @@ public class ModularChannel {
                         case 15:
                             return maxError;
                         default:
-                            IOHelper.sneakyThrow(new InvalidBitstreamException("Invalid property index"));
-                            return 0;
+                            throw new UnsupportedOperationException("Contexts > 15 not implmented");
                     }
                 });
 

@@ -7,16 +7,16 @@ import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
-import com.thebombzen.jxlatte.entropy.EntropyDecoder;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class MATree {
 
     private List<MANode> nodes = new ArrayList<>();
-    public final EntropyDecoder stream;
+    public final EntropyStream stream;
 
     public MATree(Bitreader reader) throws IOException {
-        EntropyDecoder stream = new EntropyDecoder(reader, 6);
+        EntropyStream stream = new EntropyStream(reader, 6);
         int contextId = 0;
         int nodesRemaining = 1;
         while (nodesRemaining-- > 0) {
@@ -35,12 +35,13 @@ public class MATree {
                 int offset = MathHelper.unpackSigned(stream.readSymbol(reader, 3));
                 int mulLog = stream.readSymbol(reader, 4);
                 int mulBits = stream.readSymbol(reader, 5);
+                
                 int multiplier = (mulBits + 1) << mulLog;
                 MALeafNode node = new MALeafNode(context, predictor, offset, multiplier);
                 nodes.add(node);
             }
         }
-        this.stream = new EntropyDecoder(reader, (nodes.size() + 1) / 2);
+        this.stream = new EntropyStream(reader, (nodes.size() + 1) / 2);
     }
 
     public MALeafNode walk(IntUnaryOperator property) {

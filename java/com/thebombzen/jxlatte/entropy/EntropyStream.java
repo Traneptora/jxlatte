@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
 
-public class EntropyDecoder {
+public class EntropyStream {
 
     private static final int[][] SPECIAL_DISTANCES = {
         {0, 1}, {1, 0}, {1, 1}, {-1, 1}, {0, 2}, {2, 0}, {1, 2}, {-1, 2}, {2, 1}, {-2, 1}, {2, 2},
@@ -48,7 +48,7 @@ public class EntropyDecoder {
                 clusterMap[i] = reader.readBits(nbits);
         } else {
             boolean useMtf = reader.readBool();
-            EntropyDecoder nested = new EntropyDecoder(reader, 1);
+            EntropyStream nested = new EntropyStream(reader, 1);
             for (int i = 0; i < numDists; i++)
                 clusterMap[i] = nested.readSymbol(reader, 0);
             if (useMtf) {
@@ -79,7 +79,7 @@ public class EntropyDecoder {
         return numClusters;
     }
 
-    public EntropyDecoder(Bitreader reader, int numDists) throws IOException {
+    public EntropyStream(Bitreader reader, int numDists) throws IOException {
         if (numDists <= 0)
             throw new IllegalArgumentException("Num Dists must be positive");
         

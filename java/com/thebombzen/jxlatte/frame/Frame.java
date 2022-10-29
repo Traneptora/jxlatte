@@ -10,7 +10,7 @@ import java.util.function.IntUnaryOperator;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.entropy.EntropyDecoder;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -108,7 +108,7 @@ public class Frame {
     }
 
     public static int[] readPermutation(Bitreader reader, int size, int skip) throws IOException {
-        EntropyDecoder stream = new EntropyDecoder(reader, 8);
+        EntropyStream stream = new EntropyStream(reader, 8);
         IntUnaryOperator ctx = x -> Math.min(7, MathHelper.ceilLog1p(x));
         int end = stream.readSymbol(reader, ctx.applyAsInt(size));
         if (end > size - skip)

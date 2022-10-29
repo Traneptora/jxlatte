@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
-import com.thebombzen.jxlatte.entropy.EntropyDecoder;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class HFBlockContext {
@@ -45,6 +45,6 @@ public class HFBlockContext {
             throw new InvalidBitstreamException("bSize too large");
         }
         clusterMap = new int[bSize];
-        numClusters = EntropyDecoder.readClusterMap(reader, clusterMap, 16);
+        numClusters = EntropyStream.readClusterMap(reader, clusterMap, 16);
     }
 }
