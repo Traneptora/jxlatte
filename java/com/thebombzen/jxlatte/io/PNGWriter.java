@@ -25,9 +25,9 @@ public class PNGWriter {
     private int alphaIndex;
     private CRC32 crc32 = new CRC32();
 
-    public PNGWriter(int bitDepth, JXLImage image) {
+    public PNGWriter(JXLImage image, int bitDepth) {
         if (bitDepth != 8 && bitDepth != 16)
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("PNG only supports 8 and 16");
         this.bitDepth = bitDepth;
         this.buffer = image.getBuffer();
         this.maxValue = ~(~0 << bitDepth);
