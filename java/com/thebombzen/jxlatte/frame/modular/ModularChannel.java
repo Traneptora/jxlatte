@@ -254,7 +254,7 @@ public class ModularChannel {
                 set(x, y, trueValue);
                 trueError[x][y] = pred[x][y] - (trueValue << 3);
                 for (int e = 0; e < 4; e++)
-                    error[x][y][e] = (Math.abs(subpred[e] - (trueValue * 8)) + 3) >> 3;
+                    error[x][y][e] = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
             }
         }
     }

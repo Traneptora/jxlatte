@@ -2,13 +2,14 @@ package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
 
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class LFGlobal {
     public final Frame frame;
-    public final Patches patches;
+    public final Patch[] patches;
     public final Splines splines;
     public final NoiseParamters noiseParamters;
     public final float[] lfDequant = new float[]{4096f, 512f, 256f};
@@ -21,20 +22,22 @@ public class LFGlobal {
     public LFGlobal(Bitreader reader, Frame parent) throws IOException {
         this.frame = parent;
         if ((frame.getFrameHeader().flags & FrameFlags.PATCHES) != 0) {
-            throw new UnsupportedOperationException("Patches");
-            //patches = new Patches(reader);
+            EntropyStream stream = new EntropyStream(reader, 10);
+            int numPatches = stream.readSymbol(reader, 0);
+            patches = new Patch[numPatches];
+            for (int i = 0; i < numPatches; i++) {
+                patches[i] = new Patch(stream, reader, parent.globalMetadata.getExtraChannelCount(), parent.globalMetadata.getNumAlphaChannels());
+            }
         } else {
-            patches = null;
+            patches = new Patch[0];
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
             throw new UnsupportedOperationException("Splines");
-            //splines = new Splines(reader);
         } else {
             splines = null;
         }
         if ((frame.getFrameHeader().flags & FrameFlags.NOISE) != 0) {
             throw new UnsupportedOperationException("Noise");
-            //noiseParamters = new NoiseParamters(reader);
         } else {
             noiseParamters = null;
         }

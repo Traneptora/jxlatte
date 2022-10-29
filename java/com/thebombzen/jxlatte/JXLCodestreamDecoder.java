@@ -5,7 +5,6 @@ import java.io.IOException;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.image.JXLImage;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class JXLCodestreamDecoder {

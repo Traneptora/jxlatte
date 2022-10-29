@@ -7,7 +7,6 @@ import com.thebombzen.jxlatte.bundle.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.bundle.color.ColorSpace;
 import com.thebombzen.jxlatte.bundle.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.bundle.color.ToneMapping;
-import com.thebombzen.jxlatte.image.ExtraChannelType;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ImageHeader {
@@ -95,9 +94,7 @@ public class ImageHeader {
     private float[] up2weights;
     private float[] up4weights;
     private float[] up8weights;
-    private boolean hasAlpha = false;
-    private int alphaIndex = -1;
-    private boolean preMultipliedAlpha = false;
+    private int[] alphaIndices;
 
     private ImageHeader() {
 
@@ -139,14 +136,16 @@ public class ImageHeader {
             header.modular16bitBuffers = reader.readBool();
             int extraChannelCount = reader.readU32(0, 0, 1, 0, 2, 4, 1, 12);
             header.extraChannelInfo = new ExtraChannelInfo[extraChannelCount];
+            int[] alphaIndices = new int[extraChannelCount];
+            int numAlphaChannels = 0;
             for (int i = 0; i < extraChannelCount; i++) {
                 header.extraChannelInfo[i] = new ExtraChannelInfo(reader);
                 if (header.extraChannelInfo[i].type == ExtraChannelType.ALPHA) {
-                    header.hasAlpha = true;
-                    header.preMultipliedAlpha = header.extraChannelInfo[i].alphaAssociated;
-                    header.alphaIndex = i + (header.colorEncoding.colorSpace ==  ColorSpace.GRAY ? 1 : 3);
+                    alphaIndices[numAlphaChannels++] = i;
                 }
             }
+            header.alphaIndices = new int[numAlphaChannels];
+            System.arraycopy(alphaIndices, 0, header.alphaIndices, 0, numAlphaChannels);
             header.xybEncoded = reader.readBool();
             header.colorEncoding = new ColorEncodingBundle(reader);
         }
@@ -227,6 +226,18 @@ public class ImageHeader {
         return extraChannelInfo.length;
     }
 
+    public int getNumAlphaChannels() {
+        return alphaIndices.length;
+    }
+
+    public boolean hasAlpha() {
+        return getNumAlphaChannels() > 0;
+    }
+
+    public ExtraChannelInfo getAlphaIndex(int alphaChannel) {
+        return getExtraChannelInfo(alphaIndices[alphaChannel]);
+    }
+
     public int getColorChannelCount() {
         return getColorEncoding().colorSpace == ColorSpace.GRAY ? 1 : 3;
     }
@@ -237,18 +248,6 @@ public class ImageHeader {
 
     public ExtraChannelInfo getExtraChannelInfo(int index) {
         return extraChannelInfo[index];
-    }
-
-    public boolean hasAlpha() {
-        return hasAlpha;
-    }
-
-    public boolean isAlphaPremultiplied() {
-        return preMultipliedAlpha;
-    }
-
-    public int getAlphaIndex() {
-        return alphaIndex;
     }
 
     public boolean isXYBEncoded() {

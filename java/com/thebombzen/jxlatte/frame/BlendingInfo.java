@@ -11,6 +11,17 @@ public class BlendingInfo {
     public final boolean clamp;
     public final int source;
 
+    public BlendingInfo() {
+        this(0, 0, false, 0);
+    }
+
+    public BlendingInfo(int mode, int alphaChannel, boolean clamp, int source) {
+        this.mode = mode;
+        this.alphaChannel = alphaChannel;
+        this.clamp = clamp;
+        this.source = source;
+    }
+
     public BlendingInfo(Bitreader reader, boolean extra, boolean fullFrame) throws IOException {
         mode = reader.readU32(0, 0, 1, 0, 2, 0, 3, 2);
         if (extra && (mode == FrameFlags.BLEND_BLEND || mode == FrameFlags.BLEND_MULADD))
@@ -30,28 +41,28 @@ public class BlendingInfo {
             source = 0;
     }
 
-    public BlendingInfo() {
-        mode = 0;
-        alphaChannel = 0;
-        clamp = false;
-        source = 0;
-    }
-
-    public boolean equals(Object other) {
-        if (this == other)
-            return true;
-        if (other == null)
-            return false;
-        if (!this.getClass().equals(other.getClass()))
-            return false;
-        BlendingInfo o = (BlendingInfo)other;
-        return o.mode == this.mode
-            && o.alphaChannel == this.alphaChannel
-            && o.clamp == this.clamp
-            && o.source == this.source;
-    }
-
+    @Override
     public int hashCode() {
         return Objects.hash(mode, alphaChannel, clamp, source);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BlendingInfo other = (BlendingInfo) obj;
+        return mode == other.mode && alphaChannel == other.alphaChannel && clamp == other.clamp
+                && source == other.source;
+    }
+
+    @Override
+    public String toString() {
+        return "BlendingInfo [mode=" + mode + ", alphaChannel=" + alphaChannel + ", clamp=" + clamp + ", source="
+                + source + "]";
+    }
+
 }

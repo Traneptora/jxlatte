@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.image;
+package com.thebombzen.jxlatte.bundle;
 
 public interface ExtraChannelType {
     

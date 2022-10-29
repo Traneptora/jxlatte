@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import com.thebombzen.jxlatte.image.JXLImage;
 import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.io.PNGWriter;

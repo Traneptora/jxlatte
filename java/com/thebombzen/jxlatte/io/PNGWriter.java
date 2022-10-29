@@ -8,9 +8,9 @@ import java.io.OutputStream;
 import java.util.zip.CRC32;
 import java.util.zip.DeflaterOutputStream;
 
+import com.thebombzen.jxlatte.JXLImage;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.color.ColorSpace;
-import com.thebombzen.jxlatte.image.JXLImage;
 
 public class PNGWriter {
     private int bitDepth;

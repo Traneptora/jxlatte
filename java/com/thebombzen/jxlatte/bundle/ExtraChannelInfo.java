@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.image.ExtraChannelType;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ExtraChannelInfo {
