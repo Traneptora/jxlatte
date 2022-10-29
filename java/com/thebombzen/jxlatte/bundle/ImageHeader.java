@@ -234,8 +234,8 @@ public class ImageHeader {
         return getNumAlphaChannels() > 0;
     }
 
-    public ExtraChannelInfo getAlphaIndex(int alphaChannel) {
-        return getExtraChannelInfo(alphaIndices[alphaChannel]);
+    public int getAlphaIndex(int alphaChannel) {
+        return alphaIndices[alphaChannel];
     }
 
     public int getColorChannelCount() {

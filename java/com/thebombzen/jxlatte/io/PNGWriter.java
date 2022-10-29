@@ -38,7 +38,7 @@ public class PNGWriter {
         }
         this.width = image.getWidth();
         this.height = image.getHeight();
-        this.alphaIndex = image.getHeader().getAlphaIndex();
+        this.alphaIndex = image.getHeader().hasAlpha() ? image.getHeader().getAlphaIndex(0) : -1;
         if (image.getHeader().getColorEncoding().colorSpace == ColorSpace.GRAY) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
             this.colorChannels = 1;
@@ -91,7 +91,7 @@ public class PNGWriter {
                     writeSample(dout, x, y, c);
                 }
                 if (alphaIndex >= 0)
-                    writeSample(dout, x, y, alphaIndex);
+                    writeSample(dout, x, y, colorChannels + alphaIndex);
             }
         }
         dout.close();
