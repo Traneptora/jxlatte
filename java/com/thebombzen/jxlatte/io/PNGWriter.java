@@ -79,7 +79,7 @@ public class PNGWriter {
 
     public void write(OutputStream outputStream) throws IOException {
         this.out = new DataOutputStream(outputStream);
-        out.writeLong(0x89504E470D0A1A0AL);
+        out.writeLong(0x8950_4E47_0D0A_1A0AL);
         writeIHDR();
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         bout.write(new byte[]{'I', 'D', 'A', 'T'});
