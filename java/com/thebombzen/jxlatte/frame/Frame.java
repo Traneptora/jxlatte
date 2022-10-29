@@ -130,14 +130,22 @@ public class Frame {
         return permutation;
     }
 
-    public int[][][] decodeFrame() throws IOException {
+    public double[][][] decodeFrame() throws IOException {
         Bitreader globalReader = new InputStreamBitreader(new ByteArrayInputStream(getBuffer(reader, 0)));
         lfGlobal = new LFGlobal(globalReader, this);
+        double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         if (header.groupDim > header.width && header.groupDim > header.height) {
             ModularStream stream = lfGlobal.gModular.stream;
             stream.applyTransforms();
-            int[][][] channels = stream.getDecodedBuffer();
-            return channels;
+            int[][][] streamBuffer = stream.getDecodedBuffer();
+            for (int c = 0; c < buffer.length; c++) {
+                for (int y = 0; y < header.height; y++) {
+                    for (int x = 0; x < header.width; x++) {
+                        buffer[c][y][x] = streamBuffer[c][y][x];
+                    }
+                }
+            }
+            return buffer;
         } else {
             throw new UnsupportedOperationException("LF Groups not yet implemented");
         }

@@ -227,6 +227,14 @@ public class ImageHeader {
         return extraChannelInfo.length;
     }
 
+    public int getColorChannelCount() {
+        return getColorEncoding().colorSpace == ColorSpace.GRAY ? 1 : 3;
+    }
+
+    public int getTotalChannelCount() {
+        return getExtraChannelCount() + getColorChannelCount();
+    }
+
     public ExtraChannelInfo getExtraChannelInfo(int index) {
         return extraChannelInfo[index];
     }

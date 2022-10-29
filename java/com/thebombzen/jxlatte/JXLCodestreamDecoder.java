@@ -1,19 +1,12 @@
 package com.thebombzen.jxlatte;
 
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.bundle.color.ColorSpace;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.image.ChannelType;
-import com.thebombzen.jxlatte.image.JxlImage;
-import com.thebombzen.jxlatte.image.JxlImageFormat;
+import com.thebombzen.jxlatte.image.JXLImage;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.PNGWriter;
 
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
@@ -58,7 +51,7 @@ public class JXLCodestreamDecoder {
         return 1 + p1 + 8 * p2;
     }
 
-    public JxlImage decode(int level) throws IOException {
+    public JXLImage decode(int level) throws IOException {
         this.imageHeader = ImageHeader.parse(bitreader, level);
         if (imageHeader.getColorEncoding().useIccProfile) {
             int encodedSize = Math.toIntExact(bitreader.readU64());
@@ -74,22 +67,24 @@ public class JXLCodestreamDecoder {
             frame.readHeader();
             frame.skipFrameData();
         }
+        int height = imageHeader.getSize().height;
+        int width = imageHeader.getSize().width;
+        double[][][] buffer = new double[imageHeader.getTotalChannelCount()][height][width];
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
-            int[][][] buffer = frame.decodeFrame();
-            bitreader.zeroPadToByte();
-            PNGWriter writer = new PNGWriter(imageHeader.getBitDepthHeader().bitsPerSample,
-                8, buffer,
-                imageHeader.getColorEncoding().colorSpace == ColorSpace.GRAY,
-                imageHeader.getAlphaIndex());
-            try (OutputStream out = new BufferedOutputStream(new FileOutputStream("output.png"))) {
-                writer.write(out);
+            double[][][] frameBuffer = frame.decodeFrame();
+            int x0 = Math.max(frame.getFrameHeader().x0, 0);
+            int y0 = Math.max(frame.getFrameHeader().y0, 0);
+            for (int c = 0; c < buffer.length; c++) {
+                for (int y = y0; y < height; y++) {
+                    for (int x = x0; x < width; x++) {
+                        buffer[c][y][x] = frameBuffer[c][y][x];
+                    }
+                }
             }
         } while (!frame.getFrameHeader().isLast);
-        int width = imageHeader.getSize().width;
-        int height = imageHeader.getSize().height;
-        JxlImage image =  new JxlImage(new JxlImageFormat(8, 0, ChannelType.PACKED_RGB), width, height);
+        JXLImage image = new JXLImage(buffer, imageHeader);
         return image;
     }
 }

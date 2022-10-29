@@ -9,35 +9,43 @@ import java.util.zip.CRC32;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.MathHelper;
+import com.thebombzen.jxlatte.bundle.color.ColorSpace;
+import com.thebombzen.jxlatte.image.JXLImage;
 
 public class PNGWriter {
     private int bitDepth;
-    private int[][][] buffer;
+    private double[][][] buffer;
     private DataOutputStream out;
     private int maxValue;
-    private int inputMaxValue;
+    private double inputMaxValue;
     private int width;
     private int height;
     private int colorMode;
-    private boolean grayScale;
+    private int colorChannels;
     private int alphaIndex;
     private CRC32 crc32 = new CRC32();
 
-    public PNGWriter(int inputBitDepth, int bitDepth, int[][][] buffer, boolean grayScale, int alphaIndex) {
+    public PNGWriter(int bitDepth, JXLImage image) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException();
         this.bitDepth = bitDepth;
-        this.buffer = buffer;
+        this.buffer = image.getBuffer();
         this.maxValue = ~(~0 << bitDepth);
-        this.inputMaxValue = ~(~0 << inputBitDepth);
-        this.width = buffer[0][0].length;
-        this.height = buffer[0].length;
-        this.grayScale = grayScale;
-        this.alphaIndex = alphaIndex;
-        if (grayScale)
+        if (image.getHeader().getBitDepthHeader().expBits > 0) {
+            this.inputMaxValue = 1.0d;
+        } else {
+            this.inputMaxValue = ~(~0L << image.getHeader().getBitDepthHeader().bitsPerSample);
+        }
+        this.width = image.getWidth();
+        this.height = image.getHeight();
+        this.alphaIndex = image.getHeader().getAlphaIndex();
+        if (image.getHeader().getColorEncoding().colorSpace == ColorSpace.GRAY) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
-        else
+            this.colorChannels = 1;
+        } else {
             this.colorMode = alphaIndex >= 0 ? 6 : 2;
+            this.colorChannels = 3;
+        }
     }
 
     private void writeIHDR() throws IOException {
@@ -48,8 +56,8 @@ public class PNGWriter {
         dout.writeInt(height);
         dout.writeByte(bitDepth);
         dout.writeByte(colorMode);
-        dout.writeByte(0); // compression method
-        dout.writeByte(0); // filter method
+        dout.writeByte(0); // compression method 0 (zlib)
+        dout.writeByte(0); // filter method 0 (standard)
         dout.writeByte(0); // not interlaced
         dout.close();
         byte[] buf = bout.toByteArray();
@@ -61,7 +69,7 @@ public class PNGWriter {
     }
 
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
-        int s = (int)((long)buffer[c][y][x] * maxValue / inputMaxValue);
+        int s = (int)(buffer[c][y][x] * maxValue / inputMaxValue);
         s = MathHelper.clamp(s, 0, maxValue);
         if (bitDepth == 8)
             dout.writeByte(s);
@@ -77,10 +85,9 @@ public class PNGWriter {
         bout.write(new byte[]{'I', 'D', 'A', 'T'});
         DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout));
         for (int y = 0; y < height; y++) {
-            dout.writeByte(0); // filter
+            dout.writeByte(0); // filter 0
             for (int x = 0; x < width; x++) {
-                int channels = grayScale ? 1 : 3;
-                for (int c = 0; c < channels; c++) {
+                for (int c = 0; c < colorChannels; c++) {
                     writeSample(dout, x, y, c);
                 }
                 if (alphaIndex >= 0)
@@ -96,6 +103,6 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
         out.writeInt(0);
         out.writeInt(0x49_45_4E_44); // IEND
-        out.writeInt(0xAE_42_60_82); // crc32
+        out.writeInt(0xAE_42_60_82); // crc32 for IEND
     }
 }
