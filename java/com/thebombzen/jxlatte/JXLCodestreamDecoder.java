@@ -69,6 +69,11 @@ public class JXLCodestreamDecoder {
         }
         bitreader.zeroPadToByte();
         Frame frame;
+        if (imageHeader.getPreviewHeader() != null) {
+            frame = new Frame(bitreader, imageHeader);
+            frame.readHeader();
+            frame.skipFrameData();
+        }
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();

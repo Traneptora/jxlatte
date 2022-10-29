@@ -19,15 +19,23 @@ public final class MathHelper {
         return 64 - Long.numberOfLeadingZeros(x);
     }
 
-    public static int ceilDiv(int numerator, int denominator) {
-        return (numerator - 1) / denominator + 1;
-    }
-
     /**
      * @return ceil(log2(x + 1))
      */
     public static int ceilLog1p(int x) {
         return 32 - Integer.numberOfLeadingZeros(x);
+    }
+
+    public static int ceilDiv(int numerator, int denominator) {
+        return (numerator - 1) / denominator + 1;
+    }
+
+    public static int floorLog1p(int x) {
+        int c = ceilLog1p(x);
+        // if x is not a power of 2
+        if ((x & (x - 1)) != 0)
+            return c - 1;
+        return c;
     }
 
     public static int min3(int a, int b, int c) {
@@ -38,9 +46,9 @@ public final class MathHelper {
         return Math.max(a, Math.max(b, c));
     }
 
-    public static int clamp(int v, int min, int max) {
-        int lower = Math.min(min, max);
-        int upper = Math.max(min, max);
+    public static int clamp(int v, int a, int b) {
+        int lower = Math.min(a, b);
+        int upper = Math.max(a, b);
         return Math.min(Math.max(v, lower), upper);
     }
 }

@@ -1,13 +1,10 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
-import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.IOHelper;
 
 public class ModularChannel {
     protected int width;
@@ -122,7 +119,7 @@ public class ModularChannel {
                 w = west(x, y);
                 n = north(x, y);
                 v = w + n - northWest(x, y);
-                return MathHelper.clamp(v, Math.min(n, w), Math.max(n, w));
+                return MathHelper.clamp(v, n, w);
             case 6:
                 return (pred[x][y] + 3) >> 3;
             case 7:
@@ -153,6 +150,8 @@ public class ModularChannel {
         trueError = new int[width][height];
         error = new int[width][height][4];
         pred = new int[width][height];
+        int[] subpred = new int[4];
+        long[] weight = new long[4];
         for (int y0 = 0; y0 < height; y0++) {
             for (int x0 = 0; x0 < width; x0++) {
                 final int y = y0;
@@ -166,7 +165,6 @@ public class ModularChannel {
                 int tW = teWest(x, y, -1);
                 int tNE = teNorthEast(x, y, -1);
                 int tNW = teNorthWest(x, y, -1);
-                int[] subpred = new int[4];
                 subpred[0] = w3 + ne3 - n3;
                 subpred[1] = n3 - (((tW + tN + tNE) * parent.wpParams.wp_p1) >> 5);
                 subpred[2] = w3 - (((tW + tN + tNW) * parent.wpParams.wp_p2) >> 5);
@@ -175,16 +173,13 @@ public class ModularChannel {
                     + tNE * parent.wpParams.wp_p3c
                     + (nn3 - n3) * parent.wpParams.wp_p3d
                     + (nw3 - w3) * parent.wpParams.wp_p3e) >> 5);
-                long[] weight = new long[4];
                 long wSum = 0;
                 for (int e = 0; e < 4; e++) {
                     int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
                         + teWestWest(x, y, e) + teNorthEast(x, y, e);
                     if (x == width - 1)
                         eSum += teWest(x, y, e);
-                    int shift = MathHelper.ceilLog1p(eSum) - 5;
-                    if ((eSum & (eSum + 1)) != 0)
-                        shift -= 1;
+                    int shift = MathHelper.floorLog1p(eSum) - 5;
                     if (shift < 0)
                         shift = 0;
                     weight[e] = 4L + (((long)parent.wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
@@ -249,7 +244,7 @@ public class ModularChannel {
                         case 15:
                             return maxError;
                         default:
-                            throw new UnsupportedOperationException("Contexts > 15 not implmented");
+                            throw new UnsupportedOperationException("Contexts > 15 not yet implmented");
                     }
                 });
 
