@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.bundle;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 
@@ -24,5 +25,29 @@ public class BitDepthHeader {
             this.bitsPerSample = reader.readU32(8, 0, 10, 0, 12, 0, 1, 6);
             this.expBits = 0;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(usesFloatSamples, bitsPerSample, expBits);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BitDepthHeader other = (BitDepthHeader) obj;
+        return usesFloatSamples == other.usesFloatSamples && bitsPerSample == other.bitsPerSample
+                && expBits == other.expBits;
+    }
+
+    @Override
+    public String toString() {
+        return "BitDepthHeader [usesFloatSamples=" + usesFloatSamples + ", bitsPerSample=" + bitsPerSample
+                + ", expBits=" + expBits + "]";
     }
 }

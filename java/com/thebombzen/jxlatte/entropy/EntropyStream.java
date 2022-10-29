@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte.entropy;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -184,5 +186,43 @@ public class EntropyStream {
         token &= (1 << config.msbInToken) - 1;
         token |= 1 << config.msbInToken;
         return (((token << n) | reader.readBits(n)) << config.lsbInToken) | low;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.hashCode(clusterMap);
+        result = prime * result + Arrays.hashCode(dists);
+        result = prime * result + Arrays.hashCode(window);
+        result = prime * result + Objects.hash(usesLZ77, lz77MinSymbol, lz77MinLength, lzLengthConfig, logAlphabetSize,
+                numToCopy77, copyPos77, numDecoded77, state);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        EntropyStream other = (EntropyStream) obj;
+        return usesLZ77 == other.usesLZ77 && lz77MinSymbol == other.lz77MinSymbol
+                && lz77MinLength == other.lz77MinLength && Objects.equals(lzLengthConfig, other.lzLengthConfig)
+                && Arrays.equals(clusterMap, other.clusterMap) && Arrays.equals(dists, other.dists)
+                && logAlphabetSize == other.logAlphabetSize && numToCopy77 == other.numToCopy77
+                && copyPos77 == other.copyPos77 && numDecoded77 == other.numDecoded77
+                && Arrays.equals(window, other.window) && Objects.equals(state, other.state);
+    }
+
+    @Override
+    public String toString() {
+        return "EntropyStream [usesLZ77=" + usesLZ77 + ", lz77MinSymbol=" + lz77MinSymbol + ", lz77MinLength="
+                + lz77MinLength + ", lzLengthConfig=" + lzLengthConfig + ", clusterMap=" + Arrays.toString(clusterMap)
+                + ", dists=" + Arrays.toString(dists) + ", logAlphabetSize=" + logAlphabetSize + ", numToCopy77="
+                + numToCopy77 + ", copyPos77=" + copyPos77 + ", numDecoded77=" + numDecoded77 + ", window="
+                + Arrays.toString(window) + ", state=" + state + "]";
     }
 }

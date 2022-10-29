@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.bundle.color;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -40,5 +41,31 @@ public class ToneMapping {
             if (!relativeToMaxDisplay && linearBelow < 0f)
                 throw new InvalidBitstreamException("Linear Below must be nonnegative");
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(intensityTarget, minNits, relativeToMaxDisplay, linearBelow);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        ToneMapping other = (ToneMapping) obj;
+        return Float.floatToIntBits(intensityTarget) == Float.floatToIntBits(other.intensityTarget)
+                && Float.floatToIntBits(minNits) == Float.floatToIntBits(other.minNits)
+                && relativeToMaxDisplay == other.relativeToMaxDisplay
+                && Float.floatToIntBits(linearBelow) == Float.floatToIntBits(other.linearBelow);
+    }
+
+    @Override
+    public String toString() {
+        return "ToneMapping [intensityTarget=" + intensityTarget + ", minNits=" + minNits + ", relativeToMaxDisplay="
+                + relativeToMaxDisplay + ", linearBelow=" + linearBelow + "]";
     }
 }

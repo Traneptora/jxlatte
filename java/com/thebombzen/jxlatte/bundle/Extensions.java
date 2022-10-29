@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte.bundle;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 
@@ -33,5 +35,31 @@ public class Extensions {
 
     public byte[] getExtension(int extId) {
         return payloads[extId];
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.deepHashCode(payloads);
+        result = prime * result + Objects.hash(extensionsKey);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Extensions other = (Extensions) obj;
+        return extensionsKey == other.extensionsKey && Arrays.deepEquals(payloads, other.payloads);
+    }
+
+    @Override
+    public String toString() {
+        return "Extensions [extensionsKey=" + extensionsKey + ", payloads=" + Arrays.toString(payloads) + "]";
     }
 }

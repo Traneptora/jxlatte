@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte.bundle.color;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 
@@ -56,4 +58,36 @@ public class OpsinInverseMatrix {
             quantBiasNumerator = reader.readF16();
         }
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.deepHashCode(matrix);
+        result = prime * result + Arrays.hashCode(opsinBias);
+        result = prime * result + Arrays.hashCode(quantBias);
+        result = prime * result + Objects.hash(quantBiasNumerator);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        OpsinInverseMatrix other = (OpsinInverseMatrix) obj;
+        return Arrays.deepEquals(matrix, other.matrix) && Arrays.equals(opsinBias, other.opsinBias)
+                && Arrays.equals(quantBias, other.quantBias)
+                && Float.floatToIntBits(quantBiasNumerator) == Float.floatToIntBits(other.quantBiasNumerator);
+    }
+
+    @Override
+    public String toString() {
+        return "OpsinInverseMatrix [matrix=" + Arrays.toString(matrix) + ", opsinBias=" + Arrays.toString(opsinBias)
+                + ", quantBias=" + Arrays.toString(quantBias) + ", quantBiasNumerator=" + quantBiasNumerator + "]";
+    }
+    
 }

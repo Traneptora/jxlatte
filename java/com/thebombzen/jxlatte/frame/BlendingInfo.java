@@ -64,5 +64,4 @@ public class BlendingInfo {
         return "BlendingInfo [mode=" + mode + ", alphaChannel=" + alphaChannel + ", clamp=" + clamp + ", source="
                 + source + "]";
     }
-
 }

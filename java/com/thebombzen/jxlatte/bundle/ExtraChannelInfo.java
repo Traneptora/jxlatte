@@ -2,6 +2,7 @@ package com.thebombzen.jxlatte.bundle;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -56,5 +57,34 @@ public class ExtraChannelInfo {
             this.cfaIndex = reader.readU32(1, 0, 0, 2, 3, 4, 19, 8);
         else
             this.cfaIndex = 1;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, bitDepth, dimShift, name, alphaAssociated, red, green, blue, solidity, cfaIndex);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        ExtraChannelInfo other = (ExtraChannelInfo) obj;
+        return type == other.type && Objects.equals(bitDepth, other.bitDepth) && dimShift == other.dimShift
+                && Objects.equals(name, other.name) && alphaAssociated == other.alphaAssociated
+                && Float.floatToIntBits(red) == Float.floatToIntBits(other.red)
+                && Float.floatToIntBits(green) == Float.floatToIntBits(other.green)
+                && Float.floatToIntBits(blue) == Float.floatToIntBits(other.blue)
+                && Float.floatToIntBits(solidity) == Float.floatToIntBits(other.solidity) && cfaIndex == other.cfaIndex;
+    }
+
+    @Override
+    public String toString() {
+        return "ExtraChannelInfo [type=" + type + ", bitDepth=" + bitDepth + ", dimShift=" + dimShift + ", name=" + name
+                + ", alphaAssociated=" + alphaAssociated + ", red=" + red + ", green=" + green + ", blue=" + blue
+                + ", solidity=" + solidity + ", cfaIndex=" + cfaIndex + "]";
     }
 }

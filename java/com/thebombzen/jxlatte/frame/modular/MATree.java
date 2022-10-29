@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame.modular;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -56,5 +57,27 @@ public class MATree {
             else
                 index = dNode.rightChildIndex;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(nodes, stream);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        MATree other = (MATree) obj;
+        return Objects.equals(nodes, other.nodes) && Objects.equals(stream, other.stream);
+    }
+
+    @Override
+    public String toString() {
+        return "MATree [nodes=" + nodes + "]";
     }
 }
