@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
 
@@ -33,11 +34,21 @@ public class ModularStream {
     public final WPHeader wpParams;
     public final TransformInfo[] transforms;
     public final Frame frame;
+    private EntropyStream stream = null;
+    private boolean transformed = false;
 
     private List<ModularChannel> channels = new LinkedList<>();
 
-    public ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int cCount, int ecStart) throws IOException {
-        this.channelCount = cCount;
+    public ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int channelCount, int ecStart) throws IOException {
+        this(reader, globalTree, frame, streamIndex, channelCount, ecStart, null);
+    }
+
+    public ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, ModularChannel[] channelArray) throws IOException {
+        this(reader, globalTree, frame, streamIndex, channelArray.length, 0, channelArray);
+    }
+
+    private ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int channelCount, int ecStart, ModularChannel[] channelArray) throws IOException {
+        this.channelCount = channelArray.length;
         this.frame = frame;
         this.streamIndex = streamIndex;
         if (channelCount == 0) {
@@ -56,8 +67,12 @@ public class ModularStream {
         int w = frame.getFrameHeader().width;
         int h = frame.getFrameHeader().height;
         for (int i = 0; i < channelCount; i++) {
-            int dimShift = i < ecStart ? 0 : frame.globalMetadata.getExtraChannelInfo(i - ecStart).dimShift;
-            channels.add(new ModularChannel(this, w, h, dimShift));
+            if (channelArray == null) {
+                int dimShift = i < ecStart ? 0 : frame.globalMetadata.getExtraChannelInfo(i - ecStart).dimShift;
+                channels.add(new ModularChannel(w, h, dimShift));
+            } else {
+                channels.add(channelArray[i]);
+            }
         }
         for (int i = 0; i < nbTransforms; i++) {
             if (transforms[i].tr == TransformInfo.PALETTE) {
@@ -68,7 +83,7 @@ public class ModularStream {
                 int start = transforms[i].beginC + 1;
                 for (int j = start; j < transforms[i].beginC + transforms[i].numC; j++)
                     channels.remove(start);
-                channels.add(0, new ModularChannel(this, transforms[i].nbColors, transforms[i].numC, -1));
+                channels.add(0, new ModularChannel(transforms[i].nbColors, transforms[i].numC, -1));
             } else if (transforms[i].tr == TransformInfo.SQUEEZE) {
                 int begin = transforms[i].beginC;
                 int end = begin + transforms[i].numC - 1;
@@ -107,6 +122,7 @@ public class ModularStream {
             tree = new MATree(reader);
         else
             tree = globalTree;
+        stream = new  EntropyStream(reader, (tree.getSize() + 1) / 2);
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {
             w = channels.get(i).width;
@@ -122,11 +138,34 @@ public class ModularStream {
             if (partial && i >= nbMetaChannels && (chan.width > frame.getFrameHeader().groupDim
                     || chan.height > frame.getFrameHeader().groupDim))
                 break;
-            chan.decode(reader, tree, i, distMultiplier);
+            chan.decode(reader, stream, wpParams, tree, i, streamIndex, distMultiplier);
         }
     }
 
+    public int getChannelCount() {
+        return channelCount;
+    }
+
+    public int getEncodedChannelCount() {
+        return channels.size();
+    }
+
+    public void replaceEncodedChannel(int index, ModularChannel channel) {
+        channels.set(index, channel);
+    }
+
+    public ModularChannel getChannel(int index) {
+        return channels.get(index);
+    }
+
+    public boolean isTransformed() {
+        return transformed;
+    }
+
     public void applyTransforms() {
+        if (transformed)
+            return;
+        transformed = true;
         for (int i = transforms.length - 1; i >= 0; i--) {
             if (transforms[i].tr == TransformInfo.SQUEEZE) {
                 throw new UnsupportedOperationException("Squeeze not yet implemented");
@@ -222,10 +261,6 @@ public class ModularStream {
                 channels.remove(0);
             }
         }
-    }
-
-    public void clamp() {
-        channels.stream().forEach(c -> c.clamp());
     }
 
     public int[][][] getDecodedBuffer() {

@@ -3,7 +3,6 @@ package com.thebombzen.jxlatte.frame.modular;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -14,7 +13,6 @@ import com.thebombzen.jxlatte.io.Bitreader;
 public class MATree {
 
     private List<MANode> nodes = new ArrayList<>();
-    public final EntropyStream stream;
 
     public MATree(Bitreader reader) throws IOException {
         EntropyStream stream = new EntropyStream(reader, 6);
@@ -42,7 +40,6 @@ public class MATree {
                 nodes.add(node);
             }
         }
-        this.stream = new EntropyStream(reader, (nodes.size() + 1) / 2);
     }
 
     public MALeafNode walk(IntUnaryOperator property) {
@@ -59,25 +56,7 @@ public class MATree {
         }
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(nodes, stream);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        MATree other = (MATree) obj;
-        return Objects.equals(nodes, other.nodes) && Objects.equals(stream, other.stream);
-    }
-
-    @Override
-    public String toString() {
-        return "MATree [nodes=" + nodes + "]";
+    public int getSize() {
+        return nodes.size();
     }
 }

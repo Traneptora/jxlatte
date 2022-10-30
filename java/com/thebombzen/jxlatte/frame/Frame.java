@@ -12,7 +12,8 @@ import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
-import com.thebombzen.jxlatte.frame.modular.ModularStream;
+import com.thebombzen.jxlatte.frame.lfgroup.LFGroup;
+import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
@@ -27,6 +28,7 @@ public class Frame {
     private int[] groupOffsets;
     private LFGlobal lfGlobal;
     public final ImageHeader globalMetadata;
+    private boolean permutedTOC;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.reader = reader;
@@ -66,7 +68,7 @@ public class Frame {
             tocEntries = 1 + numLFGroups + 1 + numGroups * header.passes.numPasses;
         }
 
-        if (reader.readBool()) {          
+        if (permutedTOC = reader.readBool()) {          
             tocPermuation = readPermutation(reader, tocEntries, 0);
         } else {
             tocPermuation = new int[tocEntries];
@@ -98,13 +100,17 @@ public class Frame {
         }
     }
 
-    private byte[] getBuffer(Bitreader reader, int index) throws IOException {
+    private Bitreader getBitreader(Bitreader reader, int index) throws IOException {
+        if (!permutedTOC) {
+            reader.zeroPadToByte();
+            return reader;
+        }
         int permutedIndex = tocPermuation[index];
         for (int i = 0; i <= permutedIndex; i++) {
             if (buffers[i] == null)
                 readBuffer(reader, i);
         }
-        return buffers[permutedIndex];
+        return new InputStreamBitreader(new ByteArrayInputStream(buffers[permutedIndex]));
     }
 
     public static int[] readPermutation(Bitreader reader, int size, int skip) throws IOException {
@@ -131,23 +137,59 @@ public class Frame {
     }
 
     public double[][][] decodeFrame() throws IOException {
-        Bitreader globalReader = new InputStreamBitreader(new ByteArrayInputStream(getBuffer(reader, 0)));
+        Bitreader globalReader = getBitreader(this.reader, 0);
         lfGlobal = new LFGlobal(globalReader, this);
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
-        if (header.groupDim > header.width && header.groupDim > header.height) {
-            ModularStream stream = lfGlobal.gModular.stream;
-            stream.applyTransforms();
-            int[][][] streamBuffer = stream.getDecodedBuffer();
-            for (int c = 0; c < buffer.length; c++) {
-                for (int y = 0; y < header.height; y++) {
-                    for (int x = 0; x < header.width; x++) {
-                        buffer[c][y][x] = streamBuffer[c][y][x];
+        LFGroup[] lfGroups = new LFGroup[numLFGroups];
+        for (int i = 0; i < numLFGroups; i++) {
+            Bitreader reader = getBitreader(this.reader, 1 + i);
+            lfGroups[i] = new LFGroup(reader, this, i);
+        }
+        for (int i = 0; i < numLFGroups; i++) {
+            int[] indices = lfGroups[i].replacedChannelIndices;
+            for (int j = 0; j < indices.length; j++) {
+                int index = indices[j];
+                ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
+                if (!channel.isDecoded())
+                    channel.allocate();
+                ModularChannel newChannel = lfGroups[i].lfStream.getChannel(j);
+                int rowStride = MathHelper.ceilDiv(header.width, newChannel.width);
+                int y0 = (i / rowStride) * newChannel.height;
+                int x0 = (i % rowStride) * newChannel.width;
+                for (int y = 0; y < newChannel.height; y++) {
+                    for (int x = 0; x < newChannel.width; x++) {
+                        channel.set(x + x0, y + y0, newChannel.get(x ,y));
                     }
                 }
             }
-            return buffer;
-        } else {
-            throw new UnsupportedOperationException("LF Groups not yet implemented");
         }
+
+        if (header.encoding == FrameFlags.VARDCT) {
+            throw new UnsupportedOperationException("VarDCT is not yet implemented");
+        }
+
+        for (int pass = 0; pass < header.passes.numPasses; pass++) {
+            for (int group = 0; group < numGroups; group++) {
+                if (group > 0 || pass > 0)
+                    throw new UnsupportedOperationException("PassGroups not yet implemented: " + group);
+                // TODO pass groups
+            }
+        }
+
+        lfGlobal.gModular.stream.applyTransforms();
+        int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
+        for (int c = 0; c < buffer.length; c++) {
+            for (int y = 0; y < header.height; y++) {
+                for (int x = 0; x < header.width; x++) {
+                    buffer[c][y][x] = streamBuffer[c][y][x];
+                }
+            }
+        }
+
+        return buffer;
+    }
+
+    public LFGlobal getLFGlobal() {
+        return lfGlobal;
     }
 }

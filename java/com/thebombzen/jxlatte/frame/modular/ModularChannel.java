@@ -4,29 +4,28 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.thebombzen.jxlatte.MathHelper;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ModularChannel {
-    protected int width;
-    protected int height;
-    protected int hshift;
-    protected int vshift;
+    public int width;
+    public int height;
+    public int hshift;
+    public int vshift;
     protected int[][] buffer;
     protected int[][] trueError;
     protected int[][][] error;
     protected int[][] pred;
-    private ModularStream parent;
 
-    public ModularChannel(ModularStream parent, int width, int height, int dimShift) throws IOException {
-        this.parent = parent;
+    public ModularChannel(int width, int height, int dimShift) {
+        this(width, height, dimShift, dimShift);
+    }
+
+    public ModularChannel(int width, int height, int hshift, int vshift) {
         this.width = width;
         this.height = height;
-        hshift = dimShift;
-        vshift = dimShift;
-        if (hshift > 1)
-            width = MathHelper.ceilDiv(width, 1 << hshift);
-        if (vshift > 1)
-            height = MathHelper.ceilDiv(height, 1 << vshift);
+        this.hshift = hshift;
+        this.vshift = vshift;
     }
 
     public ModularChannel(ModularChannel copy) {
@@ -34,7 +33,6 @@ public class ModularChannel {
         this.height = copy.height;
         this.hshift = copy.hshift;
         this.vshift = copy.vshift;
-        this.parent = copy.parent;
         if (copy.buffer != null) {
             this.buffer = new int[height][];
             for (int y = 0; y < height; y++) {
@@ -43,11 +41,12 @@ public class ModularChannel {
         }
     }
 
-    protected void set(int x, int y, int s) {
-        buffer[y][x] = s;
+    public void set(int x, int y, int s) {
+        if (y >= 0 && y < buffer.length && x >= 0 && x <= buffer[y].length)
+            buffer[y][x] = s;
     }
 
-    protected int get(int x, int y) {
+    public int get(int x, int y) {
         return buffer[y][x];
     }
 
@@ -141,12 +140,21 @@ public class ModularChannel {
         }
     }
 
-    public void decode(Bitreader reader, MATree tree, int channelIndex, int distMultiplier) throws IOException {
-        if (width == 0 || height == 0)
+    public boolean allocate() {
+        if (width == 0 || height == 0) {
+            buffer = new int[0][];
+            return true;
+        } else {
+            buffer = new int[height][width];
+            return false;
+        }
+    }
+
+    public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
+        if (isDecoded())
             return;
-        if (buffer != null)
+        if (allocate())
             return;
-        buffer = new int[height][width];
         trueError = new int[width][height];
         error = new int[width][height][4];
         pred = new int[width][height];
@@ -166,13 +174,13 @@ public class ModularChannel {
                 int tNE = teNorthEast(x, y, -1);
                 int tNW = teNorthWest(x, y, -1);
                 subpred[0] = w3 + ne3 - n3;
-                subpred[1] = n3 - (((tW + tN + tNE) * parent.wpParams.wp_p1) >> 5);
-                subpred[2] = w3 - (((tW + tN + tNW) * parent.wpParams.wp_p2) >> 5);
-                subpred[3] = n3 - ((tNW * parent.wpParams.wp_p3a
-                    + tN * parent.wpParams.wp_p3b
-                    + tNE * parent.wpParams.wp_p3c
-                    + (nn3 - n3) * parent.wpParams.wp_p3d
-                    + (nw3 - w3) * parent.wpParams.wp_p3e) >> 5);
+                subpred[1] = n3 - (((tW + tN + tNE) * wpParams.wp_p1) >> 5);
+                subpred[2] = w3 - (((tW + tN + tNW) * wpParams.wp_p2) >> 5);
+                subpred[3] = n3 - ((tNW * wpParams.wp_p3a
+                    + tN * wpParams.wp_p3b
+                    + tNE * wpParams.wp_p3c
+                    + (nn3 - n3) * wpParams.wp_p3d
+                    + (nw3 - w3) * wpParams.wp_p3e) >> 5);
                 long wSum = 0;
                 for (int e = 0; e < 4; e++) {
                     int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
@@ -182,7 +190,7 @@ public class ModularChannel {
                     int shift = MathHelper.floorLog1p(eSum) - 5;
                     if (shift < 0)
                         shift = 0;
-                    weight[e] = 4L + (((long)parent.wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
+                    weight[e] = 4L + (((long)wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
                     wSum += weight[e];
                 }
                 int logWeight = MathHelper.ceilLog1p(wSum);
@@ -212,7 +220,7 @@ public class ModularChannel {
                         case 0:
                             return channelIndex;
                         case 1:
-                            return parent.streamIndex;
+                            return streamIndex;
                         case 2:
                             return y;
                         case 3:
@@ -248,7 +256,7 @@ public class ModularChannel {
                     }
                 });
 
-                int diff = tree.stream.readSymbol(reader, node.context, distMultiplier);
+                int diff = stream.readSymbol(reader, node.context, distMultiplier);
                 diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
                 int trueValue = diff + prediction(x, y, node.predictor);
                 set(x, y, trueValue);
@@ -259,14 +267,7 @@ public class ModularChannel {
         }
     }
 
-    public void clamp() {
-        int maxValue = ~(~0 << parent.frame.globalMetadata.getBitDepthHeader().bitsPerSample);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int value = get(x, y);
-                value = MathHelper.clamp(value, 0, maxValue);
-                set(x, y, value);
-            }
-        }
+    public boolean isDecoded() {
+        return buffer != null;
     }
 }
