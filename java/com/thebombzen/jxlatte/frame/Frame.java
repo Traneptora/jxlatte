@@ -88,6 +88,7 @@ public class Frame {
         groupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
+
         reader.zeroPadToByte();
     }
 
@@ -101,7 +102,7 @@ public class Frame {
     }
 
     private Bitreader getBitreader(Bitreader reader, int index) throws IOException {
-        if (!permutedTOC) {
+        if (tocLengths.length == 1 || !permutedTOC) {
             reader.zeroPadToByte();
             return reader;
         }

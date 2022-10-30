@@ -2,9 +2,7 @@ package com.thebombzen.jxlatte.entropy;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
-import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -205,31 +203,4 @@ public class ANSSymbolDistribution extends SymbolDistribution {
             }
         }
     }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + Arrays.hashCode(frequencies);
-        result = prime * result + Arrays.hashCode(cutoffs);
-        result = prime * result + Arrays.hashCode(symbols);
-        result = prime * result + Arrays.hashCode(offsets);
-        result = prime * result + Objects.hash(state);
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ANSSymbolDistribution other = (ANSSymbolDistribution) obj;
-        return Arrays.equals(frequencies, other.frequencies) && Arrays.equals(cutoffs, other.cutoffs)
-                && Arrays.equals(symbols, other.symbols) && Arrays.equals(offsets, other.offsets)
-                && Objects.equals(state, other.state);
-    }
-    
 }

@@ -48,13 +48,13 @@ public class ModularStream {
     }
 
     private ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int channelCount, int ecStart, ModularChannel[] channelArray) throws IOException {
-        this.channelCount = channelArray.length;
+        this.channelCount = channelCount;
         this.frame = frame;
         this.streamIndex = streamIndex;
         if (channelCount == 0) {
             tree = null;
             wpParams = null;
-            transforms = null;
+            transforms = new TransformInfo[0];
             distMultiplier = 1;
             return;
         }
@@ -118,11 +118,17 @@ public class ModularStream {
             }
         }
 
-        if (!useGlobalTree)
+        if (!useGlobalTree) {
             tree = new MATree(reader);
-        else
-            tree = globalTree;
-        stream = new  EntropyStream(reader, (tree.getSize() + 1) / 2);
+            this.stream = tree.stream;
+        } else {
+            this.tree = globalTree;
+            if (this.streamIndex == 0)
+                this.stream = globalTree.stream;
+            else
+                this.stream = new EntropyStream(reader, (tree.getSize() + 1) / 2);
+        }
+
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {
             w = channels.get(i).width;

@@ -13,6 +13,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 public class MATree {
 
     private List<MANode> nodes = new ArrayList<>();
+    public final EntropyStream stream;
 
     public MATree(Bitreader reader) throws IOException {
         EntropyStream stream = new EntropyStream(reader, 6);
@@ -40,6 +41,7 @@ public class MATree {
                 nodes.add(node);
             }
         }
+        this.stream = new EntropyStream(reader, (getSize() + 1) / 2);
     }
 
     public MALeafNode walk(IntUnaryOperator property) {
