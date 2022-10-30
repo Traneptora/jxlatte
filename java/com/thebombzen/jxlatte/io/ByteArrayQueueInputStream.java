@@ -7,7 +7,7 @@ import java.util.concurrent.BlockingQueue;
 public class ByteArrayQueueInputStream extends InputStream {
     private BlockingQueue<byte[]> queue;
     private byte[] buffer = null;
-    private int buffer_pos = 0;
+    private int bufferPos = 0;
 
     public ByteArrayQueueInputStream(BlockingQueue<byte[]> queue) {
         this.queue = queue;
@@ -15,10 +15,10 @@ public class ByteArrayQueueInputStream extends InputStream {
 
     /* returns true upon EOF */
     private boolean refillBuffer() throws IOException {
-        if (buffer == null || buffer_pos >= buffer.length) {
+        if (buffer == null || bufferPos >= buffer.length) {
             try {
                 buffer = queue.take();
-                buffer_pos = 0;
+                bufferPos = 0;
             } catch (InterruptedException ie) {
                 throw new IOException("Interrupted while taking from queue", ie);
             }
@@ -28,14 +28,14 @@ public class ByteArrayQueueInputStream extends InputStream {
 
     @Override
     public int available() {
-        return buffer != null ? buffer.length - buffer_pos : 0;
+        return buffer != null ? buffer.length - bufferPos : 0;
     }
 
     @Override
     public int read() throws IOException {
         if (refillBuffer())
             return -1;
-        return 0xFF & (int)buffer[buffer_pos++];
+        return 0xFF & buffer[bufferPos++];
     }
 
     @Override
@@ -50,8 +50,8 @@ public class ByteArrayQueueInputStream extends InputStream {
         int count = available();
         if (count > length)
             count = length;
-        System.arraycopy(buffer, buffer_pos, b, offset, count);
-        return count;        
+        System.arraycopy(buffer, bufferPos, b, offset, count);
+        bufferPos += count;
+        return count;
     }
-
 }

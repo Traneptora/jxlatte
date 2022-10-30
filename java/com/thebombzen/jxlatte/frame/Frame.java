@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
@@ -12,16 +13,16 @@ import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
-import com.thebombzen.jxlatte.frame.lfgroup.LFGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
 public class Frame {
-    private Bitreader reader;
+    private Bitreader globalReader;
     private FrameHeader header;
     private int numGroups;
     private int numLFGroups;
+
     private byte[][] buffers;
     private int[] tocPermuation;
     private int[] tocLengths;
@@ -31,21 +32,21 @@ public class Frame {
     private boolean permutedTOC;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
-        this.reader = reader;
+        this.globalReader = reader;
         this.globalMetadata = globalMetadata;
     }
 
     public void readHeader() throws IOException {
-        this.header = new FrameHeader(reader, this.globalMetadata);
+        this.header = new FrameHeader(globalReader, this.globalMetadata);
         int width = header.width;
         int height = header.height;
         width = MathHelper.ceilDiv(width, header.upsampling);
         height = MathHelper.ceilDiv(height, header.upsampling);
         width = MathHelper.ceilDiv(width, 1 << (3 * header.lfLevel));
         height = MathHelper.ceilDiv(height, 1 << (3 * header.lfLevel));
-        int groupDim = 128 << header.groupSizeShift;
-        numGroups = MathHelper.ceilDiv(width, groupDim) * MathHelper.ceilDiv(height, groupDim);
-        numLFGroups = MathHelper.ceilDiv(width, groupDim * 8) * MathHelper.ceilDiv(height, groupDim * 8);
+        numGroups = MathHelper.ceilDiv(width, header.groupDim) * MathHelper.ceilDiv(height, header.groupDim);
+        numLFGroups = MathHelper.ceilDiv(width, header.groupDim << 3)
+            * MathHelper.ceilDiv(height, header.groupDim << 3);
         readTOC();
     }
 
@@ -55,7 +56,7 @@ public class Frame {
 
     public void skipFrameData() throws IOException {
         for (int i = 0; i < tocLengths.length; i++) {
-            reader.skipBits(tocLengths[i]);
+            globalReader.skipBits(tocLengths[i]);
         }
     }
 
@@ -68,48 +69,50 @@ public class Frame {
             tocEntries = 1 + numLFGroups + 1 + numGroups * header.passes.numPasses;
         }
 
-        if (permutedTOC = reader.readBool()) {          
-            tocPermuation = readPermutation(reader, tocEntries, 0);
+        permutedTOC = globalReader.readBool();
+        if (permutedTOC) {          
+            tocPermuation = readPermutation(globalReader, tocEntries, 0);
         } else {
             tocPermuation = new int[tocEntries];
             for (int i = 0; i < tocEntries; i++)
                 tocPermuation[i] = i;
         }
         
-        reader.zeroPadToByte();
+        globalReader.zeroPadToByte();
         tocLengths = new int[tocEntries];
         buffers = new byte[tocEntries][];
         int[] unPermgroupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++) {
             if (i > 0)
                 unPermgroupOffsets[i] = unPermgroupOffsets[i - 1] + tocLengths[i - 1];
-            tocLengths[i] = reader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
+            tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
         }
         groupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
 
-        reader.zeroPadToByte();
+        System.err.println(Arrays.toString(tocLengths));
+
+        globalReader.zeroPadToByte();
     }
 
-    private void readBuffer(Bitreader reader, int index) throws IOException {
+    private void readBuffer(int index) throws IOException {
         int length = tocLengths[index];
         buffers[index] = new byte[length];
-        int read = reader.readBytes(buffers[index]);
-        if (read < buffers[index].length) {
+        int read = globalReader.readBytes(buffers[index], 0, length);
+        if (read < length)
             throw new EOFException("Unable to read full TOC entry");
-        }
     }
 
-    private Bitreader getBitreader(Bitreader reader, int index) throws IOException {
-        if (tocLengths.length == 1 || !permutedTOC) {
-            reader.zeroPadToByte();
-            return reader;
+    private Bitreader getBitreader(int index) throws IOException {
+        if (tocLengths.length == 1) {
+            this.globalReader.zeroPadToByte();
+            return this.globalReader;
         }
         int permutedIndex = tocPermuation[index];
         for (int i = 0; i <= permutedIndex; i++) {
             if (buffers[i] == null)
-                readBuffer(reader, i);
+                readBuffer(i);
         }
         return new InputStreamBitreader(new ByteArrayInputStream(buffers[permutedIndex]));
     }
@@ -138,13 +141,11 @@ public class Frame {
     }
 
     public double[][][] decodeFrame() throws IOException {
-        Bitreader globalReader = getBitreader(this.reader, 0);
-        lfGlobal = new LFGlobal(globalReader, this);
+        lfGlobal = new LFGlobal(getBitreader(0), this);
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
         for (int i = 0; i < numLFGroups; i++) {
-            Bitreader reader = getBitreader(this.reader, 1 + i);
-            lfGroups[i] = new LFGroup(reader, this, i);
+            lfGroups[i] = new LFGroup(getBitreader(1 + i), this, i);
         }
         for (int i = 0; i < numLFGroups; i++) {
             int[] indices = lfGroups[i].replacedChannelIndices;
@@ -169,11 +170,37 @@ public class Frame {
             throw new UnsupportedOperationException("VarDCT is not yet implemented");
         }
 
+        System.err.println(Arrays.toString(tocLengths) + ", " + globalReader.getBitsCount());
+
+        int numPasses = header.passes.numPasses;
+        PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
         for (int pass = 0; pass < header.passes.numPasses; pass++) {
             for (int group = 0; group < numGroups; group++) {
-                if (group > 0 || pass > 0)
-                    throw new UnsupportedOperationException("PassGroups not yet implemented: " + group);
-                // TODO pass groups
+                Bitreader reader = getBitreader(2 + numLFGroups + pass * numGroups + group);
+                System.err.println(group + ": " + globalReader.getBitsCount());
+                passGroups[pass][group] = new PassGroup(reader, this, pass, group,
+                    pass > 0 ? passGroups[pass - 1][group].minShift : 0);
+            }
+        }
+
+        for (int pass = 0; pass < numPasses; pass++) {
+            for (int group = 0; group < numGroups; group++) {
+                int[] indices = passGroups[pass][group].replacedChannelIndices;
+                for (int j = 0; j < indices.length; j++) {
+                    int index = indices[j];
+                    ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
+                    if (!channel.isDecoded())
+                        channel.allocate();
+                    ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
+                    int rowStride = MathHelper.ceilDiv(header.width, newChannel.width);
+                    int y0 = (group / rowStride) * newChannel.height;
+                    int x0 = (group % rowStride) * newChannel.width;
+                    for (int y = 0; y < newChannel.height; y++) {
+                        for (int x = 0; x < newChannel.width; x++) {
+                            channel.set(x + x0, y + y0, newChannel.get(x ,y));
+                        }
+                    }
+                }
             }
         }
 
@@ -192,5 +219,13 @@ public class Frame {
 
     public LFGlobal getLFGlobal() {
         return lfGlobal;
+    }
+
+    public int getNumLFGroups() {
+        return numLFGroups;
+    }
+
+    public int getNumGroups() {
+        return numGroups;
     }
 }

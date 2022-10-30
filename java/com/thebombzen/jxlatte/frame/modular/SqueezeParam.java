@@ -16,4 +16,11 @@ public class SqueezeParam {
         this.beginC = reader.readU32(0, 3, 8, 6, 72, 10, 1096, 13);
         this.numC = reader.readU32(1, 0, 2, 0, 3, 0, 4, 4);
     }
+
+    public SqueezeParam(boolean horizontal, boolean inPlace, int beginC, int numC) {
+        this.horizontal = horizontal;
+        this.inPlace = inPlace;
+        this.beginC = beginC;
+        this.numC = numC;
+    }
 }

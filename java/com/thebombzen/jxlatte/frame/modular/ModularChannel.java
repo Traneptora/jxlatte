@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte.frame.modular;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -161,8 +162,8 @@ public class ModularChannel {
         int[] subpred = new int[4];
         long[] weight = new long[4];
         for (int y0 = 0; y0 < height; y0++) {
+            final int y = y0;
             for (int x0 = 0; x0 < width; x0++) {
-                final int y = y0;
                 final int x = x0;
                 int n3 = north(x, y) << 3;
                 int nw3 = northWest(x, y) << 3;
@@ -252,11 +253,16 @@ public class ModularChannel {
                         case 15:
                             return maxError;
                         default:
-                            throw new UnsupportedOperationException("Contexts > 15 not yet implmented");
+                            throw new UnsupportedOperationException("Properties > 15 not yet implmented");
                     }
                 });
-
-                int diff = stream.readSymbol(reader, node.context, distMultiplier);
+                int diff;
+                try {
+                    diff = stream.readSymbol(reader, node.context, distMultiplier);
+                } catch (EOFException ex) {
+                    System.err.println(node.context);
+                    throw ex;
+                }
                 diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
                 int trueValue = diff + prediction(x, y, node.predictor);
                 set(x, y, trueValue);
@@ -269,5 +275,67 @@ public class ModularChannel {
 
     public boolean isDecoded() {
         return buffer != null;
+    }
+
+    private static int tendency(int a, int b, int c) {
+        int x = (4 * a - 3 * c - b + 6) / 12;
+
+        if (a >= b && b >= c) {
+            int d = 2 * (a - b);
+            int e = 2 * (b - c);
+            if ((x - (x & 1)) > d)
+                x = d + 1;
+            if ((x + (x & 1)) > e)
+                x = e;
+            return x;
+        }
+
+        if (a <= b && b <= c) {
+            int d = 2 * (a - b);
+            int e = 2 * (b - c);
+            if ((x + (x & 1)) < d)
+                x = d - 1;
+            if ((x - (x & 1)) < e)
+                x = e;
+            return x;
+        }
+
+        return 0;
+    }
+
+    public void squeezeHorizontally(ModularChannel orig, ModularChannel res) {
+        allocate();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < res.width; x++) {
+                int avg = orig.get(x, y);
+                int residu = res.get(x, y);
+                int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
+                int left = x > 0 ? this.get((x << 1) - 1, y) : avg;
+                int diff = residu + tendency(left, avg, nextAvg);
+                int first = avg + diff / 2;
+                set(2 * x, y, first);
+                set(2 * x + 1, y, first - diff);
+            }
+            if (orig.width > res.width)
+                set(2 * res.width, y, orig.get(res.width, y));
+        }
+    }
+
+    public void squeezeVertically(ModularChannel orig, ModularChannel res) {
+        allocate();
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < res.height; y++) {
+                int avg = orig.get(x, y);
+                int residu = res.get(x, y);
+                int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;
+                int top = y > 0 ? this.get(x, (y << 1) - 1) : avg;
+                int diff = residu + tendency(top, avg, nextAvg);
+                int first = avg + diff / 2;
+                set(x, 2 * y, first);
+                set(x, 2 * y + 1, first - diff);
+            }
+            if (orig.height > res.height)
+                set(x, 2 * res.height, orig.get(x, res.height));
+        }
     }
 }

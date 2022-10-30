@@ -35,12 +35,12 @@ public class MATree {
                 int offset = MathHelper.unpackSigned(stream.readSymbol(reader, 3));
                 int mulLog = stream.readSymbol(reader, 4);
                 int mulBits = stream.readSymbol(reader, 5);
-                
                 int multiplier = (mulBits + 1) << mulLog;
                 MALeafNode node = new MALeafNode(context, predictor, offset, multiplier);
                 nodes.add(node);
             }
         }
+        System.err.println(nodes.toString());
         this.stream = new EntropyStream(reader, (getSize() + 1) / 2);
     }
 

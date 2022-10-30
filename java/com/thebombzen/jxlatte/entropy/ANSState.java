@@ -22,4 +22,8 @@ public class ANSState {
         this.state = state;
         this.initialized = true;
     }
+
+    public void reset() {
+        this.initialized = false;
+    }
 }

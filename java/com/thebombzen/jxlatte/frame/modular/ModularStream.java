@@ -1,8 +1,12 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
@@ -38,12 +42,15 @@ public class ModularStream {
     private boolean transformed = false;
 
     private List<ModularChannel> channels = new LinkedList<>();
+    private Map<Integer, SqueezeParam[]> spar = new HashMap<>();
 
-    public ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int channelCount, int ecStart) throws IOException {
+    public ModularStream(Bitreader reader, MATree globalTree, Frame frame,
+            int streamIndex, int channelCount, int ecStart) throws IOException {
         this(reader, globalTree, frame, streamIndex, channelCount, ecStart, null);
     }
 
-    public ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, ModularChannel[] channelArray) throws IOException {
+    public ModularStream(Bitreader reader, MATree globalTree, Frame frame,
+            int streamIndex, ModularChannel[] channelArray) throws IOException {
         this(reader, globalTree, frame, streamIndex, channelArray.length, 0, channelArray);
     }
 
@@ -85,21 +92,50 @@ public class ModularStream {
                     channels.remove(start);
                 channels.add(0, new ModularChannel(transforms[i].nbColors, transforms[i].numC, -1));
             } else if (transforms[i].tr == TransformInfo.SQUEEZE) {
-                int begin = transforms[i].beginC;
-                int end = begin + transforms[i].numC - 1;
-                for (int j = 0; j < transforms[i].sp.length; j++) {
-                    int r = transforms[i].sp[j].inPlace ? end + 1 : channels.size();
+                List<SqueezeParam> spar = new ArrayList<>();
+                if (transforms[i].sp.length == 0) {
+                    int first = nbMetaChannels;
+                    int count = channels.size() - first;
+                    w = channels.get(first).width;
+                    h = channels.get(first).height;
+                    if (count > 2 && channels.get(first + 1).width == w && channels.get(first + 1).height == h) {
+                       spar.add(new SqueezeParam(true, false, first + 1, 2));
+                       spar.add(new SqueezeParam(false, false, first + 1, 2));
+                    }
+                    if (h >= w && h > 8) {
+                        spar.add(new SqueezeParam(false, true, first, count));
+                        h = (h + 1) / 2;
+                    }
+                    while (w > 8 || h > 8) {
+                        if (w > 8) {
+                            spar.add(new SqueezeParam(true, true, first, count));
+                            w = (w + 1) / 2;
+                        }
+                        if (h > 8) {
+                            spar.add(new SqueezeParam(false, true, first, count));
+                            h = (h + 1) / 2;
+                        }
+                    }
+                } else {
+                    spar.addAll(Arrays.asList(transforms[i].sp));
+                }
+                SqueezeParam[] spa = spar.stream().toArray(SqueezeParam[]::new);
+                this.spar.put(i, spa);
+                for (int j = 0; j < spa.length; j++) {
+                    int begin = spa[j].beginC;
+                    int end = begin + spa[j].numC - 1;
+                    int r = spa[j].inPlace ? end + 1 : channels.size();
                     if (begin < nbMetaChannels) {
-                        if (!transforms[i].sp[j].inPlace)
+                        if (!spa[j].inPlace)
                             throw new InvalidBitstreamException("squeeze meta must be in place");
                         if (end >= nbMetaChannels)
                             throw new InvalidBitstreamException("squeeze meta must end in meta");
-                        nbMetaChannels += transforms[i].sp[j].numC;
+                        nbMetaChannels += spa[j].numC;
                     }
                     for (int k = begin; k <= end; k++) {
                         ModularChannel residu;
                         ModularChannel chan = channels.get(k);
-                        if (transforms[i].sp[j].horizontal) {
+                        if (spa[j].horizontal) {
                             w = chan.width;
                             chan.width = (w + 1) / 2;
                             chan.hshift++;
@@ -117,17 +153,14 @@ public class ModularStream {
                 }
             }
         }
-
         if (!useGlobalTree) {
             tree = new MATree(reader);
-            this.stream = tree.stream;
         } else {
             this.tree = globalTree;
-            if (this.streamIndex == 0)
-                this.stream = globalTree.stream;
-            else
-                this.stream = new EntropyStream(reader, (tree.getSize() + 1) / 2);
         }
+        this.stream = tree.stream;
+        if (stream.validateFinalState())
+            stream.reset();
 
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {
@@ -156,7 +189,7 @@ public class ModularStream {
         return channels.size();
     }
 
-    public void replaceEncodedChannel(int index, ModularChannel channel) {
+    public void replaceChannel(int index, ModularChannel channel) {
         channels.set(index, channel);
     }
 
@@ -174,7 +207,27 @@ public class ModularStream {
         transformed = true;
         for (int i = transforms.length - 1; i >= 0; i--) {
             if (transforms[i].tr == TransformInfo.SQUEEZE) {
-                throw new UnsupportedOperationException("Squeeze not yet implemented");
+                SqueezeParam[] spa = spar.get(i);
+                for (int j = spa.length - 1; j >= 0; j--) {
+                    SqueezeParam sp = spa[j];
+                    int begin = sp.beginC;
+                    int end = begin + sp.numC - 1;
+                    int r = sp.inPlace ? end + 1 : channels.size() + begin - end - 1;
+                    for (int c = begin; c <= end; c++) {
+                        ModularChannel chan = channels.get(c);
+                        ModularChannel output;
+                        ModularChannel rChan = channels.get(r);
+                        if (sp.horizontal) {
+                            output = new ModularChannel(chan.width + rChan.width, chan.height, chan.hshift, chan.vshift);
+                            output.squeezeHorizontally(chan, rChan);
+                        } else {
+                            output = new ModularChannel(chan.width, chan.height + rChan.height, chan.hshift, chan.vshift);
+                            output.squeezeVertically(chan, rChan);
+                        }
+                        channels.set(c, output);
+                        channels.remove(r);
+                    }
+                }
             }
             if (transforms[i].tr == TransformInfo.RCT) {
                 int permutation = transforms[i].rctType / 7;
@@ -265,8 +318,13 @@ public class ModularStream {
                     }
                 }
                 channels.remove(0);
+                nbMetaChannels--;
             }
         }
+    }
+
+    public EntropyStream getEntropyStream() {
+        return stream;
     }
 
     public int[][][] getDecodedBuffer() {

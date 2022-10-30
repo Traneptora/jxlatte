@@ -40,11 +40,11 @@ public class InputStreamBitreader implements Bitreader {
                 eof = true;
                 break;
             }
-            cache = cache | ((b & 0xFFL) << cacheBits);
+            cache |= (b & 0xFFL) << cacheBits;
             cacheBits += 8;
         }
         if (eof && bits > cacheBits)
-            throw new EOFException("Unable to read enough bits");
+            throw new EOFException("Unable to read enough bits: " + (getBitsCount() + bits));
         return readBits(bits);
     }
 
@@ -52,7 +52,7 @@ public class InputStreamBitreader implements Bitreader {
     public int showBits(int bits) throws IOException {
         int n = readBits(bits);
         bitsRead -= bits;
-        cache = (cache << bits) | (n & 0xFFFFFFFFL);
+        cache = (cache << bits) | (n & ~(~0L << bits));
         cacheBits += bits;
         return n;
     }
@@ -94,19 +94,18 @@ public class InputStreamBitreader implements Bitreader {
     }
 
     public int readBytes(byte[] buffer, int offset, int length) throws IOException {
-        int align = cacheBits % 8;
-        skipBits(align);
+        if (length == 0)
+            return 0;
+        if (cacheBits % 8 != 0)
+            throw new IllegalStateException("You must align before readBytes");
         int cacheBytes = cacheBits / 8;
         for (int i = 0; i < cacheBytes; i++) {
             if (length-- < 1)
                 return i;
-            buffer[offset + i] = (byte)(cache & 0xFF);
-            cache >>>= 8;
-            cacheBits -= 8;
-            bitsRead += 8;
+            buffer[offset + i] = (byte)readBits(8);
         }
         int remaining = IOHelper.readFully(in, buffer, offset + cacheBytes, length);
-        bitsRead += length - remaining;
+        bitsRead += (length - remaining) * 8L;
         int ret = cacheBytes + length - remaining;
         if (ret == 0)
             return -1;

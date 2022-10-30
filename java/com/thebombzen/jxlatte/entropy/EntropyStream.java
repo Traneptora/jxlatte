@@ -82,7 +82,7 @@ public class EntropyStream {
     public EntropyStream(Bitreader reader, int numDists) throws IOException {
         if (numDists <= 0)
             throw new IllegalArgumentException("Num Dists must be positive");
-        
+
         usesLZ77 = reader.readBool();
         if (usesLZ77) {
             lz77MinSymbol = reader.readU32(224, 0, 512, 0, 4096, 0, 8, 15);
@@ -102,7 +102,7 @@ public class EntropyStream {
 
         for (int i = 0; i < configs.length; i++)
             configs[i] = new HybridIntegerConfig(reader, logAlphabetSize);
-        
+
         if (prefixCodes) {
             int[] alphabetSizes = new int[dists.length];
             for (int i = 0; i < dists.length; i++) {
@@ -121,6 +121,15 @@ public class EntropyStream {
         }
         for (int i = 0; i < dists.length; i++)
             dists[i].config = configs[i];
+    }
+
+    public void reset() {
+        this.numToCopy77 = 0;
+        this.state.reset();
+    }
+
+    public boolean validateFinalState() {
+        return !state.isInitialized() || state.getState() == 0x130000;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
@@ -151,8 +160,7 @@ public class EntropyStream {
             if (distanceMultiplier == 0) {
                 distance++;
             } else if (distance < 120) {
-                distance = SPECIAL_DISTANCES[distance][0];
-                distance += distanceMultiplier * SPECIAL_DISTANCES[distance][1];
+                distance = SPECIAL_DISTANCES[distance][0] + distanceMultiplier * SPECIAL_DISTANCES[distance][1];
             } else {
                 distance -= 119;
             }
@@ -186,4 +194,3 @@ public class EntropyStream {
         return (((token << n) | reader.readBits(n)) << config.lsbInToken) | low;
     }
 }
-

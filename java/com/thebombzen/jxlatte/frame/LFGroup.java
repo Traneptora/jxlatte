@@ -1,11 +1,9 @@
-package com.thebombzen.jxlatte.frame.lfgroup;
+package com.thebombzen.jxlatte.frame;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.lfglobal.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
@@ -31,11 +29,13 @@ public class LFGroup {
         }
         this.replacedChannelIndices = replacedChannelIndices.stream().mapToInt(Integer::intValue).toArray();
 
-        lfStream = new ModularStream(reader, globalModular.globalTree, parent, 1 + index,
+        lfStream = new ModularStream(reader, globalModular.globalTree, parent, 1 + parent.getNumLFGroups() + index,
             channels.stream().toArray(ModularChannel[]::new));
         lfStream.decodeChannels(reader, false);
         lfStream.applyTransforms();
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT) {
+            this.lfCoeff = new LFCoefficients(reader);
+            this.hfCoeff = new HFCoefficients(reader);
             throw new UnsupportedOperationException("VarDCT currently not implemented");
         } else {
             this.lfCoeff = null;

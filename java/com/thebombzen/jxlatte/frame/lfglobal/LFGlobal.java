@@ -26,7 +26,8 @@ public class LFGlobal {
             int numPatches = stream.readSymbol(reader, 0);
             patches = new Patch[numPatches];
             for (int i = 0; i < numPatches; i++) {
-                patches[i] = new Patch(stream, reader, parent.globalMetadata.getExtraChannelCount(), parent.globalMetadata.getNumAlphaChannels());
+                patches[i] = new Patch(stream, reader,
+                    parent.globalMetadata.getExtraChannelCount(), parent.globalMetadata.getNumAlphaChannels());
             }
         } else {
             patches = new Patch[0];

@@ -133,6 +133,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         if (!this.state.isInitialized())
             this.state.setState(reader.readBits(32));
 
+
         int state = this.state.getState();
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;

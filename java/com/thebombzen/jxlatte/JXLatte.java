@@ -47,7 +47,7 @@ public class JXLatte {
     }
 
     public static void main(String[] args) throws Throwable {
-        String inputFilename = args.length > 0 ? args[0] : "samples/bench.jxl";
+        String inputFilename = args.length > 0 ? args[0] : "samples/lenna.jxl";
         String outputFilename = args.length > 1 ? args[1] : "output.png";
         JXLatte jxlatte = new JXLatte(inputFilename);
         JXLImage image = jxlatte.decode();
