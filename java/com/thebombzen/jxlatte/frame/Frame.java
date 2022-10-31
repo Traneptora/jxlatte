@@ -189,8 +189,10 @@ public class Frame {
                         channel.allocate();
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
                     int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
-                    int y0 = (group / rowStride) * newChannel.height;
-                    int x0 = (group % rowStride) * newChannel.width;
+                    int column = (group / rowStride);
+                    int row = (group % rowStride);
+                    int y0 = column * newChannel.height;
+                    int x0 = row * newChannel.width;
                     for (int y = 0; y < newChannel.height; y++) {
                         for (int x = 0; x < newChannel.width; x++) {
                             channel.set(x + x0, y + y0, newChannel.get(x, y));
@@ -202,6 +204,7 @@ public class Frame {
 
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
+
         for (int c = 0; c < buffer.length; c++) {
             for (int y = 0; y < header.height; y++) {
                 for (int x = 0; x < header.width; x++) {
@@ -209,7 +212,6 @@ public class Frame {
                 }
             }
         }
-
         return buffer;
     }
 
