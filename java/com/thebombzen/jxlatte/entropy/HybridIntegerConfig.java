@@ -29,7 +29,12 @@ public class HybridIntegerConfig {
         lsbInToken = reader.readBits(MathHelper.ceilLog1p(splitExponent - msbInToken));
         if (msbInToken + lsbInToken > splitExponent) {
             throw new InvalidBitstreamException("msbInToken + lsbInToken is too large");
-        }
-            
+        }    
+    }
+
+    @Override
+    public String toString() {
+        return String.format("HybridIntegerConfig [splitExponent=%s, msbInToken=%s, lsbInToken=%s]", splitExponent,
+                msbInToken, lsbInToken);
     }
 }

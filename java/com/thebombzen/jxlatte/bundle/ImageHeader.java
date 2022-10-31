@@ -227,7 +227,7 @@ public class ImageHeader {
     }
 
     public int getNumAlphaChannels() {
-        return alphaIndices.length;
+        return alphaIndices != null ? alphaIndices.length : 0;
     }
 
     public boolean hasAlpha() {

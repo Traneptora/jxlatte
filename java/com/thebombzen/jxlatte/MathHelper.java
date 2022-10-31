@@ -30,10 +30,18 @@ public final class MathHelper {
         return (numerator - 1) / denominator + 1;
     }
 
+    public static int floorLog1p(long x) {
+        int c = ceilLog1p(x);
+        // if x - 1 is not a power of 2
+        if (((x - 1) & (x - 2)) != 0)
+            return c - 1;
+        return c;
+    }
+
     public static int floorLog1p(int x) {
         int c = ceilLog1p(x);
-        // if x is not a power of 2
-        if ((x & (x - 1)) != 0)
+        // if x - 1 is not a power of 2
+        if (((x - 1) & (x - 2)) != 0)
             return c - 1;
         return c;
     }

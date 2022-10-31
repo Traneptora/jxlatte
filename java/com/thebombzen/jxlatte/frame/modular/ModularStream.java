@@ -164,9 +164,7 @@ public class ModularStream {
 
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {
-            w = channels.get(i).width;
-            if (w > d)
-                d = w;
+            d = Math.max(channels.get(i).width, d);
         }
         distMultiplier = d;
     }

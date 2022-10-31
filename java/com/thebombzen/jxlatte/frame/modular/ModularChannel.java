@@ -1,6 +1,5 @@
 package com.thebombzen.jxlatte.frame.modular;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -43,7 +42,7 @@ public class ModularChannel {
     }
 
     public void set(int x, int y, int s) {
-        if (y >= 0 && y < buffer.length && x >= 0 && x <= buffer[y].length)
+        if (y >= 0 && y < buffer.length && x >= 0 && x < buffer[y].length)
             buffer[y][x] = s;
     }
 
@@ -187,24 +186,25 @@ public class ModularChannel {
                     int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
                         + teWestWest(x, y, e) + teNorthEast(x, y, e);
                     if (x == width - 1)
-                        eSum += teWest(x, y, e);
+                    eSum += teWest(x, y, e);
                     int shift = MathHelper.floorLog1p(eSum) - 5;
                     if (shift < 0)
                         shift = 0;
                     weight[e] = 4L + (((long)wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
                     wSum += weight[e];
                 }
-                int logWeight = MathHelper.ceilLog1p(wSum);
+ 
+                int logWeight = MathHelper.floorLog1p(wSum - 1);
                 wSum = 0;
                 for (int e = 0; e < 4; e++) {
-                    weight[e] >>= logWeight - 5;
+                    weight[e] >>= logWeight - 4;
                     wSum += weight[e];
                 }
                 long s = (wSum >> 1) - 1L;
                 for (int e = 0; e < 4; e++) {
                     s += subpred[e] * weight[e];
                 }
-                pred[x][y] = (int)(((s * ((1L << 24) / wSum)) >> 24) & 0xFF_FF_FF_FFL);
+                pred[x][y] = (int)((s * ((1L << 24) / wSum)) >> 24);
                 if (((tN ^ tW) | (tN ^ tNW)) <= 0)
                     pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
                 int maxError0 = tW;
@@ -215,6 +215,7 @@ public class ModularChannel {
                 if (Math.abs(tNE) > Math.abs(maxError0))
                     maxError0 = tNE;
                 final int maxError = maxError0;
+
 
                 MALeafNode node = tree.walk(k -> {
                     switch (k) {
@@ -236,7 +237,7 @@ public class ModularChannel {
                             return west(x, y);
                         case 8:
                             return x > 0
-                                ? west(x, y) - west(x - 1, y) - north(x - 1, y) + northWest(x - 1, y)
+                                ? west(x, y) - (west(x - 1, y) + north(x - 1, y) - northWest(x - 1, y))
                                 : west(x, y);
                         case 9:
                             return west(x, y) + north(x, y) - northWest(x, y);
@@ -256,19 +257,15 @@ public class ModularChannel {
                             throw new UnsupportedOperationException("Properties > 15 not yet implmented");
                     }
                 });
-                int diff;
-                try {
-                    diff = stream.readSymbol(reader, node.context, distMultiplier);
-                } catch (EOFException ex) {
-                    System.err.println(node.context);
-                    throw ex;
-                }
+                int diff = stream.readSymbol(reader, node.context, distMultiplier);
                 diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
                 int trueValue = diff + prediction(x, y, node.predictor);
                 set(x, y, trueValue);
                 trueError[x][y] = pred[x][y] - (trueValue << 3);
-                for (int e = 0; e < 4; e++)
-                    error[x][y][e] = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
+                for (int e = 0; e < 4; e++) {
+                    int err = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
+                    error[x][y][e] = err;
+                }
             }
         }
     }

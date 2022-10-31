@@ -69,7 +69,7 @@ public class VLCTable {
         int index = reader.showBits(bits);
         int symbol = table[index][0];
         int length = table[index][1];
-        reader.readBits(length);
+        reader.skipBits(length);
         return symbol;
     }
 }

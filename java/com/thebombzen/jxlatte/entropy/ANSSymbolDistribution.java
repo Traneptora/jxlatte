@@ -53,6 +53,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
                     uniqPos = v2;
             } else {
                 int x = reader.readU8();
+                if (x >= frequencies.length)
+                    throw new InvalidBitstreamException("Invalid frequency position");
                 frequencies[x] = 1 << 12;
                 uniqPos = x;
             }
@@ -67,11 +69,11 @@ public class ANSSymbolDistribution extends SymbolDistribution {
             for (int i = 0; i < (1 << 12) % alphabetSize; i++)
                 frequencies[i]++;
         } else {
-            int len = 0;
-            do {
+            int len;
+            for (len = 0; len < 3; len++) {
                 if (!reader.readBool())
                     break;
-            } while (++len < 3);
+            }
             int shift = (reader.readBits(len) | (1 << len)) - 1;
             if (shift > 13)
                 throw new InvalidBitstreamException("Shift > 13");
@@ -130,21 +132,22 @@ public class ANSSymbolDistribution extends SymbolDistribution {
 
     @Override
     public int readSymbol(Bitreader reader) throws IOException {
-        if (!this.state.isInitialized())
+        if (!this.state.isInitialized()) {
             this.state.setState(reader.readBits(32));
-
+        }
 
         int state = this.state.getState();
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);
-        int symbol = pos >= cutoffs[i] ? symbols[i] : i;
-        int offset = pos >= cutoffs[i] ? offsets[i] + pos : pos;
+        boolean greater = pos >= cutoffs[i];
+        int symbol = greater ? symbols[i] : i;
+        int offset = greater ? offsets[i] + pos : pos;
         state = frequencies[symbol] * (state >>> 12) + offset;
-        if ((state & 0xFFFF0000) == 0)
+        if ((state & 0xFFFF0000) == 0) {
             state = (state << 16) | reader.readBits(16);
+        }
         this.state.setState(state);
-
         return symbol;
     }
 
@@ -171,7 +174,6 @@ public class ANSSymbolDistribution extends SymbolDistribution {
 
         for (int i = 0; i < alphabetSize; i++) {
             cutoffs[i] = frequencies[i];
-            symbols[i] = i;
             if (cutoffs[i] > bucketSize)
                 overfull.addFirst(i);
             else if (cutoffs[i] < bucketSize)

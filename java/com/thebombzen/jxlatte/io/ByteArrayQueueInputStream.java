@@ -54,4 +54,17 @@ public class ByteArrayQueueInputStream extends InputStream {
         bufferPos += count;
         return count;
     }
+
+    @Override
+    public long skip(long n) throws IOException {
+        if (n <= 0)
+            return 0;
+        if (refillBuffer())
+            return 0;
+        int count = available();
+        if (count > n)
+            count = (int)n;
+        bufferPos += count;
+        return count;        
+    }
 }

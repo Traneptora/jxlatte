@@ -80,13 +80,19 @@ public class InputStreamBitreader implements Bitreader {
             return 0;
         if (bits <= cacheBits) {
             cacheBits -= bits;
+            cache >>>= bits;
             bitsRead += bits;
             return bits;
         }
-        long skipped = bits - IOHelper.skipFully(in, bits - cacheBits);
-        cacheBits = 0;
+        long cacheSave = cacheBits;
+        skipBits(cacheBits);
+        bits -= cacheSave;
+        long dangler = bits % 8L;
+        long skipped = bits - dangler - 8L * IOHelper.skipFully(in, (bits - dangler) / 8L);
         bitsRead += skipped;
-        return skipped;
+        skipped += cacheSave;
+        readBits((int)dangler);
+        return skipped + dangler;
     }
 
     public long getBitsCount() {

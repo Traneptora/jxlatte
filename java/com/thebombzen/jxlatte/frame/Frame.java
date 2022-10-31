@@ -3,7 +3,6 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
@@ -91,8 +90,6 @@ public class Frame {
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
 
-        System.err.println(Arrays.toString(tocLengths));
-
         globalReader.zeroPadToByte();
     }
 
@@ -144,9 +141,11 @@ public class Frame {
         lfGlobal = new LFGlobal(getBitreader(0), this);
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
+
         for (int i = 0; i < numLFGroups; i++) {
             lfGroups[i] = new LFGroup(getBitreader(1 + i), this, i);
         }
+
         for (int i = 0; i < numLFGroups; i++) {
             int[] indices = lfGroups[i].replacedChannelIndices;
             for (int j = 0; j < indices.length; j++) {
@@ -155,7 +154,7 @@ public class Frame {
                 if (!channel.isDecoded())
                     channel.allocate();
                 ModularChannel newChannel = lfGroups[i].lfStream.getChannel(j);
-                int rowStride = MathHelper.ceilDiv(header.width, newChannel.width);
+                int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
                 int y0 = (i / rowStride) * newChannel.height;
                 int x0 = (i % rowStride) * newChannel.width;
                 for (int y = 0; y < newChannel.height; y++) {
@@ -170,14 +169,11 @@ public class Frame {
             throw new UnsupportedOperationException("VarDCT is not yet implemented");
         }
 
-        System.err.println(Arrays.toString(tocLengths) + ", " + globalReader.getBitsCount());
-
         int numPasses = header.passes.numPasses;
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
         for (int pass = 0; pass < header.passes.numPasses; pass++) {
             for (int group = 0; group < numGroups; group++) {
                 Bitreader reader = getBitreader(2 + numLFGroups + pass * numGroups + group);
-                System.err.println(group + ": " + globalReader.getBitsCount());
                 passGroups[pass][group] = new PassGroup(reader, this, pass, group,
                     pass > 0 ? passGroups[pass - 1][group].minShift : 0);
             }
@@ -192,12 +188,12 @@ public class Frame {
                     if (!channel.isDecoded())
                         channel.allocate();
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    int rowStride = MathHelper.ceilDiv(header.width, newChannel.width);
+                    int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
                     int y0 = (group / rowStride) * newChannel.height;
                     int x0 = (group % rowStride) * newChannel.width;
                     for (int y = 0; y < newChannel.height; y++) {
                         for (int x = 0; x < newChannel.width; x++) {
-                            channel.set(x + x0, y + y0, newChannel.get(x ,y));
+                            channel.set(x + x0, y + y0, newChannel.get(x, y));
                         }
                     }
                 }

@@ -86,7 +86,9 @@ public interface Bitreader extends Closeable {
         if (!readBool())
             return 0;
         int n = readBits(3);
-        return readBits(n) | (1 << n);
+        if (n == 0)
+            return 1;
+        return readBits(n) + (1 << n);
     }
 
     public void zeroPadToByte() throws IOException;

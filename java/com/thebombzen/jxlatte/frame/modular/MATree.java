@@ -40,7 +40,6 @@ public class MATree {
                 nodes.add(node);
             }
         }
-        System.err.println(nodes.toString());
         this.stream = new EntropyStream(reader, (getSize() + 1) / 2);
     }
 
