@@ -12,7 +12,7 @@ public class LFGlobal {
     public final Patch[] patches;
     public final Splines splines;
     public final NoiseParamters noiseParamters;
-    public final float[] lfDequant = new float[]{4096f, 512f, 256f};
+    public final double[] lfDequant = new double[]{1D / 4096D, 1D / 512D, 1D / 256D};
     public final Quantizer quantizer;
     public final HFBlockContext hfBlockCtx;
     public final LFChannelCorrelation lfChanCorr;
@@ -29,6 +29,7 @@ public class LFGlobal {
                 patches[i] = new Patch(stream, reader,
                     parent.globalMetadata.getExtraChannelCount(), parent.globalMetadata.getNumAlphaChannels());
             }
+            throw new UnsupportedOperationException("Patches not yet implemented");
         } else {
             patches = new Patch[0];
         }
@@ -44,7 +45,7 @@ public class LFGlobal {
         }
         if (!reader.readBool()) {
             for (int i = 0; i < 3; i++) {
-                lfDequant[i] = reader.readF16();
+                lfDequant[i] = reader.readF16() * (1D / 128D);
             }
         }
         if (frame.getFrameHeader().encoding == FrameFlags.VARDCT) {

@@ -55,6 +55,6 @@ public class JXLatte {
         try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outputFilename))) {
             writer.write(out);
         }
-        System.out.format("width, height: %d, %d%n", image.getWidth(), image.getHeight());
+        System.err.format("width, height: %d, %d%n", image.getWidth(), image.getHeight());
     }
 }

@@ -275,9 +275,8 @@ public class ModularChannel {
     }
 
     private static int tendency(int a, int b, int c) {
-        int x = (4 * a - 3 * c - b + 6) / 12;
-
         if (a >= b && b >= c) {
+            int x = (4 * a - 3 * c - b + 6) / 12;
             int d = 2 * (a - b);
             int e = 2 * (b - c);
             if ((x - (x & 1)) > d)
@@ -288,6 +287,7 @@ public class ModularChannel {
         }
 
         if (a <= b && b <= c) {
+            int x = (4 * a - 3 * c - b - 6) / 12;
             int d = 2 * (a - b);
             int e = 2 * (b - c);
             if ((x + (x & 1)) < d)
@@ -300,7 +300,10 @@ public class ModularChannel {
         return 0;
     }
 
-    public void squeezeHorizontally(ModularChannel orig, ModularChannel res) {
+    public void inverseSqueezeHorizontal(ModularChannel orig, ModularChannel res) {
+        if (this.width != orig.width + res.width || (orig.width != res.width && orig.width != 1 + res.width)) {
+            throw new IllegalStateException("Corrupted squeeze transform");
+        }
         allocate();
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < res.width; x++) {
@@ -318,7 +321,10 @@ public class ModularChannel {
         }
     }
 
-    public void squeezeVertically(ModularChannel orig, ModularChannel res) {
+    public void inverseSqueezeVertical(ModularChannel orig, ModularChannel res) {
+        if (this.height != orig.height + res.height || (orig.height != res.height && orig.height != 1 + res.height)) {
+            throw new IllegalStateException("Corrupted squeeze transform");
+        }
         allocate();
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < res.height; y++) {

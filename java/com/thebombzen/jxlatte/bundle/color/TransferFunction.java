@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.bundle.color;
 
+import java.util.function.DoubleUnaryOperator;
+
 public interface TransferFunction {
     public static final int BT709 = 1 + (1 << 24);
     public static final int UNKNOWN = 2 + (1 << 24);
@@ -26,16 +28,16 @@ public interface TransferFunction {
                 || transfer == HLG;
     }
 
-    public static FloatFunction getTransferFunction(int transfer) {
+    public static DoubleUnaryOperator getTransferFunction(int transfer) {
         switch (transfer) {
             case LINEAR:
                 return f -> f;
             case SRGB:
                 return f -> {
-                    if (f <= 0.00313066844250063f)
-                        return f * 12.92f;
+                    if (f <= 0.00313066844250063D)
+                        return f * 12.92D;
                     else
-                        return 1.055f * (float)Math.pow(f, 1d/2.4d) - 0.055f;
+                        return 1.055D * Math.pow(f, 1D/2.4D) - 0.055D;
                 };
             case BT709:
             case PQ:
@@ -45,7 +47,7 @@ public interface TransferFunction {
         }
         if (transfer < (1 << 24)) {
             float gamma = 1e7f / (float)transfer;
-            return f -> (float)Math.pow(f, gamma);
+            return f -> Math.pow(f, gamma);
         }
         return null;
     }

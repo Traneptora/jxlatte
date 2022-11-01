@@ -17,7 +17,6 @@ public class PNGWriter {
     private double[][][] buffer;
     private DataOutputStream out;
     private int maxValue;
-    private double inputMaxValue;
     private int width;
     private int height;
     private int colorMode;
@@ -31,11 +30,6 @@ public class PNGWriter {
         this.bitDepth = bitDepth;
         this.buffer = image.getBuffer();
         this.maxValue = ~(~0 << bitDepth);
-        if (image.getHeader().getBitDepthHeader().expBits > 0) {
-            this.inputMaxValue = 1.0d;
-        } else {
-            this.inputMaxValue = ~(~0L << image.getHeader().getBitDepthHeader().bitsPerSample);
-        }
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.alphaIndex = image.getHeader().hasAlpha() ? image.getHeader().getAlphaIndex(0) : -1;
@@ -69,7 +63,7 @@ public class PNGWriter {
     }
 
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
-        int s = (int)(buffer[c][y][x] * maxValue / inputMaxValue);
+        int s = (int)(buffer[c][y][x] * maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
         if (bitDepth == 8)
             dout.writeByte(s);

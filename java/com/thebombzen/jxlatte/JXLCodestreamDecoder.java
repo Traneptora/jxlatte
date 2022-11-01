@@ -1,8 +1,11 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
+import java.util.function.DoubleUnaryOperator;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
+import com.thebombzen.jxlatte.bundle.color.OpsinInverseMatrix;
+import com.thebombzen.jxlatte.bundle.color.TransferFunction;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -50,6 +53,35 @@ public class JXLCodestreamDecoder {
         return 1 + p1 + 8 * p2;
     }
 
+    private void invertXYB(double[][][] inputBuffer) {
+        // x, y, b
+        OpsinInverseMatrix matrix = imageHeader.getOpsinInverseMatrix();
+        DoubleUnaryOperator sRGB = TransferFunction.getTransferFunction(TransferFunction.SRGB);
+        double cBiasL = MathHelper.signedPow(matrix.opsinBias[0], 1D / 3D);
+        double cBiasM = MathHelper.signedPow(matrix.opsinBias[1], 1D / 3D);
+        double cBiasS = MathHelper.signedPow(matrix.opsinBias[2], 1D / 3D);
+
+        for (int y = 0; y < imageHeader.getSize().height; y++) {
+            for (int x = 0; x < imageHeader.getSize().width; x++) {
+                double xybX = inputBuffer[0][y][x];
+                double xybY = inputBuffer[1][y][x];
+                double xybB = inputBuffer[2][y][x];
+                double gammaL = xybY + xybX;
+                double gammaM = xybY - xybX;
+                double gammaS = xybB;
+                double itScale = 255D / imageHeader.getToneMapping().intensityTarget;
+                double mixL = (MathHelper.signedPow(gammaL - cBiasL, 3D) + matrix.opsinBias[0]) * itScale;
+                double mixM = (MathHelper.signedPow(gammaM - cBiasM, 3D) + matrix.opsinBias[1]) * itScale;
+                double mixS = (MathHelper.signedPow(gammaS - cBiasS, 3D) + matrix.opsinBias[2]) * itScale;
+                for (int c = 0; c < 3; c++) {
+                    double linear709 =
+                        matrix.matrix[c][0] * mixL + matrix.matrix[c][1] * mixM + matrix.matrix[c][2] * mixS;
+                    inputBuffer[c][y][x] = sRGB.applyAsDouble(linear709);
+                }
+            }
+        }
+    }
+
     public JXLImage decode(int level) throws IOException {
         this.imageHeader = ImageHeader.parse(bitreader, level);
         if (imageHeader.getColorEncoding().useIccProfile) {
@@ -83,6 +115,9 @@ public class JXLCodestreamDecoder {
                 }
             }
         } while (!frame.getFrameHeader().isLast);
+        if (imageHeader.isXYBEncoded()) {
+            invertXYB(buffer);
+        }
         JXLImage image = new JXLImage(buffer, imageHeader);
         return image;
     }

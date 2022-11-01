@@ -189,10 +189,10 @@ public class Frame {
                         channel.allocate();
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
                     int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
-                    int column = (group / rowStride);
-                    int row = (group % rowStride);
-                    int y0 = column * newChannel.height;
-                    int x0 = row * newChannel.width;
+                    int row = (group / rowStride);
+                    int column = (group % rowStride);
+                    int y0 = row * newChannel.height;
+                    int x0 = column * newChannel.width;
                     for (int y = 0; y < newChannel.height; y++) {
                         for (int x = 0; x < newChannel.width; x++) {
                             channel.set(x + x0, y + y0, newChannel.get(x, y));
@@ -206,12 +206,32 @@ public class Frame {
         int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
         for (int c = 0; c < buffer.length; c++) {
+            double scaleFactor;
+            int cOut = c;
+            boolean xyb = globalMetadata.isXYBEncoded();
+            if (xyb) {
+                if (c < 2) {
+                    // X, Y, B is encoded as Y, X, (Y - B)
+                    cOut = 1 - c;
+                }
+                scaleFactor = lfGlobal.lfDequant[cOut];
+            } else if (globalMetadata.getBitDepthHeader().expBits != 0) {
+                scaleFactor = 1.0D;
+            } else {
+                scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
+            }
+
             for (int y = 0; y < header.height; y++) {
                 for (int x = 0; x < header.width; x++) {
-                    buffer[c][y][x] = streamBuffer[c][y][x];
+                    if (xyb && c == 2) {
+                        buffer[cOut][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
+                    } else {
+                        buffer[cOut][y][x] = scaleFactor * streamBuffer[c][y][x];
+                    }
                 }
             }
         }
+
         return buffer;
     }
 

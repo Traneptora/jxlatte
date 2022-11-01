@@ -124,7 +124,7 @@ public class ModularStream {
                 for (int j = 0; j < spa.length; j++) {
                     int begin = spa[j].beginC;
                     int end = begin + spa[j].numC - 1;
-                    int r = spa[j].inPlace ? end + 1 : channels.size();
+                    int offset = spa[j].inPlace ? end + 1 : channels.size();
                     if (begin < nbMetaChannels) {
                         if (!spa[j].inPlace)
                             throw new InvalidBitstreamException("squeeze meta must be in place");
@@ -135,6 +135,7 @@ public class ModularStream {
                     for (int k = begin; k <= end; k++) {
                         ModularChannel residu;
                         ModularChannel chan = channels.get(k);
+                        int r = offset + k - begin;
                         if (spa[j].horizontal) {
                             w = chan.width;
                             chan.width = (w + 1) / 2;
@@ -148,7 +149,7 @@ public class ModularStream {
                             residu = new ModularChannel(chan);
                             residu.height = h / 2;
                         }
-                        channels.add(r + k - begin, residu);
+                        channels.add(r, residu);
                     }
                 }
             }
@@ -210,20 +211,23 @@ public class ModularStream {
                     SqueezeParam sp = spa[j];
                     int begin = sp.beginC;
                     int end = begin + sp.numC - 1;
-                    int r = sp.inPlace ? end + 1 : channels.size() + begin - end - 1;
+                    int offset = sp.inPlace ? end + 1 : channels.size() + begin - end - 1;
                     for (int c = begin; c <= end; c++) {
+                        int r = offset + c - begin;
                         ModularChannel chan = channels.get(c);
-                        ModularChannel output;
                         ModularChannel rChan = channels.get(r);
+                        ModularChannel output;
                         if (sp.horizontal) {
-                            output = new ModularChannel(chan.width + rChan.width, chan.height, chan.hshift, chan.vshift);
-                            output.squeezeHorizontally(chan, rChan);
+                            output = new ModularChannel(chan.width + rChan.width, chan.height, chan.hshift - 1, chan.vshift);
+                            output.inverseSqueezeHorizontal(chan, rChan);
                         } else {
-                            output = new ModularChannel(chan.width, chan.height + rChan.height, chan.hshift, chan.vshift);
-                            output.squeezeVertically(chan, rChan);
+                            output = new ModularChannel(chan.width, chan.height + rChan.height, chan.hshift, chan.vshift - 1);
+                            output.inverseSqueezeVertical(chan, rChan);
                         }
                         channels.set(c, output);
-                        channels.remove(r);
+                    }
+                    for (int c = 0; c < end - begin + 1; c++) {
+                        channels.remove(offset);
                     }
                 }
             }

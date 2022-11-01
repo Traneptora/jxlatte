@@ -1,7 +1,6 @@
 package com.thebombzen.jxlatte.bundle.color;
 
 import java.io.IOException;
-import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -76,31 +75,5 @@ public class ColorEncodingBundle {
             tf = TransferFunction.SRGB;
             renderingIntent = RenderingIntent.RELATIVE;
         }
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(useIccProfile, colorSpace, whitePoint, white, primaries, prim, tf, renderingIntent);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ColorEncodingBundle other = (ColorEncodingBundle) obj;
-        return useIccProfile == other.useIccProfile && colorSpace == other.colorSpace && whitePoint == other.whitePoint
-                && Objects.equals(white, other.white) && primaries == other.primaries
-                && Objects.equals(prim, other.prim) && tf == other.tf && renderingIntent == other.renderingIntent;
-    }
-
-    @Override
-    public String toString() {
-        return "ColorEncodingBundle [useIccProfile=" + useIccProfile + ", colorSpace=" + colorSpace + ", whitePoint="
-                + whitePoint + ", white=" + white + ", primaries=" + primaries + ", prim=" + prim + ", tf=" + tf
-                + ", renderingIntent=" + renderingIntent + "]";
     }
 }

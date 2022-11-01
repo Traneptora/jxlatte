@@ -32,16 +32,16 @@ public final class MathHelper {
 
     public static int floorLog1p(long x) {
         int c = ceilLog1p(x);
-        // if x - 1 is not a power of 2
-        if (((x - 1) & (x - 2)) != 0)
+        // if x + 1 is not a power of 2
+        if (((x + 1) & x) != 0)
             return c - 1;
         return c;
     }
 
     public static int floorLog1p(int x) {
         int c = ceilLog1p(x);
-        // if x - 1 is not a power of 2
-        if (((x - 1) & (x - 2)) != 0)
+        // if x + 1 is not a power of 2
+        if (((x + 1) & x) != 0)
             return c - 1;
         return c;
     }
@@ -52,6 +52,10 @@ public final class MathHelper {
 
     public static int max3(int a, int b, int c) {
         return Math.max(a, Math.max(b, c));
+    }
+
+    public static double signedPow(double base, double exponent) {
+        return Math.signum(base) * Math.pow(Math.abs(base), exponent);
     }
 
     public static int clamp(int v, int a, int b) {

@@ -64,11 +64,13 @@ public interface Bitreader extends Closeable {
 
     public default float readF16() throws IOException {
         int bits16 = readBits(16);
-        int mantissa = (bits16 & 0x3FF) << 13;
-        int biased_exp = ((bits16 >> 10) & 0x1F) + 112;
+        int mantissa = bits16 & 0x3FF;
+        int biased_exp = (bits16 >>> 10) & 0x1F;
         // 143 == 31 + 127 - 15 == 31 + 112
-        if (biased_exp == 143)
+        if (biased_exp == 31)
             throw new InvalidBitstreamException("Illegal infinite/NaN float16");
+        biased_exp += 127 - 15;
+        mantissa <<= 13;
         int sign = (bits16 & 0x8000) << 16;
         int total = sign | (biased_exp << 23) | mantissa;
         return Float.intBitsToFloat(total);
