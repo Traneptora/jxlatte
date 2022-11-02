@@ -1,7 +1,5 @@
 package com.thebombzen.jxlatte.frame;
 
-import static com.thebombzen.jxlatte.ExceptionalSupplier.uncheck;
-
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -13,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.IntUnaryOperator;
 
+import com.thebombzen.jxlatte.ExceptionalSupplier;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -29,7 +28,7 @@ public class Frame {
     private int numGroups;
     private int numLFGroups;
 
-    private byte[][] buffers;
+    private CompletableFuture<byte[]>[] buffers;
     private int[] tocPermuation;
     private int[] tocLengths;
     private int[] groupOffsets;
@@ -83,42 +82,62 @@ public class Frame {
             for (int i = 0; i < tocEntries; i++)
                 tocPermuation[i] = i;
         }
-        
+
         globalReader.zeroPadToByte();
         tocLengths = new int[tocEntries];
-        buffers = new byte[tocEntries][];
+
+        {
+            @SuppressWarnings("unchecked")
+            CompletableFuture<byte[]>[] buffers = new CompletableFuture[tocEntries];
+            this.buffers = buffers;
+        }
+
+        for (int i = 0; i < tocEntries; i++)
+            buffers[i] = new CompletableFuture<>();
+
         int[] unPermgroupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++) {
             if (i > 0)
                 unPermgroupOffsets[i] = unPermgroupOffsets[i - 1] + tocLengths[i - 1];
             tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
         }
+
         groupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
-        
+
         globalReader.zeroPadToByte();
+
+        new Thread(() -> {
+            for (int i = 0; i < tocEntries; i++) {
+                try {
+                    byte[] buffer = readBuffer(i);
+                    buffers[i].complete(buffer);
+                } catch (Throwable ex) {
+                    buffers[i].completeExceptionally(ex);
+                }
+            }
+        }).start();
     }
 
-    private synchronized void readBuffer(int index) throws IOException {
+    private byte[] readBuffer(int index) throws IOException {
         int length = tocLengths[index];
-        buffers[index] = new byte[length];
-        int read = globalReader.readBytes(buffers[index], 0, length);
+        byte[] buffer = new byte[length];
+        int read = globalReader.readBytes(buffer, 0, length);
         if (read < length)
             throw new EOFException("Unable to read full TOC entry");
+        return buffer;
     }
 
-    private synchronized Bitreader getBitreader(int index) throws IOException {
+    private CompletableFuture<Bitreader> getBitreader(int index) throws IOException {
         if (tocLengths.length == 1) {
             this.globalReader.zeroPadToByte();
-            return this.globalReader;
+            return CompletableFuture.completedFuture(this.globalReader);
         }
         int permutedIndex = tocPermuation[index];
-        for (int i = 0; i <= permutedIndex; i++) {
-            if (buffers[i] == null)
-                readBuffer(i);
-        }
-        return new InputStreamBitreader(new ByteArrayInputStream(buffers[permutedIndex]));
+        return buffers[permutedIndex].thenApply((buff) -> {
+            return new InputStreamBitreader(new ByteArrayInputStream(buff));
+        });
     }
 
     public static int[] readPermutation(Bitreader reader, int size, int skip) throws IOException {
@@ -133,6 +152,8 @@ public class Frame {
             if (lehmer[i] >= size - i)
                 throw new InvalidBitstreamException("Illegal lehmer value in lehmer sequence");
         }
+        if (!stream.validateFinalState())
+            throw new InvalidBitstreamException("Invalid stream decoding TOC");
         List<Integer> temp = new LinkedList<Integer>();
         int[] permutation = new int[size];
         for (int i = 0; i < size; i++)
@@ -146,7 +167,7 @@ public class Frame {
 
     public double[][][] decodeFrame() throws IOException {
 
-        lfGlobal = new LFGlobal(getBitreader(0), this);
+        lfGlobal = new LFGlobal(getBitreader(0).join(), this);
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
 
@@ -166,15 +187,10 @@ public class Frame {
 
         @SuppressWarnings("unchecked")
         CompletableFuture<LFGroup>[] lfGroupFutures = new CompletableFuture[numLFGroups];
-        Bitreader[] lfBitreaders = new Bitreader[numLFGroups];
-
-        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
-            lfBitreaders[lfGroupID] = getBitreader(1 + lfGroupID);
-        }
 
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
             final int lfGroupID = lfGroupID0;
-            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(uncheck(() -> {
+            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
                 ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
@@ -190,7 +206,7 @@ public class Frame {
                     chan.x0 = x0;
                     chan.y0 = y0;
                 }
-                return new LFGroup(lfBitreaders[lfGroupID], this, lfGroupID, replaced);
+                return new LFGroup(getBitreader(1 + lfGroupID).join(), this, lfGroupID, replaced);
             }));
         }
 
@@ -224,15 +240,11 @@ public class Frame {
         for (int pass0 = 0; pass0 < numPasses; pass0++) {
             final int pass = pass0;
             passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
-            Bitreader[] bitreaders = new Bitreader[numGroups];
-            for (int group = 0; group < numGroups; group++) {
-                bitreaders[group] = getBitreader(2 + numLFGroups + pass * numGroups + group);
-            }
             @SuppressWarnings("unchecked")
             CompletableFuture<PassGroup>[] futures = new CompletableFuture[numGroups];
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                futures[group] = CompletableFuture.supplyAsync(uncheck(() -> {
+                futures[group] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
                     ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
                     for (ModularChannel chan : replaced) {
@@ -254,7 +266,7 @@ public class Frame {
                         chan.width = width;
                         chan.height = height;
                     }
-                    return new PassGroup(bitreaders[group], Frame.this,
+                    return new PassGroup(getBitreader(2 + numLFGroups + pass * numGroups + group).join(), Frame.this,
                         18 + 3 * numLFGroups + numGroups * pass + group, replaced);
                 }));
             }

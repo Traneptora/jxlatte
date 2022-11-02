@@ -1,13 +1,13 @@
-package com.thebombzen.jxlatte;
+package com.thebombzen.jxlatte.io;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.thebombzen.jxlatte.io.IOHelper;
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 
 public class DemuxerThread extends Thread {
 
@@ -32,8 +32,8 @@ public class DemuxerThread extends Thread {
 
     private InputStream in;
     private BlockingQueue<byte[]> queue = new LinkedBlockingQueue<>();
-    private Throwable error = null;
     private CompletableFuture<Integer> level = new CompletableFuture<>();
+    private CompletableFuture<Void> exception = new CompletableFuture<>();
 
     public DemuxerThread(InputStream in) {
         this.in = in;
@@ -43,8 +43,13 @@ public class DemuxerThread extends Thread {
         return queue;
     }
 
-    public Throwable getLastError() {
-        return error;
+
+    public void joinExceptionally() {
+        try {
+            exception.join();
+        } catch (CompletionException ex) {
+            IOHelper.sneakyThrow(ex.getCause());
+        }
     }
 
     public int getLevel() {
@@ -102,9 +107,12 @@ public class DemuxerThread extends Thread {
                     throw new InvalidBitstreamException(String.format("Invalid level: %d", level));
                 level.complete(l);
             }
+            boolean finalImageBox = tag == JXLC;
             if (tag == JXLP) {
-                if (IOHelper.skipFully(in, 4) != 0)
+                if (IOHelper.readFully(in, boxTag) != 0)
                     throw new InvalidBitstreamException("Truncated sequence number");
+                int sequenceNumber = (int)makeTag(boxTag);
+                finalImageBox = (sequenceNumber & 0x80_00_00_00) != 0;
                 size -= 4;
             }
             if (tag == JXLP || tag == JXLC) {
@@ -129,6 +137,8 @@ public class DemuxerThread extends Thread {
                         }
                     }
                 }
+                if (finalImageBox)
+                    return;
             } else {
                 if (size > 0) {
                     if (IOHelper.skipFully(in, size) != 0)
@@ -160,16 +170,16 @@ public class DemuxerThread extends Thread {
     public void run() {
         try {
             run0();
-        } catch (Throwable t) {
-            this.error = t;
+            exception.complete(null);
+        } catch (Throwable ex) {
+            exception.completeExceptionally(ex);
         } finally {
+            level.complete(5);
             try {
                 in.close();
-            } catch (IOException ex) {
-                if (error == null)
-                    error = ex;
+            } catch (Throwable ex) {
+                exception.completeExceptionally(ex);
             }
-            level.complete(5);
         }
     }
 }

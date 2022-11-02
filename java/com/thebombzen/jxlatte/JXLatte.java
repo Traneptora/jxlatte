@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.util.zip.Deflater;
 
 import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
+import com.thebombzen.jxlatte.io.DemuxerThread;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.io.PNGWriter;
 
@@ -18,14 +19,10 @@ public class JXLatte {
 
     private DemuxerThread demuxerThread;
     private JXLCodestreamDecoder decoder;
+    private InputStream in;
 
     public JXLatte(InputStream in) {
-        this.demuxerThread = new DemuxerThread(in);
-        demuxerThread.start();
-        this.decoder = new JXLCodestreamDecoder(
-            new InputStreamBitreader(
-            new ByteArrayQueueInputStream(
-            demuxerThread.getQueue())));
+        this.in = in;
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
@@ -33,15 +30,20 @@ public class JXLatte {
     }
 
     public JXLImage decode() throws IOException {
+        this.demuxerThread = new DemuxerThread(in);
+        demuxerThread.start();
+        this.decoder = new JXLCodestreamDecoder(
+            new InputStreamBitreader(
+            new ByteArrayQueueInputStream(
+            demuxerThread.getQueue())));
         IOException error = null;
         JXLImage ret = null;
         try {
-            ret = decoder.decode(demuxerThread.getLevel());;
+            ret = decoder.decode(demuxerThread.getLevel());
         } catch (IOException ex) {
             error = ex;
         }
-        if (demuxerThread.getLastError() != null)
-            throw new IOException(demuxerThread.getLastError());
+        demuxerThread.joinExceptionally();
         if (error != null)
             throw error;
         return ret;
