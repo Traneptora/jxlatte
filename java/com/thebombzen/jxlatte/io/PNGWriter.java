@@ -63,7 +63,7 @@ public class PNGWriter {
     }
 
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
-        int s = (int)(buffer[c][y][x] * maxValue);
+        int s = MathHelper.round(buffer[c][y][x] * maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
         if (bitDepth == 8)
             dout.writeByte(s);

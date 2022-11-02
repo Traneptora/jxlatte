@@ -12,10 +12,29 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class MATree {
 
-    private List<MANode> nodes = new ArrayList<>();
-    public final EntropyStream stream;
+    private EntropyStream stream;
+    private MATree parent;
+
+    private MATree leftChildNode;
+    private MATree rightChildNode;
+
+    private int property;
+    private int value;
+    private int leftChildIndex;
+    private int rightChildIndex;
+
+    private int context;
+    private int predictor;
+    private int offset;
+    private int multiplier;
+
+    private MATree() {
+
+    }
 
     public MATree(Bitreader reader) throws IOException {
+        this.parent = null;
+        List<MATree> nodes = new ArrayList<>();
         EntropyStream stream = new EntropyStream(reader, 6);
         int contextId = 0;
         int nodesRemaining = 1;
@@ -24,7 +43,12 @@ public class MATree {
             if (property >= 0) {
                 int value = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
                 int leftChild = nodes.size() + nodesRemaining + 1;
-                MADecisionNode node = new MADecisionNode(property, value, leftChild, leftChild + 1);
+                MATree node = nodes.size() == 0 ? this : new MATree();
+                node.property = property;
+                node.predictor = -1;
+                node.value = value;
+                node.leftChildIndex = leftChild;
+                node.rightChildIndex = leftChild + 1;
                 nodes.add(node);
                 nodesRemaining += 2;
             } else {
@@ -36,28 +60,126 @@ public class MATree {
                 int mulLog = stream.readSymbol(reader, 4);
                 int mulBits = stream.readSymbol(reader, 5);
                 int multiplier = (mulBits + 1) << mulLog;
-                MALeafNode node = new MALeafNode(context, predictor, offset, multiplier);
+                MATree node = nodes.size() == 0 ? this : new MATree();
+                node.context = context;
+                node.predictor = predictor;
+                node.multiplier = multiplier;
+                node.offset = offset;
+                node.property = -1;
                 nodes.add(node);
             }
         }
-        this.stream = new EntropyStream(reader, (getSize() + 1) / 2);
-    }
-
-    public MALeafNode walk(IntUnaryOperator property) {
-        int index = 0;
-        while (true) {
-            MANode node = nodes.get(index);
-            if (node instanceof MALeafNode)
-                return (MALeafNode)node;
-            MADecisionNode dNode = (MADecisionNode)node;
-            if (property.applyAsInt(dNode.property) > dNode.value)
-                index = dNode.leftChildIndex;
-            else
-                index = dNode.rightChildIndex;
+        if (!stream.validateFinalState())
+            throw new InvalidBitstreamException("Illegal MA Tree Entropy Stream");
+        
+        this.stream = new EntropyStream(reader, (nodes.size() + 1) / 2);
+        
+        for (int n = 0; n < nodes.size(); n++) {
+            MATree node = nodes.get(n);
+            node.stream = this.stream;
+            if (!node.isLeafNode()) {
+                node.leftChildNode = nodes.get(node.leftChildIndex);
+                node.rightChildNode = nodes.get(node.rightChildIndex);
+                node.leftChildNode.parent = node;
+                node.rightChildNode.parent = node;
+            }
         }
     }
 
+    public boolean isLeafNode() {
+        return this.property < 0;
+    }
+
+    public boolean usesWeightedPredictor() {
+        if (this.isLeafNode())
+            return this.predictor == 6; // WP Predictor
+        else
+            return this.property == 15 // maxError
+                || this.leftChildNode.usesWeightedPredictor()
+                || this.rightChildNode.usesWeightedPredictor();
+    }
+
+    public MATree compactify(int channelIndex, int streamIndex) {
+        int prop;
+        switch (this.property) {
+            case 0:
+                prop = channelIndex;
+                break;
+            case 1:
+                prop = streamIndex;
+                break;
+            default:
+                return this;
+        }
+        return (prop > this.value ? leftChildNode : rightChildNode).compactify(channelIndex, streamIndex);
+    }
+
+    public MATree compactify(int channelIndex, int streamIndex, int y) {
+        int prop;
+        switch (this.property) {
+            case 0:
+                prop = channelIndex;
+                break;
+            case 1:
+                prop = streamIndex;
+                break;
+            case 2:
+                prop = y;
+                break;
+            default:
+                return this;
+        }
+        return (prop > this.value ? leftChildNode : rightChildNode).compactify(channelIndex, streamIndex, y);
+    }
+
+    public MATree walk(IntUnaryOperator property) {
+        MATree node = this;
+        while (!node.isLeafNode()) {
+            if (property.applyAsInt(node.property) > node.value)
+                node = node.leftChildNode;
+            else
+                node = node.rightChildNode;
+        }
+        return node;
+    }
+
     public int getSize() {
-        return nodes.size();
+        int size = 1;
+        if (!this.isLeafNode())
+            size += leftChildNode.getSize() + rightChildNode.getSize();
+        return size;
+    }
+
+    public MATree getParent() {
+        return parent;
+    }
+
+    private void validateLeaf() throws IllegalStateException {
+        if (!isLeafNode())
+            throw new IllegalStateException("Not a leaf node");
+    }
+
+    public int getContext() {
+        validateLeaf();
+        return context;
+    }
+
+    public int getPredictor() {
+        validateLeaf();
+        return predictor;
+    }
+
+    public int getMultiplier() {
+        validateLeaf();
+        return multiplier;
+    }
+
+    public int getOffset() {
+        validateLeaf();
+        return offset;
+    }
+
+    public EntropyStream getStream() {
+        return this.stream;
     }
 }

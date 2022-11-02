@@ -159,9 +159,8 @@ public class ModularStream {
         } else {
             this.tree = globalTree;
         }
-        this.stream = tree.stream;
-        if (stream.validateFinalState())
-            stream.reset();
+        this.stream = tree.getStream();
+        stream.reset();
 
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {

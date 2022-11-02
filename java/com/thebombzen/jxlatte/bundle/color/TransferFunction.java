@@ -46,7 +46,7 @@ public interface TransferFunction {
                 throw new UnsupportedOperationException("Not yet implemented");
         }
         if (transfer < (1 << 24)) {
-            float gamma = 1e7f / (float)transfer;
+            double gamma = 1e7D / transfer;
             return f -> Math.pow(f, gamma);
         }
         return null;

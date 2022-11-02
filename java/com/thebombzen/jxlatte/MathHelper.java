@@ -12,6 +12,10 @@ public final class MathHelper {
         return (int)((v & 1L) == 0 ? v / 2L : -(v + 1L) / 2L);
     }
 
+    public static int round(double d) {
+        return (int)(d + 0.5D);
+    }
+
     /**
      * @return ceil(log2(x + 1))
      */

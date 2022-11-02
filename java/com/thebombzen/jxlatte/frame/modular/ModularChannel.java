@@ -16,6 +16,8 @@ public class ModularChannel {
     protected int[][] trueError;
     protected int[][][] error;
     protected int[][] pred;
+    private int[] subpred;
+    private long[] weight;
 
     public ModularChannel(int width, int height, int dimShift) {
         this(width, height, dimShift, dimShift);
@@ -150,6 +152,62 @@ public class ModularChannel {
         }
     }
 
+    private int prePredictWP(WPHeader wpParams, int x, int y) {
+        int n3 = north(x, y) << 3;
+        int nw3 = northWest(x, y) << 3;
+        int ne3 = northEast(x, y) << 3;
+        int w3 = west(x, y) << 3;
+        int nn3 = northNorth(x, y) << 3;
+        int tN = teNorth(x, y, -1);
+        int tW = teWest(x, y, -1);
+        int tNE = teNorthEast(x, y, -1);
+        int tNW = teNorthWest(x, y, -1);
+        subpred[0] = w3 + ne3 - n3;
+        subpred[1] = n3 - (((tW + tN + tNE) * wpParams.wp_p1) >> 5);
+        subpred[2] = w3 - (((tW + tN + tNW) * wpParams.wp_p2) >> 5);
+        subpred[3] = n3 - ((tNW * wpParams.wp_p3a
+            + tN * wpParams.wp_p3b
+            + tNE * wpParams.wp_p3c
+            + (nn3 - n3) * wpParams.wp_p3d
+            + (nw3 - w3) * wpParams.wp_p3e) >> 5);
+        long wSum = 0;
+        for (int e = 0; e < 4; e++) {
+            int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
+                + teWestWest(x, y, e) + teNorthEast(x, y, e);
+            if (x == width - 1)
+            eSum += teWest(x, y, e);
+            int shift = MathHelper.floorLog1p(eSum) - 5;
+            if (shift < 0)
+                shift = 0;
+            weight[e] = 4L + (((long)wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
+            wSum += weight[e];
+        }
+
+        int logWeight = MathHelper.floorLog1p(wSum - 1) - 4;
+        wSum = 0;
+        for (int e = 0; e < 4; e++) {
+            weight[e] >>= logWeight;
+            wSum += weight[e];
+        }
+        long s = (wSum >> 1) - 1L;
+        for (int e = 0; e < 4; e++) {
+            s += subpred[e] * weight[e];
+        }
+        pred[x][y] = (int)((s * ((1L << 24) / wSum)) >> 24);
+        if (((tN ^ tW) | (tN ^ tNW)) <= 0)
+            pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
+        
+        int maxError = tW;
+        if (Math.abs(tN) > Math.abs(maxError))
+            maxError = tN;
+        if (Math.abs(tNW) > Math.abs(maxError))
+            maxError = tNW;
+        if (Math.abs(tNE) > Math.abs(maxError))
+            maxError = tNE;
+        
+        return maxError;
+    }
+
     public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
         if (isDecoded())
             return;
@@ -158,66 +216,23 @@ public class ModularChannel {
         trueError = new int[width][height];
         error = new int[width][height][4];
         pred = new int[width][height];
-        int[] subpred = new int[4];
-        long[] weight = new long[4];
+        tree = tree.compactify(channelIndex, streamIndex);
+        boolean useWP = tree.usesWeightedPredictor();
+        if (useWP) {
+            subpred = new int[4];
+            weight = new long[4];
+        }
         for (int y0 = 0; y0 < height; y0++) {
             final int y = y0;
+            MATree refinedTree = tree.compactify(channelIndex, streamIndex, y);
             for (int x0 = 0; x0 < width; x0++) {
                 final int x = x0;
-                int n3 = north(x, y) << 3;
-                int nw3 = northWest(x, y) << 3;
-                int ne3 = northEast(x, y) << 3;
-                int w3 = west(x, y) << 3;
-                int nn3 = northNorth(x, y) << 3;
-                int tN = teNorth(x, y, -1);
-                int tW = teWest(x, y, -1);
-                int tNE = teNorthEast(x, y, -1);
-                int tNW = teNorthWest(x, y, -1);
-                subpred[0] = w3 + ne3 - n3;
-                subpred[1] = n3 - (((tW + tN + tNE) * wpParams.wp_p1) >> 5);
-                subpred[2] = w3 - (((tW + tN + tNW) * wpParams.wp_p2) >> 5);
-                subpred[3] = n3 - ((tNW * wpParams.wp_p3a
-                    + tN * wpParams.wp_p3b
-                    + tNE * wpParams.wp_p3c
-                    + (nn3 - n3) * wpParams.wp_p3d
-                    + (nw3 - w3) * wpParams.wp_p3e) >> 5);
-                long wSum = 0;
-                for (int e = 0; e < 4; e++) {
-                    int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
-                        + teWestWest(x, y, e) + teNorthEast(x, y, e);
-                    if (x == width - 1)
-                    eSum += teWest(x, y, e);
-                    int shift = MathHelper.floorLog1p(eSum) - 5;
-                    if (shift < 0)
-                        shift = 0;
-                    weight[e] = 4L + (((long)wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
-                    wSum += weight[e];
-                }
- 
-                int logWeight = MathHelper.floorLog1p(wSum - 1);
-                wSum = 0;
-                for (int e = 0; e < 4; e++) {
-                    weight[e] >>= logWeight - 4;
-                    wSum += weight[e];
-                }
-                long s = (wSum >> 1) - 1L;
-                for (int e = 0; e < 4; e++) {
-                    s += subpred[e] * weight[e];
-                }
-                pred[x][y] = (int)((s * ((1L << 24) / wSum)) >> 24);
-                if (((tN ^ tW) | (tN ^ tNW)) <= 0)
-                    pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
-                int maxError0 = tW;
-                if (Math.abs(tN) > Math.abs(maxError0))
-                    maxError0 = tN;
-                if (Math.abs(tNW) > Math.abs(maxError0))
-                    maxError0 = tNW;
-                if (Math.abs(tNE) > Math.abs(maxError0))
-                    maxError0 = tNE;
-                final int maxError = maxError0;
-
-
-                MALeafNode node = tree.walk(k -> {
+                final int maxError;
+                if (useWP)
+                    maxError = prePredictWP(wpParams, x, y);
+                else
+                    maxError = 0;
+                MATree leafNode = refinedTree.walk(k -> {
                     switch (k) {
                         case 0:
                             return channelIndex;
@@ -257,14 +272,16 @@ public class ModularChannel {
                             throw new UnsupportedOperationException("Properties > 15 not yet implmented");
                     }
                 });
-                int diff = stream.readSymbol(reader, node.context, distMultiplier);
-                diff = MathHelper.unpackSigned(diff) * node.multiplier + node.offset;
-                int trueValue = diff + prediction(x, y, node.predictor);
+                int diff = stream.readSymbol(reader, leafNode.getContext(), distMultiplier);
+                diff = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
+                int trueValue = diff + prediction(x, y, leafNode.getPredictor());
                 set(x, y, trueValue);
-                trueError[x][y] = pred[x][y] - (trueValue << 3);
-                for (int e = 0; e < 4; e++) {
-                    int err = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
-                    error[x][y][e] = err;
+                if (useWP) {
+                    trueError[x][y] = pred[x][y] - (trueValue << 3);
+                    for (int e = 0; e < 4; e++) {
+                        int err = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
+                        error[x][y][e] = err;
+                    }
                 }
             }
         }

@@ -1,39 +1,40 @@
 package com.thebombzen.jxlatte.bundle.color;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
 
+import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class OpsinInverseMatrix {
 
-    public static final float[][] DEFAULT_MATRIX = {
-        {11.031566901960783f, -9.866943921568629f, -0.16462299647058826f},
-        {-3.254147380392157f, 4.418770392156863f, -0.16462299647058826f},
-        {-3.6588512862745097f, 2.7129230470588235f, 1.9459282392156863f}
+    private static final double[][] DEFAULT_MATRIX = {
+        {11.031566901960783D, -9.866943921568629D, -0.16462299647058826D},
+        {-3.254147380392157D, 4.418770392156863D, -0.16462299647058826D},
+        {-3.6588512862745097D, 2.7129230470588235D, 1.9459282392156863D}
     };
 
-    public static final float[] DEFAULT_OPSIN_BIAS = {
-        -0.0037930732552754493f, -0.0037930732552754493f, -0.0037930732552754493f
+    private static final double[] DEFAULT_OPSIN_BIAS = {
+        -0.0037930732552754493D, -0.0037930732552754493D, -0.0037930732552754493D
     };
 
-    public static final float[] DEFAULT_QUANT_BIAS = {
-        1f-0.05465007330715401f, 1f-0.07005449891748593f, 1f-0.049935103337343655f
+    private static final double[] DEFAULT_QUANT_BIAS = {
+        1D - 0.05465007330715401D, 1D - 0.07005449891748593D, 1D - 0.049935103337343655D
     };
 
-    public static final float DEFAULT_QBIAS_NUMERATOR = 0.145f;
+    private static final double DEFAULT_QBIAS_NUMERATOR = 0.145D;
 
-    public final float[][] matrix;
-    public final float[] opsinBias;
-    public final float[] quantBias;
-    public final float quantBiasNumerator;
+    private double[][] matrix;
+    private double[] opsinBias;
+    private double[] cbrtOpsinBias;
+    private double[] quantBias;
+    public final double quantBiasNumerator;
 
     public OpsinInverseMatrix() {
         matrix = DEFAULT_MATRIX;
         opsinBias = DEFAULT_OPSIN_BIAS;
         quantBias = DEFAULT_QUANT_BIAS;
         quantBiasNumerator = DEFAULT_QBIAS_NUMERATOR;
+        bakeCbrtBias();
     }
 
     public OpsinInverseMatrix(Bitreader reader) throws IOException {
@@ -43,51 +44,49 @@ public class OpsinInverseMatrix {
             quantBias = DEFAULT_QUANT_BIAS;
             quantBiasNumerator = DEFAULT_QBIAS_NUMERATOR;
         } else {
-            matrix = new float[3][3];
+            matrix = new double[3][3];
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     matrix[i][j] = reader.readF16();
                 }
             }
-            opsinBias = new float[3];
+            opsinBias = new double[3];
             for (int i = 0; i < 3; i++)
                 opsinBias[i] = reader.readF16();
-            quantBias = new float[3];
+            quantBias = new double[3];
             for (int i = 0; i < 3; i++)
                 quantBias[i] = reader.readF16();
             quantBiasNumerator = reader.readF16();
         }
+        bakeCbrtBias();
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.deepHashCode(matrix);
-        result = prime * result + Arrays.hashCode(opsinBias);
-        result = prime * result + Arrays.hashCode(quantBias);
-        result = prime * result + Objects.hash(quantBiasNumerator);
-        return result;
+    private void bakeCbrtBias() {
+        cbrtOpsinBias = new double[3];
+        for (int c = 0; c < 3; c++)
+            cbrtOpsinBias[c] = MathHelper.signedPow(opsinBias[c], 1D/3D);
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        OpsinInverseMatrix other = (OpsinInverseMatrix) obj;
-        return Arrays.deepEquals(matrix, other.matrix) && Arrays.equals(opsinBias, other.opsinBias)
-                && Arrays.equals(quantBias, other.quantBias)
-                && Float.floatToIntBits(quantBiasNumerator) == Float.floatToIntBits(other.quantBiasNumerator);
+    /** 
+     * @return linear sRGB
+     */
+    public void invertXYB(double[][][] buffer, double intensityTarget) {
+        if (buffer.length < 3)
+            throw new IllegalArgumentException("Can only XYB on 3 channels");
+        for (int y = 0; y < buffer[0].length; y++) {
+            for (int x = 0; x < buffer[0][y].length; x++) {
+                double gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
+                double gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
+                double gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
+                double itScale = 255D / intensityTarget;
+                double mixL = (gammaL * gammaL * gammaL + opsinBias[0]) * itScale;
+                double mixM = (gammaM * gammaM * gammaM + opsinBias[1]) * itScale;
+                double mixS = (gammaS * gammaS * gammaS + opsinBias[2]) * itScale;
+                for (int c = 0; c < 3; c++) {
+                    buffer[c][y][x] = matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS;
+                }
+            }
+        }
     }
-
-    @Override
-    public String toString() {
-        return "OpsinInverseMatrix [matrix=" + Arrays.toString(matrix) + ", opsinBias=" + Arrays.toString(opsinBias)
-                + ", quantBias=" + Arrays.toString(quantBias) + ", quantBiasNumerator=" + quantBiasNumerator + "]";
-    }
-    
 }
+
