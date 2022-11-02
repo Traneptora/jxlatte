@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -94,7 +95,7 @@ public class Frame {
         groupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++)
             groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
-
+        
         globalReader.zeroPadToByte();
     }
 
@@ -148,24 +149,57 @@ public class Frame {
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
 
-        for (int i = 0; i < numLFGroups; i++) {
-            lfGroups[i] = new LFGroup(getBitreader(1 + i), this, i);
+        List<ModularChannel> lfReplacementChannels = new ArrayList<>();
+        List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
+        int lfRowStride = MathHelper.ceilDiv(header.width, header.groupDim << 3);
+        for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
+            ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
+            if (!chan.isDecoded() && chan.hshift >= 3 && chan.vshift >= 3) {
+                lfReplacementChannelIndicies.add(i);
+                int width = header.groupDim >> (chan.hshift - 3);
+                int height = header.groupDim >> (chan.vshift - 3);
+                ModularChannel newChannel = new ModularChannel(width, height, chan.hshift, chan.vshift);
+                lfReplacementChannels.add(newChannel);
+            }
         }
 
-        for (int i = 0; i < numLFGroups; i++) {
-            int[] indices = lfGroups[i].replacedChannelIndices;
-            for (int j = 0; j < indices.length; j++) {
-                int index = indices[j];
+        @SuppressWarnings("unchecked")
+        CompletableFuture<LFGroup>[] lfGroupFutures = new CompletableFuture[numLFGroups];
+        Bitreader[] lfBitreaders = new Bitreader[numLFGroups];
+
+        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
+            lfBitreaders[lfGroupID] = getBitreader(1 + lfGroupID);
+        }
+
+        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
+            int row = lfGroupID / lfRowStride;
+            int column = lfGroupID % lfRowStride;
+            ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
+            for (ModularChannel chan : replaced) {
+                int lfWidth = MathHelper.ceilDiv(header.width, 1 << chan.hshift);
+                int lfHeight = MathHelper.ceilDiv(header.height, 1 << chan.vshift);
+                int x0 = column * chan.width;
+                int y0 = row * chan.height;
+                if (x0 + chan.width > lfWidth)
+                    chan.width = lfWidth - x0;
+                if (y0 + chan.height > lfHeight)
+                    chan.height = lfHeight - y0;
+                chan.x0 = x0;
+                chan.y0 = y0;
+            }
+            lfGroups[lfGroupID] = new LFGroup(lfBitreaders[lfGroupID], this, lfGroupID, replaced);
+        }
+
+        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
+            for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
+                int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 if (!channel.isDecoded())
                     channel.allocate();
-                ModularChannel newChannel = lfGroups[i].lfStream.getChannel(j);
-                int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
-                int y0 = (i / rowStride) * newChannel.height;
-                int x0 = (i % rowStride) * newChannel.width;
+                ModularChannel newChannel = lfGroups[lfGroupID].lfStream.getChannel(j);
                 for (int y = 0; y < newChannel.height; y++) {
                     for (int x = 0; x < newChannel.width; x++) {
-                        channel.set(x + x0, y + y0, newChannel.get(x ,y));
+                        channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x ,y));
                     }
                 }
             }
@@ -193,18 +227,24 @@ public class Frame {
                     ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
                     for (ModularChannel chan : replaced) {
-                        int rowStride = MathHelper.ceilDiv(header.width, chan.width);
-                        int row = (group / rowStride);
-                        int column = (group % rowStride);
-                        int y0 = row * chan.height;
-                        int x0 = column * chan.width;
-                        if (x0 + chan.width > header.width)
-                            chan.width = header.width - x0;
-                        if (y0 + chan.height > header.height)
-                            chan.height = header.height - y0;
+                        int passGroupWidth = header.groupDim >> chan.hshift;
+                        int passGroupHeight = header.groupDim >> chan.vshift;
+                        int rowStride = MathHelper.ceilDiv(chan.width, passGroupWidth);
+                        int x0 = (group % rowStride) * passGroupWidth;
+                        int y0 = (group / rowStride) * passGroupHeight;
+                        int width = passGroupWidth;
+                        int height = passGroupHeight;
+                        if (width + x0 > chan.width) {
+                            width = chan.width - x0;
+                        }
+                        if (height + y0 > chan.height) {
+                            height = chan.height - y0;
+                        }
                         chan.x0 = x0;
                         chan.y0 = y0;
-                    }                       
+                        chan.width = width;
+                        chan.height = height;
+                    }
                     return new PassGroup(bitreaders[group], Frame.this,
                         18 + 3 * numLFGroups + numGroups * pass + group, replaced);
                 }));

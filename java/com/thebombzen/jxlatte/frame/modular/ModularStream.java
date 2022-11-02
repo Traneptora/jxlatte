@@ -177,6 +177,8 @@ public class ModularStream {
                 break;
             chan.decode(reader, stream, wpParams, tree, i, streamIndex, distMultiplier);
         }
+        if (stream != null && !stream.validateFinalState())
+            throw new InvalidBitstreamException("Illegal final modular state");
     }
 
     public int getChannelCount() {

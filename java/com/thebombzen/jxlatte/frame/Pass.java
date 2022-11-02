@@ -34,9 +34,7 @@ public class Pass {
                 int m = Math.min(chan.hshift, chan.vshift);
                 if (minShift <= m && m < maxShift) {
                     replacedChannelIndices.add(i);
-                    int width = frame.getFrameHeader().groupDim >> chan.hshift;
-                    int height = frame.getFrameHeader().groupDim >> chan.vshift;
-                    channels.add(new ModularChannel(width, height, chan.hshift, chan.vshift));
+                    channels.add(new ModularChannel(chan.width, chan.height, chan.hshift, chan.vshift));
                 }
             }
         }
