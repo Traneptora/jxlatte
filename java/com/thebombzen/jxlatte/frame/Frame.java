@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.frame;
 
+import static com.thebombzen.jxlatte.ExceptionalSupplier.uncheck;
+
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -11,7 +13,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.IntUnaryOperator;
 
-import com.thebombzen.jxlatte.ExceptionalSupplier;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -171,26 +172,34 @@ public class Frame {
             lfBitreaders[lfGroupID] = getBitreader(1 + lfGroupID);
         }
 
-        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
-            int row = lfGroupID / lfRowStride;
-            int column = lfGroupID % lfRowStride;
-            ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
-            for (ModularChannel chan : replaced) {
-                int lfWidth = MathHelper.ceilDiv(header.width, 1 << chan.hshift);
-                int lfHeight = MathHelper.ceilDiv(header.height, 1 << chan.vshift);
-                int x0 = column * chan.width;
-                int y0 = row * chan.height;
-                if (x0 + chan.width > lfWidth)
-                    chan.width = lfWidth - x0;
-                if (y0 + chan.height > lfHeight)
-                    chan.height = lfHeight - y0;
-                chan.x0 = x0;
-                chan.y0 = y0;
-            }
-            lfGroups[lfGroupID] = new LFGroup(lfBitreaders[lfGroupID], this, lfGroupID, replaced);
+        for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
+            final int lfGroupID = lfGroupID0;
+            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(uncheck(() -> {
+                int row = lfGroupID / lfRowStride;
+                int column = lfGroupID % lfRowStride;
+                ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
+                for (ModularChannel chan : replaced) {
+                    int lfWidth = MathHelper.ceilDiv(header.width, 1 << chan.hshift);
+                    int lfHeight = MathHelper.ceilDiv(header.height, 1 << chan.vshift);
+                    int x0 = column * chan.width;
+                    int y0 = row * chan.height;
+                    if (x0 + chan.width > lfWidth)
+                        chan.width = lfWidth - x0;
+                    if (y0 + chan.height > lfHeight)
+                        chan.height = lfHeight - y0;
+                    chan.x0 = x0;
+                    chan.y0 = y0;
+                }
+                return new LFGroup(lfBitreaders[lfGroupID], this, lfGroupID, replaced);
+            }));
         }
 
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
+            try {
+                lfGroups[lfGroupID] = lfGroupFutures[lfGroupID].join();
+            } catch (CompletionException ex) {
+                IOHelper.sneakyThrow(ex.getCause());
+            }
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
@@ -223,7 +232,7 @@ public class Frame {
             CompletableFuture<PassGroup>[] futures = new CompletableFuture[numGroups];
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                futures[group] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
+                futures[group] = CompletableFuture.supplyAsync(uncheck(() -> {
                     ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
                     for (ModularChannel chan : replaced) {
