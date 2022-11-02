@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import com.thebombzen.jxlatte.IntBiConsumer;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
@@ -159,8 +160,7 @@ public class ModularStream {
         } else {
             this.tree = globalTree;
         }
-        this.stream = tree.getStream();
-        stream.reset();
+        this.stream = new EntropyStream(tree.getStream());
 
         int d = 0;               
         for (int i = nbMetaChannels; i < channels.size(); i++) {
@@ -236,41 +236,62 @@ public class ModularStream {
                 ModularChannel a = channels.get(transforms[i].beginC);
                 ModularChannel b = channels.get(transforms[i].beginC + 1);
                 ModularChannel c = channels.get(transforms[i].beginC + 2);
-                ModularChannel[] v = new ModularChannel[]{a, b, c};
-                ModularChannel v0 = v[permutation % 3];
-                ModularChannel v1 = v[(permutation + 1 + (permutation / 3)) % 3];
-                ModularChannel v2 = v[(permutation + 2 - (permutation / 3)) % 3];
                 int w = channels.get(transforms[i].beginC).width;
                 int h = channels.get(transforms[i].beginC).height;
+                IntBiConsumer rct;
+                switch(type) {
+                    case 0:
+                        rct = (x, y) -> {};
+                        break;
+                    case 1:
+                        rct = (x, y) -> {
+                            c.set(x, y, a.get(x, y) + c.get(x, y));
+                        };
+                        break;
+                    case 2:
+                        rct = (x, y) -> {
+                            c.set(x, y, a.get(x, y) + b.get(x, y));
+                        };
+                        break;
+                    case 3:
+                        rct = (x, y) -> {
+                            int d = a.get(x, y);
+                            c.set(x, y, d + c.get(x, y));
+                            b.set(x, y, d + b.get(x, y));
+                        };
+                        break;
+                    case 4:
+                        rct = (x, y) -> {
+                            b.set(x, y, b.get(x, y) + ((a.get(x, y) + c.get(x, y)) >> 1));
+                        };
+                        break;
+                    case 5:
+                        rct = (x, y) -> {
+                            b.set(x, y, b.get(x, y) + a.get(x, y) + (c.get(x, y) >> 1));
+                            c.set(x, y, c.get(x, y) + a.get(x, y));
+                        };
+                        break;
+                    case 6:
+                        rct = (x, y) -> {
+                            int tmp = a.get(x, y) - (c.get(x, y) >> 1);
+                            int e = c.get(x, y) + tmp;
+                            int f = tmp - (b.get(x, y) >> 1);
+                            a.set(x, y, f + b.get(x, y));
+                            b.set(x, y, e);
+                            c.set(x, y, f);
+                        };
+                        break;
+                    default:
+                        throw new IllegalStateException("Challenge complete how did we get here");
+                }
                 for (int y = 0; y < h; y++) {
                     for (int x = 0; x < w; x++) {
-                        int d = a.get(x, y);
-                        int e = b.get(x, y);
-                        int f = c.get(x, y);
-                        if (type == 6) {
-                            int tmp = d - (f >> 1);
-                            e = f + tmp;
-                            f = tmp - (b.get(x, y) >> 1);
-                            d = f + b.get(x, y);
-                        } else if (type != 5) {
-                            if ((type & 1) != 0)
-                                f += d;
-                            if ((type >> 1) == 1)
-                                e += d;
-                            if ((type >> 1) == 2)
-                                e += (d + f) >> 1;
-                        } else {
-                            d = a.get(x, y);
-                            e = b.get(x, y);
-                            f = c.get(x, y);
-                            e += f >> 1;
-                            f += d;
-                        }
-                        v0.set(x, y, d);
-                        v1.set(x, y, e);
-                        v2.set(x, y, f);
+                        rct.consume(x, y);
                     }
                 }
+                channels.set(transforms[i].beginC + permutation % 3, a);
+                channels.set(transforms[i].beginC + (permutation + 1 + (permutation / 3)) % 3, b);
+                channels.set(transforms[i].beginC + (permutation + 2 - (permutation / 3)) % 3, c);
             }
             if (transforms[i].tr == TransformInfo.PALETTE) {
                 int first = transforms[i].beginC + 1;

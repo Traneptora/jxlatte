@@ -32,10 +32,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     private int[] cutoffs;
     private int[] symbols;
     private int[] offsets;
-    private ANSState state;
 
-    public ANSSymbolDistribution(Bitreader reader, ANSState state, int logAlphabetSize) throws IOException {
-        this.state = state;
+    public ANSSymbolDistribution(Bitreader reader, int logAlphabetSize) throws IOException {
         this.logAlphabetSize = logAlphabetSize;
         int uniqPos = -1;
         if (reader.readBool()) {
@@ -131,12 +129,12 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     }
 
     @Override
-    public int readSymbol(Bitreader reader) throws IOException {
-        if (!this.state.isInitialized()) {
-            this.state.setState(reader.readBits(32));
+    public int readSymbol(Bitreader reader, ANSState stateObj) throws IOException {
+        if (!stateObj.isInitialized()) {
+            stateObj.setState(reader.readBits(32));
         }
 
-        int state = this.state.getState();
+        int state = stateObj.getState();
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);
@@ -147,7 +145,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         if ((state & 0xFFFF0000) == 0) {
             state = (state << 16) | reader.readBits(16);
         }
-        this.state.setState(state);
+        stateObj.setState(state);
         return symbol;
     }
 

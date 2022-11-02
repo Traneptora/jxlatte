@@ -3,10 +3,14 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.IntUnaryOperator;
 
+import com.thebombzen.jxlatte.ExceptionalSupplier;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -14,6 +18,7 @@ import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.IOHelper;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 
 public class Frame {
@@ -93,7 +98,7 @@ public class Frame {
         globalReader.zeroPadToByte();
     }
 
-    private void readBuffer(int index) throws IOException {
+    private synchronized void readBuffer(int index) throws IOException {
         int length = tocLengths[index];
         buffers[index] = new byte[length];
         int read = globalReader.readBytes(buffers[index], 0, length);
@@ -101,7 +106,7 @@ public class Frame {
             throw new EOFException("Unable to read full TOC entry");
     }
 
-    private Bitreader getBitreader(int index) throws IOException {
+    private synchronized Bitreader getBitreader(int index) throws IOException {
         if (tocLengths.length == 1) {
             this.globalReader.zeroPadToByte();
             return this.globalReader;
@@ -138,6 +143,7 @@ public class Frame {
     }
 
     public double[][][] decodeFrame() throws IOException {
+
         lfGlobal = new LFGlobal(getBitreader(0), this);
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
@@ -170,32 +176,60 @@ public class Frame {
         }
 
         int numPasses = header.passes.numPasses;
+        Pass[] passes = new Pass[numPasses];
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
-        for (int pass = 0; pass < header.passes.numPasses; pass++) {
+        for (int pass0 = 0; pass0 < numPasses; pass0++) {
+            final int pass = pass0;
+            passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
+            Bitreader[] bitreaders = new Bitreader[numGroups];
             for (int group = 0; group < numGroups; group++) {
-                Bitreader reader = getBitreader(2 + numLFGroups + pass * numGroups + group);
-                passGroups[pass][group] = new PassGroup(reader, this, pass, group,
-                    pass > 0 ? passGroups[pass - 1][group].minShift : 0);
+                bitreaders[group] = getBitreader(2 + numLFGroups + pass * numGroups + group);
+            }
+            @SuppressWarnings("unchecked")
+            CompletableFuture<PassGroup>[] futures = new CompletableFuture[numGroups];
+            for (int group0 = 0; group0 < numGroups; group0++) {
+                final int group = group0;
+                futures[group] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
+                    ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
+                        .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
+                    for (ModularChannel chan : replaced) {
+                        int rowStride = MathHelper.ceilDiv(header.width, chan.width);
+                        int row = (group / rowStride);
+                        int column = (group % rowStride);
+                        int y0 = row * chan.height;
+                        int x0 = column * chan.width;
+                        if (x0 + chan.width > header.width)
+                            chan.width = header.width - x0;
+                        if (y0 + chan.height > header.height)
+                            chan.height = header.height - y0;
+                        chan.x0 = x0;
+                        chan.y0 = y0;
+                    }                       
+                    return new PassGroup(bitreaders[group], Frame.this,
+                        18 + 3 * numLFGroups + numGroups * pass + group, replaced);
+                }));
+            }
+            for (int group = 0; group < numGroups; group++) {
+                try {
+                    passGroups[pass][group] = futures[group].join();
+                } catch (CompletionException ex) {
+                    IOHelper.sneakyThrow(ex.getCause());
+                }
             }
         }
 
         for (int pass = 0; pass < numPasses; pass++) {
-            for (int group = 0; group < numGroups; group++) {
-                int[] indices = passGroups[pass][group].replacedChannelIndices;
-                for (int j = 0; j < indices.length; j++) {
-                    int index = indices[j];
-                    ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                    if (!channel.isDecoded())
-                        channel.allocate();
+            int[] indices = passes[pass].replacedChannelIndices;
+            for (int j = 0; j < indices.length; j++) {
+                int index = indices[j];
+                ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
+                if (!channel.isDecoded())
+                    channel.allocate();
+                for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    int rowStride = MathHelper.ceilDiv(channel.width, newChannel.width);
-                    int row = (group / rowStride);
-                    int column = (group % rowStride);
-                    int y0 = row * newChannel.height;
-                    int x0 = column * newChannel.width;
                     for (int y = 0; y < newChannel.height; y++) {
                         for (int x = 0; x < newChannel.width; x++) {
-                            channel.set(x + x0, y + y0, newChannel.get(x, y));
+                            channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
                         }
                     }
                 }
@@ -211,7 +245,7 @@ public class Frame {
             boolean xyb = globalMetadata.isXYBEncoded();
             if (xyb) {
                 if (c < 2) {
-                    // X, Y, B is encoded as Y, X, (Y - B)
+                    // X, Y, B is encoded as Y, X, (B - Y)
                     cOut = 1 - c;
                 }
                 scaleFactor = lfGlobal.lfDequant[cOut];

@@ -5,14 +5,14 @@ import java.io.IOException;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
 
-public class Passes {
+public class PassesInfo {
     public final int numPasses;
     public final int numDS;
     public final int[] shift;
     public final int[] downSample;
     public final int[] lastPass;
 
-    public Passes() {
+    public PassesInfo() {
         numPasses = 1;
         numDS = 0;
         shift = new int[0];
@@ -20,7 +20,7 @@ public class Passes {
         lastPass = new int[0];
     }
 
-    public Passes(Bitreader reader) throws IOException {
+    public PassesInfo(Bitreader reader) throws IOException {
         numPasses = reader.readU32(1, 0, 2, 0, 3, 0, 4, 3);
         numDS = numPasses != 1 ? reader.readU32(0, 0, 1, 0, 2, 0, 3, 1) : 0;
         if (numDS >= numPasses)

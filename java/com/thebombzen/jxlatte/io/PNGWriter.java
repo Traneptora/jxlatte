@@ -6,6 +6,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.CRC32;
+import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
@@ -71,13 +72,13 @@ public class PNGWriter {
             dout.writeShort(s);
     }
 
-    public void write(OutputStream outputStream) throws IOException {
+    public void write(OutputStream outputStream, int deflateLevel) throws IOException {
         this.out = new DataOutputStream(outputStream);
         out.writeLong(0x8950_4E47_0D0A_1A0AL);
         writeIHDR();
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         bout.write(new byte[]{'I', 'D', 'A', 'T'});
-        DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout));
+        DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout, new Deflater(deflateLevel)));
         for (int y = 0; y < height; y++) {
             dout.writeByte(0); // filter 0
             for (int x = 0; x < width; x++) {

@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.zip.Deflater;
 
 import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
@@ -53,8 +54,7 @@ public class JXLatte {
         JXLImage image = jxlatte.decode();
         PNGWriter writer = new PNGWriter(image, 8);
         try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outputFilename))) {
-            writer.write(out);
+            writer.write(out, Deflater.BEST_SPEED);
         }
-        System.err.format("width, height: %d, %d%n", image.getWidth(), image.getHeight());
     }
 }

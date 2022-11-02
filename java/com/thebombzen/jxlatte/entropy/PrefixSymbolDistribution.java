@@ -188,7 +188,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
     }
 
     @Override
-    public int readSymbol(Bitreader reader) throws IOException {
+    public int readSymbol(Bitreader reader, ANSState state) throws IOException {
         if (table == null)
             return defaultSymbol;
         return table.getVLC(reader);

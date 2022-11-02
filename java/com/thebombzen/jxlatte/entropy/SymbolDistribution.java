@@ -10,5 +10,5 @@ public abstract class SymbolDistribution {
     protected int alphabetSize;
     protected int logAlphabetSize;
 
-    public abstract int readSymbol(Bitreader reader) throws IOException;
+    public abstract int readSymbol(Bitreader reader, ANSState state) throws IOException;
 }

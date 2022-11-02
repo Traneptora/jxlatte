@@ -51,6 +51,8 @@ public class EntropyStream {
             EntropyStream nested = new EntropyStream(reader, 1);
             for (int i = 0; i < numDists; i++)
                 clusterMap[i] = nested.readSymbol(reader, 0);
+            if (!nested.validateFinalState())
+                throw new InvalidBitstreamException("Nested distribution");
             if (useMtf) {
                 int[] mtf = new int[256];
                 for (int i = 0; i < 256; i++)
@@ -77,6 +79,18 @@ public class EntropyStream {
             throw new InvalidBitstreamException("Too many clusters");
         
         return numClusters;
+    }
+
+    public EntropyStream(EntropyStream stream) {
+        this.usesLZ77 = stream.usesLZ77;
+        this.lz77MinLength = stream.lz77MinLength;
+        this.lz77MinSymbol = stream.lz77MinSymbol;
+        this.lzLengthConfig = stream.lzLengthConfig;
+        this.clusterMap = stream.clusterMap;
+        this.logAlphabetSize = stream.logAlphabetSize;
+        this.dists = stream.dists;
+        if (this.usesLZ77)
+            window = new int[1 << 20];
     }
 
     public EntropyStream(Bitreader reader, int numDists) throws IOException {
@@ -117,7 +131,7 @@ public class EntropyStream {
                 dists[i] = new PrefixSymbolDistribution(reader, alphabetSizes[i]);
         } else {
             for (int i = 0; i < dists.length; i++)
-                dists[i] = new ANSSymbolDistribution(reader, state, logAlphabetSize);
+                dists[i] = new ANSSymbolDistribution(reader, logAlphabetSize);
         }
         for (int i = 0; i < dists.length; i++)
             dists[i].config = configs[i];
@@ -150,12 +164,12 @@ public class EntropyStream {
             throw new InvalidBitstreamException("Cluster Map points to nonexisted distribution");
 
         SymbolDistribution dist = dists[clusterMap[context]];
-        int token = dist.readSymbol(reader);
+        int token = dist.readSymbol(reader, state);
 
         if (usesLZ77 && token >= lz77MinSymbol) {
             SymbolDistribution lz77dist = dists[clusterMap[clusterMap.length - 1]];
             numToCopy77 = lz77MinLength + readHybridInteger(reader, lzLengthConfig, token - lz77MinSymbol);
-            token = lz77dist.readSymbol(reader);
+            token = lz77dist.readSymbol(reader, state);
             int distance = readHybridInteger(reader, lz77dist.config, token);
             if (distanceMultiplier == 0) {
                 distance++;

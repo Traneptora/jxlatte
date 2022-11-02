@@ -22,7 +22,7 @@ public class FrameHeader {
     public final int groupDim;
     public final int xqmScale;
     public final int bqmScale;
-    public final Passes passes;
+    public final PassesInfo passes;
     public final int lfLevel;
     public final boolean haveCrop;
     public final int x0;
@@ -71,7 +71,7 @@ public class FrameHeader {
             xqmScale = 3;
             bqmScale = 2;
         }
-        passes = (!allDefault && type != FrameFlags.REFERENCE_ONLY) ? new Passes(reader) : new Passes();
+        passes = (!allDefault && type != FrameFlags.REFERENCE_ONLY) ? new PassesInfo(reader) : new PassesInfo();
         lfLevel = type == FrameFlags.LF_FRAME ? 1 + reader.readBits(2) : 0;
         haveCrop = (!allDefault && type != FrameFlags.LF_FRAME) ? reader.readBool() : false;
         if (haveCrop && type != FrameFlags.REFERENCE_ONLY) {

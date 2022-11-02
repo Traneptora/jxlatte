@@ -8,6 +8,19 @@ import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ModularChannel {
+
+    private static int[] oneL24OverKP1 = new int[64];
+
+    static {
+        for (int i = 0; i < oneL24OverKP1.length; i++) {
+            oneL24OverKP1[i] = (1 << 24) / (i + 1);
+        }
+    }
+
+    public static ModularChannel fromMetadata(ModularChannel copy) {
+        return new ModularChannel(copy.width, copy.height, copy.hshift, copy.vshift);
+    }
+
     public int width;
     public int height;
     public int hshift;
@@ -17,7 +30,9 @@ public class ModularChannel {
     protected int[][][] error;
     protected int[][] pred;
     private int[] subpred;
-    private long[] weight;
+    private int[] weight;
+    public int x0;
+    public int y0;
 
     public ModularChannel(int width, int height, int dimShift) {
         this(width, height, dimShift, dimShift);
@@ -170,7 +185,7 @@ public class ModularChannel {
             + tNE * wpParams.wp_p3c
             + (nn3 - n3) * wpParams.wp_p3d
             + (nw3 - w3) * wpParams.wp_p3e) >> 5);
-        long wSum = 0;
+        int wSum = 0;
         for (int e = 0; e < 4; e++) {
             int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
                 + teWestWest(x, y, e) + teNorthEast(x, y, e);
@@ -179,10 +194,9 @@ public class ModularChannel {
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
                 shift = 0;
-            weight[e] = 4L + (((long)wpParams.wp_w[e] * ((1L << 24) / ((eSum >> shift) + 1))) >> shift);
+            weight[e] = 4 + ((wpParams.wp_w[e] * oneL24OverKP1[eSum >> shift]) >> shift);
             wSum += weight[e];
         }
-
         int logWeight = MathHelper.floorLog1p(wSum - 1) - 4;
         wSum = 0;
         for (int e = 0; e < 4; e++) {
@@ -193,10 +207,9 @@ public class ModularChannel {
         for (int e = 0; e < 4; e++) {
             s += subpred[e] * weight[e];
         }
-        pred[x][y] = (int)((s * ((1L << 24) / wSum)) >> 24);
+        pred[x][y] = (int)((s * oneL24OverKP1[wSum - 1]) >> 24);
         if (((tN ^ tW) | (tN ^ tNW)) <= 0)
             pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
-        
         int maxError = tW;
         if (Math.abs(tN) > Math.abs(maxError))
             maxError = tN;
@@ -204,7 +217,6 @@ public class ModularChannel {
             maxError = tNW;
         if (Math.abs(tNE) > Math.abs(maxError))
             maxError = tNE;
-        
         return maxError;
     }
 
@@ -220,7 +232,7 @@ public class ModularChannel {
         boolean useWP = tree.usesWeightedPredictor();
         if (useWP) {
             subpred = new int[4];
-            weight = new long[4];
+            weight = new int[4];
         }
         for (int y0 = 0; y0 < height; y0++) {
             final int y = y0;
@@ -318,9 +330,8 @@ public class ModularChannel {
     }
 
     public void inverseSqueezeHorizontal(ModularChannel orig, ModularChannel res) {
-        if (this.width != orig.width + res.width || (orig.width != res.width && orig.width != 1 + res.width)) {
+        if (this.width != orig.width + res.width || (orig.width != res.width && orig.width != 1 + res.width))
             throw new IllegalStateException("Corrupted squeeze transform");
-        }
         allocate();
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < res.width; x++) {
@@ -339,9 +350,8 @@ public class ModularChannel {
     }
 
     public void inverseSqueezeVertical(ModularChannel orig, ModularChannel res) {
-        if (this.height != orig.height + res.height || (orig.height != res.height && orig.height != 1 + res.height)) {
+        if (this.height != orig.height + res.height || (orig.height != res.height && orig.height != 1 + res.height))
             throw new IllegalStateException("Corrupted squeeze transform");
-        }
         allocate();
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < res.height; y++) {
