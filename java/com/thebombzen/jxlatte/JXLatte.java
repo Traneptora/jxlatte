@@ -11,24 +11,20 @@ import java.io.OutputStream;
 import java.util.zip.Deflater;
 
 import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
-import com.thebombzen.jxlatte.io.DemuxerThread;
+import com.thebombzen.jxlatte.io.Demuxer;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.io.PNGWriter;
 
 public class JXLatte {
 
-    private DemuxerThread demuxerThread;
+    private Demuxer demuxer;
     private JXLCodestreamDecoder decoder;
-    private InputStream in;
 
     public JXLatte(InputStream in) {
-        this.in = in;
-        this.demuxerThread = new DemuxerThread(in);
-        demuxerThread.start();
-        this.decoder = new JXLCodestreamDecoder(
-            new InputStreamBitreader(
-            new ByteArrayQueueInputStream(
-            demuxerThread.getQueue())));
+        demuxer = new Demuxer(in);
+        new Thread(demuxer).start();
+        decoder = new JXLCodestreamDecoder(
+            new InputStreamBitreader(new ByteArrayQueueInputStream(demuxer.getQueue())));
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
@@ -39,11 +35,12 @@ public class JXLatte {
         IOException error = null;
         JXLImage ret = null;
         try {
-            ret = decoder.decode(demuxerThread.getLevel());
+            demuxer.checkException();
+            ret = decoder.decode(demuxer.getLevel());
         } catch (IOException ex) {
             error = ex;
         }
-        demuxerThread.joinExceptionally();
+        demuxer.joinExceptionally();
         if (error != null)
             throw error;
         return ret;

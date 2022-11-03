@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -16,6 +15,7 @@ import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
+import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.FunctionalHelper;
@@ -170,17 +170,20 @@ public class Frame {
         double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         LFGroup[] lfGroups = new LFGroup[numLFGroups];
 
-        List<ModularChannel> lfReplacementChannels = new ArrayList<>();
+        List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         int lfRowStride = MathHelper.ceilDiv(header.width, header.groupDim << 3);
         for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
-            if (!chan.isDecoded() && chan.hshift >= 3 && chan.vshift >= 3) {
-                lfReplacementChannelIndicies.add(i);
-                int width = header.groupDim >> (chan.hshift - 3);
-                int height = header.groupDim >> (chan.vshift - 3);
-                ModularChannel newChannel = new ModularChannel(width, height, chan.hshift, chan.vshift);
-                lfReplacementChannels.add(newChannel);
+            if (!chan.isDecoded()) {
+                int hshift = chan.getInfo().hshift;
+                int vshift = chan.getInfo().vshift;
+                if (hshift >= 3 && vshift >= 3) {
+                    lfReplacementChannelIndicies.add(i);
+                    int width = header.groupDim >> (hshift - 3);
+                    int height = header.groupDim >> (vshift - 3);
+                    lfReplacementChannels.add(new ModularChannelInfo(width, height, hshift, vshift));
+                }
             }
         }
 
@@ -192,18 +195,18 @@ public class Frame {
             lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
-                ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
-                for (ModularChannel chan : replaced) {
-                    int lfWidth = MathHelper.ceilDiv(header.width, 1 << chan.hshift);
-                    int lfHeight = MathHelper.ceilDiv(header.height, 1 << chan.vshift);
-                    int x0 = column * chan.width;
-                    int y0 = row * chan.height;
-                    if (x0 + chan.width > lfWidth)
-                        chan.width = lfWidth - x0;
-                    if (y0 + chan.height > lfHeight)
-                        chan.height = lfHeight - y0;
-                    chan.x0 = x0;
-                    chan.y0 = y0;
+                ModularChannelInfo[] replaced = lfReplacementChannels.stream().toArray(ModularChannelInfo[]::new);
+                for (ModularChannelInfo info : replaced) {
+                    int lfWidth = MathHelper.ceilDiv(header.width, 1 << info.hshift);
+                    int lfHeight = MathHelper.ceilDiv(header.height, 1 << info.vshift);
+                    int x0 = column * info.width;
+                    int y0 = row * info.height;
+                    if (x0 + info.width > lfWidth)
+                        info.width = lfWidth - x0;
+                    if (y0 + info.height > lfHeight)
+                        info.height = lfHeight - y0;
+                    info.x0 = x0;
+                    info.y0 = y0;
                 }
                 return new LFGroup(getBitreader(1 + lfGroupID).join(), this, lfGroupID, replaced);
             }));
@@ -212,18 +215,17 @@ public class Frame {
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             try {
                 lfGroups[lfGroupID] = lfGroupFutures[lfGroupID].join();
-            } catch (CompletionException ex) {
-                FunctionalHelper.sneakyThrow(ex.getCause());
+            } catch (Throwable ex) {
+                FunctionalHelper.sneakyThrow(ex);
             }
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                if (!channel.isDecoded())
-                    channel.allocate();
                 ModularChannel newChannel = lfGroups[lfGroupID].lfStream.getChannel(j);
-                for (int y = 0; y < newChannel.height; y++) {
-                    for (int x = 0; x < newChannel.width; x++) {
-                        channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x ,y));
+                ModularChannelInfo info = newChannel.getInfo();
+                for (int y = 0; y < info.height; y++) {
+                    for (int x = 0; x < info.width; x++) {
+                        channel.set(x + info.x0, y + info.y0, newChannel.get(x ,y));
                     }
                 }
             }
@@ -244,26 +246,26 @@ public class Frame {
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
                 futures[group] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
-                    ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
-                        .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
-                    for (ModularChannel chan : replaced) {
-                        int passGroupWidth = header.groupDim >> chan.hshift;
-                        int passGroupHeight = header.groupDim >> chan.vshift;
-                        int rowStride = MathHelper.ceilDiv(chan.width, passGroupWidth);
+                    ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
+                        .stream().toArray(ModularChannelInfo[]::new);
+                    for (ModularChannelInfo info : replaced) {
+                        int passGroupWidth = header.groupDim >> info.hshift;
+                        int passGroupHeight = header.groupDim >> info.vshift;
+                        int rowStride = MathHelper.ceilDiv(info.width, passGroupWidth);
                         int x0 = (group % rowStride) * passGroupWidth;
                         int y0 = (group / rowStride) * passGroupHeight;
                         int width = passGroupWidth;
                         int height = passGroupHeight;
-                        if (width + x0 > chan.width) {
-                            width = chan.width - x0;
+                        if (width + x0 > info.width) {
+                            width = info.width - x0;
                         }
-                        if (height + y0 > chan.height) {
-                            height = chan.height - y0;
+                        if (height + y0 > info.height) {
+                            height = info.height - y0;
                         }
-                        chan.x0 = x0;
-                        chan.y0 = y0;
-                        chan.width = width;
-                        chan.height = height;
+                        info.x0 = x0;
+                        info.y0 = y0;
+                        info.width = width;
+                        info.height = height;
                     }
                     return new PassGroup(getBitreader(2 + numLFGroups + pass * numGroups + group).join(), Frame.this,
                         18 + 3 * numLFGroups + numGroups * pass + group, replaced);
@@ -272,8 +274,8 @@ public class Frame {
             for (int group = 0; group < numGroups; group++) {
                 try {
                     passGroups[pass][group] = futures[group].join();
-                } catch (CompletionException ex) {
-                    FunctionalHelper.sneakyThrow(ex.getCause());
+                } catch (Throwable ex) {
+                    FunctionalHelper.sneakyThrow(ex);
                 }
             }
         }
@@ -283,13 +285,12 @@ public class Frame {
             for (int j = 0; j < indices.length; j++) {
                 int index = indices[j];
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                if (!channel.isDecoded())
-                    channel.allocate();
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    for (int y = 0; y < newChannel.height; y++) {
-                        for (int x = 0; x < newChannel.width; x++) {
-                            channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
+                    ModularChannelInfo info = newChannel.getInfo();
+                    for (int y = 0; y < info.height; y++) {
+                        for (int x = 0; x < info.width; x++) {
+                            channel.set(x + info.x0, y + info.y0, newChannel.get(x, y));
                         }
                     }
                 }

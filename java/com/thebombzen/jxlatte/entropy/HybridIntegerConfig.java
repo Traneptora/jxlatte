@@ -31,10 +31,4 @@ public class HybridIntegerConfig {
             throw new InvalidBitstreamException("msbInToken + lsbInToken is too large");
         }    
     }
-
-    @Override
-    public String toString() {
-        return String.format("HybridIntegerConfig [splitExponent=%s, msbInToken=%s, lsbInToken=%s]", splitExponent,
-                msbInToken, lsbInToken);
-    }
 }

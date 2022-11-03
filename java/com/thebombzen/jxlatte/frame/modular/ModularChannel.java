@@ -17,45 +17,47 @@ public class ModularChannel {
         }
     }
 
-    public static ModularChannel fromMetadata(ModularChannel copy) {
-        return new ModularChannel(copy.width, copy.height, copy.hshift, copy.vshift);
-    }
+    ModularChannelInfo info;
 
-    public int width;
-    public int height;
-    public int hshift;
-    public int vshift;
     protected int[][] buffer;
     protected int[][] trueError;
     protected int[][][] error;
     protected int[][] pred;
     private int[] subpred;
     private int[] weight;
-    public int x0;
-    public int y0;
+    private boolean decoded;
+
+    private ModularChannel(ModularChannelInfo info, boolean copy) {
+        this.info = copy ? new ModularChannelInfo(info) : info;
+        if (info.width == 0 || info.height == 0) {
+            buffer = new int[0][];
+        } else if (buffer != null) {
+            buffer = new int[info.height][info.width];
+        }
+        decoded = false;
+    }
 
     public ModularChannel(int width, int height, int dimShift) {
         this(width, height, dimShift, dimShift);
     }
 
     public ModularChannel(int width, int height, int hshift, int vshift) {
-        this.width = width;
-        this.height = height;
-        this.hshift = hshift;
-        this.vshift = vshift;
+        this(new ModularChannelInfo(width, height, hshift, vshift), false);
+    }
+
+    public ModularChannel(ModularChannelInfo info) {
+        this(info, true);
     }
 
     public ModularChannel(ModularChannel copy) {
-        this.width = copy.width;
-        this.height = copy.height;
-        this.hshift = copy.hshift;
-        this.vshift = copy.vshift;
+        this(copy.info, true);
         if (copy.buffer != null) {
-            this.buffer = new int[height][];
-            for (int y = 0; y < height; y++) {
-                this.buffer[y] = Arrays.copyOf(copy.buffer[y], width);
+            this.buffer = new int[info.height][];
+            for (int y = 0; y < info.height; y++) {
+                this.buffer[y] = Arrays.copyOf(copy.buffer[y], copy.buffer[y].length);
             }
         }
+        this.decoded = copy.decoded;
     }
 
     public void set(int x, int y, int s) {
@@ -80,7 +82,7 @@ public class ModularChannel {
     }
 
     private int northEast(int x, int y) {
-        return x + 1 < width && y > 0 ? get(x + 1, y - 1) : north(x, y);
+        return x + 1 < info.width && y > 0 ? get(x + 1, y - 1) : north(x, y);
     }
 
     private int northNorth(int x, int y) {
@@ -88,7 +90,7 @@ public class ModularChannel {
     }
 
     private int northEastEast(int x, int y) {
-        return x + 2 < width && y > 0 ? get(x + 2, y - 1) : northEast(x, y);
+        return x + 2 < info.width && y > 0 ? get(x + 2, y - 1) : northEast(x, y);
     }
 
     private int westWest(int x, int y) {
@@ -112,7 +114,7 @@ public class ModularChannel {
     }
 
     private int teNorthEast(int x, int y, int e) {
-        return x + 1 < width && y > 0 ? (e < 0 ? trueError[x + 1][y - 1] : error[x + 1][y - 1][e]) : teNorth(x, y, e);
+        return x + 1 < info.width && y > 0 ? (e < 0 ? trueError[x + 1][y - 1] : error[x + 1][y - 1][e]) : teNorth(x, y, e);
     }
 
     protected int prediction(int x, int y, int k) {
@@ -157,16 +159,6 @@ public class ModularChannel {
         }
     }
 
-    public boolean allocate() {
-        if (width == 0 || height == 0) {
-            buffer = new int[0][];
-            return true;
-        } else {
-            buffer = new int[height][width];
-            return false;
-        }
-    }
-
     private int prePredictWP(WPHeader wpParams, int x, int y) {
         int n3 = north(x, y) << 3;
         int nw3 = northWest(x, y) << 3;
@@ -189,8 +181,8 @@ public class ModularChannel {
         for (int e = 0; e < 4; e++) {
             int eSum = teNorth(x, y, e) + teWest(x, y, e) + teNorthWest(x, y, e)
                 + teWestWest(x, y, e) + teNorthEast(x, y, e);
-            if (x == width - 1)
-            eSum += teWest(x, y, e);
+            if (x + 1 == info.width)
+                eSum += teWest(x, y, e);
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
                 shift = 0;
@@ -220,24 +212,24 @@ public class ModularChannel {
         return maxError;
     }
 
-    public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
-        if (isDecoded())
+    public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree,
+            int channelIndex, int streamIndex, int distMultiplier) throws IOException {
+        if (decoded)
             return;
-        if (allocate())
-            return;
-        trueError = new int[width][height];
-        error = new int[width][height][4];
-        pred = new int[width][height];
+        decoded = true;
+        trueError = new int[info.width][info.height];
+        error = new int[info.width][info.height][4];
+        pred = new int[info.width][info.height];
         tree = tree.compactify(channelIndex, streamIndex);
-        boolean useWP = tree.usesWeightedPredictor();
+        boolean useWP = info.forceWP || tree.usesWeightedPredictor();
         if (useWP) {
             subpred = new int[4];
             weight = new int[4];
         }
-        for (int y0 = 0; y0 < height; y0++) {
+        for (int y0 = 0; y0 < info.height; y0++) {
             final int y = y0;
             MATree refinedTree = tree.compactify(channelIndex, streamIndex, y);
-            for (int x0 = 0; x0 < width; x0++) {
+            for (int x0 = 0; x0 < info.width; x0++) {
                 final int x = x0;
                 final int maxError;
                 if (useWP)
@@ -299,10 +291,6 @@ public class ModularChannel {
         }
     }
 
-    public boolean isDecoded() {
-        return buffer != null;
-    }
-
     private static int tendency(int a, int b, int c) {
         if (a >= b && b >= c) {
             int x = (4 * a - 3 * c - b + 6) / 12;
@@ -329,43 +317,57 @@ public class ModularChannel {
         return 0;
     }
 
-    public void inverseSqueezeHorizontal(ModularChannel orig, ModularChannel res) {
-        if (this.width != orig.width + res.width || (orig.width != res.width && orig.width != 1 + res.width))
-            throw new IllegalStateException("Corrupted squeeze transform");
-        allocate();
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < res.width; x++) {
-                int avg = orig.get(x, y);
-                int residu = res.get(x, y);
-                int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
-                int left = x > 0 ? this.get((x << 1) - 1, y) : avg;
-                int diff = residu + tendency(left, avg, nextAvg);
-                int first = avg + diff / 2;
-                set(2 * x, y, first);
-                set(2 * x + 1, y, first - diff);
-            }
-            if (orig.width > res.width)
-                set(2 * res.width, y, orig.get(res.width, y));
-        }
+    public boolean isDecoded() {
+        return decoded;
     }
 
-    public void inverseSqueezeVertical(ModularChannel orig, ModularChannel res) {
-        if (this.height != orig.height + res.height || (orig.height != res.height && orig.height != 1 + res.height))
-            throw new IllegalStateException("Corrupted squeeze transform");
-        allocate();
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < res.height; y++) {
+    public static ModularChannel inverseHorizontalSqueeze(ModularChannelInfo info, ModularChannel orig, ModularChannel res) {
+        if (info.width != orig.info.width + res.info.width || (orig.info.width != res.info.width && orig.info.width != 1 + res.info.width))
+            throw new IllegalArgumentException("Corrupted squeeze transform");
+
+        ModularChannel channel = new ModularChannel(info);
+        for (int y = 0; y < info.height; y++) {
+            for (int x = 0; x < res.info.width; x++) {
                 int avg = orig.get(x, y);
                 int residu = res.get(x, y);
-                int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;
-                int top = y > 0 ? this.get(x, (y << 1) - 1) : avg;
+                int nextAvg = x + 1 < orig.info.width ? orig.get(x + 1, y) : avg;
+                int left = x > 0 ? channel.get((x << 1) - 1, y) : avg;
+                int diff = residu + tendency(left, avg, nextAvg);
+                int first = avg + diff / 2;
+                channel.set(2 * x, y, first);
+                channel.set(2 * x + 1, y, first - diff);
+            }
+            if (orig.info.width > res.info.width)
+                channel.set(2 * res.info.width, y, orig.get(res.info.width, y));
+        }
+
+        return channel;
+    }
+
+    public static ModularChannel inverseVerticalSqueeze(ModularChannelInfo info, ModularChannel orig, ModularChannel res) {
+        if (info.height != orig.info.height + res.info.height || (orig.info.height != res.info.height && orig.info.height != 1 + res.info.height))
+            throw new IllegalStateException("Corrupted squeeze transform");
+
+        ModularChannel channel = new ModularChannel(info);
+        for (int x = 0; x < info.width; x++) {
+            for (int y = 0; y < res.info.height; y++) {
+                int avg = orig.get(x, y);
+                int residu = res.get(x, y);
+                int nextAvg = y + 1 < orig.info.height ? orig.get(x, y + 1) : avg;
+                int top = y > 0 ? channel.get(x, (y << 1) - 1) : avg;
                 int diff = residu + tendency(top, avg, nextAvg);
                 int first = avg + diff / 2;
-                set(x, 2 * y, first);
-                set(x, 2 * y + 1, first - diff);
+                channel.set(x, 2 * y, first);
+                channel.set(x, 2 * y + 1, first - diff);
             }
-            if (orig.height > res.height)
-                set(x, 2 * res.height, orig.get(x, res.height));
+            if (orig.info.height > res.info.height)
+                channel.set(x, 2 * res.info.height, orig.get(x, res.info.height));
         }
+
+        return channel;
+    }
+
+    public ModularChannelInfo getInfo() {
+        return info;
     }
 }

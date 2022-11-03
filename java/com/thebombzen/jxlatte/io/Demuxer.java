@@ -10,7 +10,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.util.FunctionalHelper;
 
-public class DemuxerThread extends Thread {
+public class Demuxer implements Runnable {
 
     private static final byte[] CONTAINER_SIGNATURE = new byte[]{
         0x00, 0x00, 0x00, 0x0C, 'J', 'X', 'L', ' ', 0x0D, 0x0A, (byte)0x87, 0x0A
@@ -36,7 +36,7 @@ public class DemuxerThread extends Thread {
     private CompletableFuture<Integer> level = new CompletableFuture<>();
     private CompletableFuture<Void> exception = new CompletableFuture<>();
 
-    public DemuxerThread(InputStream in) {
+    public Demuxer(InputStream in) {
         this.in = in;
     }
 
@@ -44,12 +44,19 @@ public class DemuxerThread extends Thread {
         return queue;
     }
 
+    public void checkException() {
+        try {
+            exception.getNow(null);
+        } catch (CompletionException ex) {
+            FunctionalHelper.sneakyThrow(ex);
+        }
+    }
 
     public void joinExceptionally() {
         try {
             exception.join();
         } catch (CompletionException ex) {
-            FunctionalHelper.sneakyThrow(ex.getCause());
+            FunctionalHelper.sneakyThrow(ex);
         }
     }
 
