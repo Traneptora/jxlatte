@@ -65,8 +65,8 @@ public final class MathHelper {
     }
 
     public static int clamp(int v, int a, int b) {
-        int lower = Math.min(a, b);
-        int upper = Math.max(a, b);
+        int lower = min(a, b);
+        int upper = max(a, b);
         return Math.min(Math.max(v, lower), upper);
     }
 }

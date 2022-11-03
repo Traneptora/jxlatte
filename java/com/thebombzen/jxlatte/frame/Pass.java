@@ -32,10 +32,10 @@ public class Pass {
         for (int i = 0; i < globalModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = globalModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
-                int m = Math.min(chan.getInfo().hshift, chan.getInfo().vshift);
+                int m = Math.min(chan.hshift, chan.vshift);
                 if (minShift <= m && m < maxShift) {
                     replacedChannelIndices.add(i);
-                    channels.add(new ModularChannelInfo(chan.getInfo()));
+                    channels.add(new ModularChannelInfo(chan));
                 }
             }
         }
