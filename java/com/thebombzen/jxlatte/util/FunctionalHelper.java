@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.concurrent.CompletionException;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class FunctionalHelper {
@@ -28,5 +29,9 @@ public final class FunctionalHelper {
 
     public static <U> Supplier<U> uncheck(ExceptionalSupplier<U> supplier) {
         return supplier.uncheck();
+    }
+
+    public static <T, U> Supplier<U> constant(Function<T, U> func, T input) {
+        return () -> func.apply(input);
     }
 }

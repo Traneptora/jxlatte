@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.frame;
 
+import static com.thebombzen.jxlatte.util.FunctionalHelper.uncheck;
+
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -86,6 +88,8 @@ public class Frame {
         tocLengths = new int[tocEntries];
 
         {
+            // if we don't declare a new variable here with the unchecked assignment
+            // it won't compile, for some reason
             @SuppressWarnings("unchecked")
             CompletableFuture<byte[]>[] buffers = new CompletableFuture[tocEntries];
             this.buffers = buffers;
@@ -194,7 +198,7 @@ public class Frame {
 
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
             final int lfGroupID = lfGroupID0;
-            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
+            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(uncheck(() -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
                 ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
@@ -248,7 +252,7 @@ public class Frame {
             CompletableFuture<PassGroup>[] futures = new CompletableFuture[numGroups];
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                futures[group] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
+                futures[group] = CompletableFuture.supplyAsync(uncheck(() -> {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
