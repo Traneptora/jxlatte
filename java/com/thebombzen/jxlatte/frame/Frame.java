@@ -107,16 +107,18 @@ public class Frame {
 
         globalReader.zeroPadToByte();
 
-        new Thread(() -> {
-            for (int i = 0; i < tocEntries; i++) {
-                try {
-                    byte[] buffer = readBuffer(i);
-                    buffers[i].complete(buffer);
-                } catch (Throwable ex) {
-                    buffers[i].completeExceptionally(ex);
+        if (tocEntries != 1) {
+            new Thread(() -> {
+                for (int i = 0; i < tocEntries; i++) {
+                    try {
+                        byte[] buffer = readBuffer(i);
+                        buffers[i].complete(buffer);
+                    } catch (Throwable ex) {
+                        buffers[i].completeExceptionally(ex);
+                    }
                 }
-            }
-        }).start();
+            }).start();
+        }
     }
 
     private byte[] readBuffer(int index) throws IOException {
