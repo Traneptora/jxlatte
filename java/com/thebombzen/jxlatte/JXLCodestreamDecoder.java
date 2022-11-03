@@ -62,15 +62,18 @@ public class JXLCodestreamDecoder {
                 encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
         }
         bitreader.zeroPadToByte();
+
         Frame frame;
         if (imageHeader.getPreviewHeader() != null) {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
             frame.skipFrameData();
         }
+
         int height = imageHeader.getSize().height;
         int width = imageHeader.getSize().width;
         double[][][] buffer = new double[imageHeader.getTotalChannelCount()][height][width];
+
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
@@ -85,6 +88,7 @@ public class JXLCodestreamDecoder {
                 }
             }
         } while (!frame.getFrameHeader().isLast);
+
         if (imageHeader.isXYBEncoded()) {
             imageHeader.getOpsinInverseMatrix().invertXYB(buffer, imageHeader.getToneMapping().intensityTarget);
             DoubleUnaryOperator sRGB = TransferFunction.getTransferFunction(TransferFunction.SRGB);
@@ -96,6 +100,7 @@ public class JXLCodestreamDecoder {
                 }
             }
         }
+
         JXLImage image = new JXLImage(buffer, imageHeader);
         return image;
     }

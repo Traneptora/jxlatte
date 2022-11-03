@@ -23,6 +23,12 @@ public class JXLatte {
 
     public JXLatte(InputStream in) {
         this.in = in;
+        this.demuxerThread = new DemuxerThread(in);
+        demuxerThread.start();
+        this.decoder = new JXLCodestreamDecoder(
+            new InputStreamBitreader(
+            new ByteArrayQueueInputStream(
+            demuxerThread.getQueue())));
     }
 
     public JXLatte(String filename) throws FileNotFoundException {
@@ -30,12 +36,6 @@ public class JXLatte {
     }
 
     public JXLImage decode() throws IOException {
-        this.demuxerThread = new DemuxerThread(in);
-        demuxerThread.start();
-        this.decoder = new JXLCodestreamDecoder(
-            new InputStreamBitreader(
-            new ByteArrayQueueInputStream(
-            demuxerThread.getQueue())));
         IOException error = null;
         JXLImage ret = null;
         try {

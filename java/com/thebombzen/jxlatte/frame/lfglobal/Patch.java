@@ -2,14 +2,12 @@ package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.awt.Point;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 
 public class Patch {
@@ -58,28 +56,4 @@ public class Patch {
             blendingInfos[j] = new BlendingInfo(mode, alpha, clamp, 0);
         }
     }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(positions);
-        result = prime * result + Arrays.hashCode(blendingInfos);
-        result = prime * result + Objects.hash(width, height, ref, x0, y0);
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Patch other = (Patch) obj;
-        return width == other.width && height == other.height && ref == other.ref && x0 == other.x0 && y0 == other.y0
-                && Arrays.equals(positions, other.positions) && Arrays.equals(blendingInfos, other.blendingInfos);
-    }
-
 }

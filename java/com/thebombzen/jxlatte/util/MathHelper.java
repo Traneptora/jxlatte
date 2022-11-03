@@ -1,4 +1,6 @@
-package com.thebombzen.jxlatte;
+package com.thebombzen.jxlatte.util;
+
+import java.util.Arrays;
 
 public final class MathHelper {
 
@@ -31,7 +33,7 @@ public final class MathHelper {
     }
 
     public static int ceilDiv(int numerator, int denominator) {
-        return (numerator - 1) / denominator + 1;
+        return ((numerator - 1) / denominator) + 1;
     }
 
     public static int floorLog1p(long x) {
@@ -50,12 +52,12 @@ public final class MathHelper {
         return c;
     }
 
-    public static int min3(int a, int b, int c) {
-        return Math.min(a, Math.min(b, c));
+    public static int min(int... a) {
+        return Arrays.stream(a).reduce(Integer.MAX_VALUE, Math::min);
     }
 
-    public static int max3(int a, int b, int c) {
-        return Math.max(a, Math.max(b, c));
+    public static int max(int... a) {
+        return Arrays.stream(a).reduce(Integer.MIN_VALUE, Math::max);
     }
 
     public static double signedPow(double base, double exponent) {

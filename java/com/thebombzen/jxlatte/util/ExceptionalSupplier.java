@@ -1,8 +1,6 @@
-package com.thebombzen.jxlatte;
+package com.thebombzen.jxlatte.util;
 
 import java.util.function.Supplier;
-
-import com.thebombzen.jxlatte.io.IOHelper;
 
 @FunctionalInterface
 public interface ExceptionalSupplier<U> {
@@ -14,13 +12,8 @@ public interface ExceptionalSupplier<U> {
             try {
                 return supply();
             } catch (Throwable t) {
-                IOHelper.sneakyThrow(t);
-                return null;
+                return FunctionalHelper.sneakyThrow(t);
             }
         };
-    }
-
-    public static <U> Supplier<U> uncheck(ExceptionalSupplier<U> supplier) {
-        return supplier.uncheck();
     }
 }

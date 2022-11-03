@@ -2,8 +2,8 @@ package com.thebombzen.jxlatte.bundle.color;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class OpsinInverseMatrix {
 

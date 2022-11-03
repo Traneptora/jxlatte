@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PrefixSymbolDistribution extends SymbolDistribution {
 

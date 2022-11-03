@@ -8,6 +8,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.util.FunctionalHelper;
 
 public class DemuxerThread extends Thread {
 
@@ -48,7 +49,7 @@ public class DemuxerThread extends Thread {
         try {
             exception.join();
         } catch (CompletionException ex) {
-            IOHelper.sneakyThrow(ex.getCause());
+            FunctionalHelper.sneakyThrow(ex.getCause());
         }
     }
 
@@ -137,8 +138,10 @@ public class DemuxerThread extends Thread {
                         }
                     }
                 }
-                if (finalImageBox)
+                if (finalImageBox) {
+                    queue.put(new byte[0]);
                     return;
+                }
             } else {
                 if (size > 0) {
                     if (IOHelper.skipFully(in, size) != 0)

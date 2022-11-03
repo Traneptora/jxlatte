@@ -1,38 +1,25 @@
 package com.thebombzen.jxlatte.entropy;
 
+import java.util.OptionalInt;
+
 public class ANSState {
-    private boolean initialized;
-    private int state;
-    private int initialState;
+    private OptionalInt state = OptionalInt.empty();
 
-    public ANSState() {
-        this.initialized = false;
-    }
+    public ANSState() {}
 
-    public boolean isInitialized() {
-        return this.initialized;
+    public boolean hasState() {
+        return state.isPresent();
     }
 
     public int getState() {
-        if (!initialized)
-            throw new IllegalStateException("state has not been initialized");
-        return state;
+        return state.orElseThrow(() -> new IllegalStateException("ANS state has not been initialized"));
     }
 
     public void setState(int state) {
-        if (!initialized)
-            this.initialState = state;
-        this.state = state;
-        this.initialized = true;
+        this.state = OptionalInt.of(state);
     }
 
     public void reset() {
-        this.initialized = false;
-    }
-
-    public int getInitialState() {
-        if (!initialized)
-            throw new IllegalStateException("state has not been initialized");
-        return this.initialState;
+        state = OptionalInt.empty();
     }
 }

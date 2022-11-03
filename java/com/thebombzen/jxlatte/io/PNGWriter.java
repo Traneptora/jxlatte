@@ -10,8 +10,8 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.color.ColorSpace;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;

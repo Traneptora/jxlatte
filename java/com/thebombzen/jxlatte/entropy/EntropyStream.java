@@ -143,7 +143,7 @@ public class EntropyStream {
     }
 
     public boolean validateFinalState() {
-        return !state.isInitialized() || state.getState() == 0x130000;
+        return !state.hasState() || state.getState() == 0x130000;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {

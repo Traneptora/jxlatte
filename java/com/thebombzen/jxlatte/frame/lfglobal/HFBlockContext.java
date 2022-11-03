@@ -1,13 +1,11 @@
 package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class HFBlockContext {
     public final int[] clusterMap;
@@ -49,34 +47,4 @@ public class HFBlockContext {
         clusterMap = new int[bSize];
         numClusters = EntropyStream.readClusterMap(reader, clusterMap, 16);
     }
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(clusterMap);
-        result = prime * result + Arrays.deepHashCode(lfThresholds);
-        result = prime * result + Arrays.hashCode(qfThresholds);
-        result = prime * result + Objects.hash(numClusters);
-        return result;
-    }
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        HFBlockContext other = (HFBlockContext) obj;
-        return Arrays.equals(clusterMap, other.clusterMap) && numClusters == other.numClusters
-                && Arrays.deepEquals(lfThresholds, other.lfThresholds)
-                && Arrays.equals(qfThresholds, other.qfThresholds);
-    }
-    @Override
-    public String toString() {
-        return "HFBlockContext [clusterMap=" + Arrays.toString(clusterMap) + ", numClusters=" + numClusters
-                + ", lfThresholds=" + Arrays.toString(lfThresholds) + ", qfThresholds=" + Arrays.toString(qfThresholds)
-                + "]";
-    }
-    
 }

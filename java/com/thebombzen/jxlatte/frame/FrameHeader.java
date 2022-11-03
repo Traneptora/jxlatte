@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class FrameHeader {
 

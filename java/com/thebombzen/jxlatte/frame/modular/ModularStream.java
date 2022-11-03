@@ -8,11 +8,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import com.thebombzen.jxlatte.IntBiConsumer;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.IntBiConsumer;
 
 public class ModularStream {
 
@@ -170,10 +170,10 @@ public class ModularStream {
     }
 
     public void decodeChannels(Bitreader reader, boolean partial) throws IOException {
+        int groupDim = frame.getFrameHeader().groupDim;
         for (int i = 0; i < channels.size(); i++) {
             ModularChannel chan = channels.get(i);
-            if (partial && i >= nbMetaChannels && (chan.width > frame.getFrameHeader().groupDim
-                    || chan.height > frame.getFrameHeader().groupDim))
+            if (partial && i >= nbMetaChannels && (chan.width > groupDim || chan.height > groupDim))
                 break;
             chan.decode(reader, stream, wpParams, tree, i, streamIndex, distMultiplier);
         }

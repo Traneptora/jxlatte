@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class MATree {
 

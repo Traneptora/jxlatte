@@ -3,9 +3,9 @@ package com.thebombzen.jxlatte.frame;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.frame.lfglobal.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class Pass {
 

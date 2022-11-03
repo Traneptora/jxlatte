@@ -3,9 +3,9 @@ package com.thebombzen.jxlatte.frame.modular;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class ModularChannel {
 
@@ -209,7 +209,7 @@ public class ModularChannel {
         }
         pred[x][y] = (int)((s * oneL24OverKP1[wSum - 1]) >> 24);
         if (((tN ^ tW) | (tN ^ tNW)) <= 0)
-            pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min3(w3, n3, ne3), MathHelper.max3(w3, n3, ne3));
+            pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min(w3, n3, ne3), MathHelper.max(w3, n3, ne3));
         int maxError = tW;
         if (Math.abs(tN) > Math.abs(maxError))
             maxError = tN;

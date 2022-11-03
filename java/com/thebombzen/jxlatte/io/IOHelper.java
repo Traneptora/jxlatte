@@ -28,10 +28,11 @@ public final class IOHelper {
         return remaining;
     }
 
+    /** 
+     * @return How much wasn't read due to EOF
+     */
     public static long skipFully(InputStream in, long n) throws IOException {
-
         long remaining = n;
-
         while (remaining > 0) {
             long skipped = in.skip(remaining);
             remaining -= skipped;
@@ -44,7 +45,6 @@ public final class IOHelper {
         }
 
         byte[] buffer = new byte[4096];
-
         while (remaining > buffer.length) {
             int k = readFully(in, buffer);
             remaining = remaining - buffer.length + k;
@@ -54,14 +54,4 @@ public final class IOHelper {
 
         return readFully(in, buffer, 0, (int)remaining);
     }
-
-    public static void sneakyThrow(Throwable e) {
-        IOHelper.<RuntimeException>sneakyThrow0(e);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> void sneakyThrow0(Throwable ex) throws E {
-        throw (E) ex;
-    }
-
 }

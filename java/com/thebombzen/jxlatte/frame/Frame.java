@@ -11,16 +11,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.IntUnaryOperator;
 
-import com.thebombzen.jxlatte.ExceptionalSupplier;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.IOHelper;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
+import com.thebombzen.jxlatte.util.FunctionalHelper;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class Frame {
     private Bitreader globalReader;
@@ -190,7 +189,7 @@ public class Frame {
 
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
             final int lfGroupID = lfGroupID0;
-            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
+            lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
                 ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
@@ -214,7 +213,7 @@ public class Frame {
             try {
                 lfGroups[lfGroupID] = lfGroupFutures[lfGroupID].join();
             } catch (CompletionException ex) {
-                IOHelper.sneakyThrow(ex.getCause());
+                FunctionalHelper.sneakyThrow(ex.getCause());
             }
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
@@ -244,7 +243,7 @@ public class Frame {
             CompletableFuture<PassGroup>[] futures = new CompletableFuture[numGroups];
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                futures[group] = CompletableFuture.supplyAsync(ExceptionalSupplier.uncheck(() -> {
+                futures[group] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
                     ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannel::fromMetadata).toArray(ModularChannel[]::new);
                     for (ModularChannel chan : replaced) {
@@ -274,7 +273,7 @@ public class Frame {
                 try {
                     passGroups[pass][group] = futures[group].join();
                 } catch (CompletionException ex) {
-                    IOHelper.sneakyThrow(ex.getCause());
+                    FunctionalHelper.sneakyThrow(ex.getCause());
                 }
             }
         }

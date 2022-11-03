@@ -3,8 +3,8 @@ package com.thebombzen.jxlatte.entropy;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.MathHelper;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class HybridIntegerConfig {
     public final int splitExponent;

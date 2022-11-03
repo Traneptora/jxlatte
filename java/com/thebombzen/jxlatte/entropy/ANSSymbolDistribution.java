@@ -130,11 +130,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
 
     @Override
     public int readSymbol(Bitreader reader, ANSState stateObj) throws IOException {
-        if (!stateObj.isInitialized()) {
-            stateObj.setState(reader.readBits(32));
-        }
-
-        int state = stateObj.getState();
+        int state =  stateObj.hasState() ? stateObj.getState() : reader.readBits(32);
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);
@@ -142,10 +138,10 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         int symbol = greater ? symbols[i] : i;
         int offset = greater ? offsets[i] + pos : pos;
         state = frequencies[symbol] * (state >>> 12) + offset;
-        if ((state & 0xFFFF0000) == 0) {
+        if ((state & 0xFFFF0000) == 0)
             state = (state << 16) | reader.readBits(16);
-        }
         stateObj.setState(state);
+
         return symbol;
     }
 
