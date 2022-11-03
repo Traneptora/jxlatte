@@ -31,7 +31,7 @@ public class ModularChannel {
         this.info = copy ? new ModularChannelInfo(info) : info;
         if (info.width == 0 || info.height == 0) {
             buffer = new int[0][];
-        } else if (buffer != null) {
+        } else {
             buffer = new int[info.height][info.width];
         }
         decoded = false;

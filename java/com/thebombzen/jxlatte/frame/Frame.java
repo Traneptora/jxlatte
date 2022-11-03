@@ -195,7 +195,8 @@ public class Frame {
             lfGroupFutures[lfGroupID] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
-                ModularChannelInfo[] replaced = lfReplacementChannels.stream().toArray(ModularChannelInfo[]::new);
+                ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
+                    .toArray(ModularChannelInfo[]::new);
                 for (ModularChannelInfo info : replaced) {
                     int lfWidth = MathHelper.ceilDiv(header.width, 1 << info.hshift);
                     int lfHeight = MathHelper.ceilDiv(header.height, 1 << info.vshift);
@@ -247,7 +248,7 @@ public class Frame {
                 final int group = group0;
                 futures[group] = CompletableFuture.supplyAsync(FunctionalHelper.uncheck(() -> {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
-                        .stream().toArray(ModularChannelInfo[]::new);
+                        .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
                         int passGroupWidth = header.groupDim >> info.hshift;
                         int passGroupHeight = header.groupDim >> info.vshift;
