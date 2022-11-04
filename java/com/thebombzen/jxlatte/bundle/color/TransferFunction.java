@@ -41,8 +41,18 @@ public interface TransferFunction {
                     else
                         return Math.pow((f + 0.055D) * 0.9478672985781991D, 2.4D);
                 };
-            case PQ:
             case BT709:
+                return f -> {
+                    if (f <= 0.081242858298635133011D)
+                        return f * 0.22222222222222222222D;
+                    else
+                        return Math.pow((f + 0.0992968268094429403D) * 0.90967241568627260377D, 2.2222222222222222222D);
+                };
+            case PQ:
+                return f -> {
+                    double d = MathHelper.signedPow(f, 0.012683313515655965121D);
+                    return MathHelper.signedPow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
+                };
             case DCI:
             case HLG:
                 throw new UnsupportedOperationException("Not yet implemented");
@@ -73,6 +83,12 @@ public interface TransferFunction {
                     return MathHelper.signedPow((0.8359375D + 18.8515625D * d) / (1D + 18.6875D * d), 78.84375D);
                 };
             case BT709:
+                return f -> {
+                    if (f <= 0.018053968510807807336D)
+                        return 4.5D * f;
+                    else
+                        return 1.0992968268094429403D * Math.pow(f, 0.45D) - 0.0992968268094429403D;
+                };
             case DCI:
             case HLG:
                 throw new UnsupportedOperationException("Not yet implemented");
