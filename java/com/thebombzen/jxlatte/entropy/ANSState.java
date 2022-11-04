@@ -1,7 +1,5 @@
 package com.thebombzen.jxlatte.entropy;
 
-import static com.thebombzen.jxlatte.util.FunctionalHelper.constant;
-
 import java.util.OptionalInt;
 
 public class ANSState {
@@ -14,7 +12,7 @@ public class ANSState {
     }
 
     public int getState() {
-        return state.orElseThrow(constant(IllegalStateException::new, "ANS state has not been initialized"));
+        return state.orElseThrow(() -> new IllegalStateException("ANS state has not been initialized"));
     }
 
     public void setState(int state) {

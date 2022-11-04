@@ -17,7 +17,7 @@ public class ColorEncodingBundle {
 
     public ColorEncodingBundle() {
         useIccProfile = false;
-        colorSpace = ColorSpace.RGB;
+        colorSpace = ColorEncoding.RGB;
         whitePoint = WhitePoint.D65;
         white = WhitePoint.getWhitePoint(whitePoint);
         primaries = Primaries.SRGB;
@@ -32,10 +32,10 @@ public class ColorEncodingBundle {
         if (!allDefault)
             colorSpace = reader.readEnum();
         else
-            colorSpace = ColorSpace.RGB;
-        if (!ColorSpace.validate(colorSpace))
+            colorSpace = ColorEncoding.RGB;
+        if (!ColorEncoding.validate(colorSpace))
             throw new InvalidBitstreamException("Invalid ColorSpace enum");
-        if (!allDefault && !useIccProfile && colorSpace != ColorSpace.XYB)
+        if (!allDefault && !useIccProfile && colorSpace != ColorEncoding.XYB)
             whitePoint = reader.readEnum();
         else
             whitePoint = WhitePoint.D65;
@@ -45,7 +45,7 @@ public class ColorEncodingBundle {
             white = new CustomXY(reader);
         else
             white = WhitePoint.getWhitePoint(whitePoint);
-        if (!allDefault && !useIccProfile && colorSpace != ColorSpace.XYB && colorSpace != ColorSpace.GRAY)
+        if (!allDefault && !useIccProfile && colorSpace != ColorEncoding.XYB && colorSpace != ColorEncoding.GRAY)
             primaries = reader.readEnum();
         else
             primaries = Primaries.SRGB;

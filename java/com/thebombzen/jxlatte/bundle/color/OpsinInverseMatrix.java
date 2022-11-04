@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
+import com.thebombzen.jxlatte.util.TaskList;
 
 public class OpsinInverseMatrix {
 
@@ -73,20 +74,23 @@ public class OpsinInverseMatrix {
     public void invertXYB(double[][][] buffer, double intensityTarget) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
-        for (int y = 0; y < buffer[0].length; y++) {
-            for (int x = 0; x < buffer[0][y].length; x++) {
-                double gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
-                double gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
-                double gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-                double itScale = 255D / intensityTarget;
-                double mixL = (gammaL * gammaL * gammaL + opsinBias[0]) * itScale;
-                double mixM = (gammaM * gammaM * gammaM + opsinBias[1]) * itScale;
-                double mixS = (gammaS * gammaS * gammaS + opsinBias[2]) * itScale;
-                for (int c = 0; c < 3; c++) {
-                    buffer[c][y][x] = matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS;
+        TaskList<Void> tasks = new TaskList<>();
+        for (int y_ = 0; y_ < buffer[0].length; y_++) {
+            final int y = y_;
+            tasks.submit(() -> {
+                for (int x = 0; x < buffer[0][y].length; x++) {
+                    double gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
+                    double gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
+                    double gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
+                    double itScale = 255D / intensityTarget;
+                    double mixL = (gammaL * gammaL * gammaL + opsinBias[0]) * itScale;
+                    double mixM = (gammaM * gammaM * gammaM + opsinBias[1]) * itScale;
+                    double mixS = (gammaS * gammaS * gammaS + opsinBias[2]) * itScale;
+                    for (int c = 0; c < 3; c++)
+                        buffer[c][y][x] = matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS;
                 }
-            }
+            });
         }
+        tasks.collect();
     }
 }
-

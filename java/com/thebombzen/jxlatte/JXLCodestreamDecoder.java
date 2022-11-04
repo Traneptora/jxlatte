@@ -8,6 +8,7 @@ import com.thebombzen.jxlatte.bundle.color.TransferFunction;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.TaskList;
 
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
@@ -80,28 +81,23 @@ public class JXLCodestreamDecoder {
             double[][][] frameBuffer = frame.decodeFrame();
             int x0 = Math.max(frame.getFrameHeader().x0, 0);
             int y0 = Math.max(frame.getFrameHeader().y0, 0);
+            int frameWidth = frame.getFrameHeader().width;
+            int frameHeight = frame.getFrameHeader().height;
+            if (frameWidth + x0 > width)
+                frameWidth = width - x0;
+            if (frameHeight + x0 > height)
+                frameHeight = height - x0;
             for (int c = 0; c < buffer.length; c++) {
-                for (int y = y0; y < height; y++) {
-                    for (int x = x0; x < width; x++) {
-                        buffer[c][y][x] = frameBuffer[c][y][x];
-                    }
-                }
+                for (int y = y0; y < frameHeight; y++)
+                    System.arraycopy(frameBuffer[c][y], x0, buffer[c][y], 0, frameWidth);
             }
         } while (!frame.getFrameHeader().isLast);
 
         if (imageHeader.isXYBEncoded()) {
             imageHeader.getOpsinInverseMatrix().invertXYB(buffer, imageHeader.getToneMapping().intensityTarget);
-            DoubleUnaryOperator sRGB = TransferFunction.getTransferFunction(TransferFunction.SRGB);
-            for (int c = 0; c < buffer.length; c++) {
-                for (int y = 0; y < buffer[c].length; y++) {
-                    for (int x = 0; x < buffer[c][y].length; x++) {
-                        buffer[c][y][x] = sRGB.applyAsDouble(buffer[c][y][x]);
-                    }
-                }
-            }
+            
         }
 
-        JXLImage image = new JXLImage(buffer, imageHeader);
-        return image;
+        return new JXLImage(buffer, imageHeader);
     }
 }

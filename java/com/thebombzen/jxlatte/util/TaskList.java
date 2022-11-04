@@ -24,10 +24,7 @@ public class TaskList<T> {
     }
 
     public void submit(int bin, ExceptionalRunnable r) {
-        tasks.get(bin).add(CompletableFuture.supplyAsync(() -> {
-            r.uncheck().run();
-            return null;
-        }));
+        submit(bin, r.supply());
     }
 
     public void submit(ExceptionalSupplier<? extends T> s) {

@@ -48,7 +48,7 @@ public class EntropyStream {
                 clusterMap[i] = reader.readBits(nbits);
         } else {
             boolean useMtf = reader.readBool();
-            EntropyStream nested = new EntropyStream(reader, 1);
+            EntropyStream nested = new EntropyStream(reader, 1, true);
             for (int i = 0; i < numDists; i++)
                 clusterMap[i] = nested.readSymbol(reader, 0);
             if (!nested.validateFinalState())
@@ -94,11 +94,17 @@ public class EntropyStream {
     }
 
     public EntropyStream(Bitreader reader, int numDists) throws IOException {
+        this(reader, numDists, false);
+    }
+
+    public EntropyStream(Bitreader reader, int numDists, boolean disallowLZ77) throws IOException {
         if (numDists <= 0)
             throw new IllegalArgumentException("Num Dists must be positive");
 
         usesLZ77 = reader.readBool();
         if (usesLZ77) {
+            if (disallowLZ77)
+                throw new InvalidBitstreamException("Nested distributions cannot use LZ77");
             lz77MinSymbol = reader.readU32(224, 0, 512, 0, 4096, 0, 8, 15);
             lz77MinLength = reader.readU32(3, 0, 4, 0, 5, 2, 9, 8);
             numDists++;

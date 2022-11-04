@@ -18,7 +18,6 @@ public class LFGlobal {
     public final LFChannelCorrelation lfChanCorr;
     public final GlobalModular gModular;
 
-
     public LFGlobal(Bitreader reader, Frame parent) throws IOException {
         this.frame = parent;
         if ((frame.getFrameHeader().flags & FrameFlags.PATCHES) != 0) {

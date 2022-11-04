@@ -10,7 +10,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
-import com.thebombzen.jxlatte.bundle.color.ColorSpace;
+import com.thebombzen.jxlatte.bundle.color.ColorEncoding;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
@@ -34,7 +34,7 @@ public class PNGWriter {
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.alphaIndex = image.getHeader().hasAlpha() ? image.getHeader().getAlphaIndex(0) : -1;
-        if (image.getHeader().getColorEncoding().colorSpace == ColorSpace.GRAY) {
+        if (image.getHeader().getColorEncoding().colorSpace == ColorEncoding.GRAY) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
             this.colorChannels = 1;
         } else {

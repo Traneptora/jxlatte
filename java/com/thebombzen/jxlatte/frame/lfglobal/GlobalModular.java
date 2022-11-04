@@ -2,7 +2,7 @@ package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.bundle.color.ColorSpace;
+import com.thebombzen.jxlatte.bundle.color.ColorEncoding;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
@@ -28,7 +28,7 @@ public class GlobalModular {
         int ecStart = 0;
         if (header.encoding == FrameFlags.MODULAR) {
             if (!header.doYCbCr && !frame.globalMetadata.isXYBEncoded()
-                    && frame.globalMetadata.getColorEncoding().colorSpace == ColorSpace.GRAY)
+                    && frame.globalMetadata.getColorEncoding().colorSpace == ColorEncoding.GRAY)
                 ecStart = 1;
             else
                 ecStart = 3;

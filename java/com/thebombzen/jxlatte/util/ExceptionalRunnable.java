@@ -13,4 +13,11 @@ public interface ExceptionalRunnable {
             }
         };
     }
+
+    public default <T> ExceptionalSupplier<T> supply() {
+        return () -> {
+            run();
+            return null;
+        };
+    }
 }
