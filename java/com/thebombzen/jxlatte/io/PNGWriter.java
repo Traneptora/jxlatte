@@ -11,6 +11,7 @@ import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
 import com.thebombzen.jxlatte.bundle.color.ColorEncoding;
+import com.thebombzen.jxlatte.bundle.color.TransferFunction;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
@@ -23,18 +24,30 @@ public class PNGWriter {
     private int colorMode;
     private int colorChannels;
     private int alphaIndex;
+    private int deflateLevel;
     private CRC32 crc32 = new CRC32();
 
+    public PNGWriter(JXLImage image) {
+        this(image, 8);
+    }
+
     public PNGWriter(JXLImage image, int bitDepth) {
+        this(image, bitDepth, Deflater.BEST_SPEED);
+    }
+
+    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException("PNG only supports 8 and 16");
+        image = image.transfer(TransferFunction.SRGB);
+        this.buffer = image.getBuffer();
         this.bitDepth = bitDepth;
         this.buffer = image.getBuffer();
         this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
         this.height = image.getHeight();
-        this.alphaIndex = image.getHeader().hasAlpha() ? image.getHeader().getAlphaIndex(0) : -1;
-        if (image.getHeader().getColorEncoding().colorSpace == ColorEncoding.GRAY) {
+        this.alphaIndex = image.getAlphaIndex();
+        this.deflateLevel = deflateLevel;
+        if (image.getColorEncoding() == ColorEncoding.GRAY) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
             this.colorChannels = 1;
         } else {
@@ -72,9 +85,9 @@ public class PNGWriter {
             dout.writeShort(s);
     }
 
-    public void write(OutputStream outputStream, int deflateLevel) throws IOException {
+    public void write(OutputStream outputStream) throws IOException {
         this.out = new DataOutputStream(outputStream);
-        out.writeLong(0x8950_4E47_0D0A_1A0AL);
+        out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
         writeIHDR();
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         bout.write(new byte[]{'I', 'D', 'A', 'T'});

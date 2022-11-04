@@ -1,14 +1,11 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
-import java.util.function.DoubleUnaryOperator;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.bundle.color.TransferFunction;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.TaskList;
 
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
@@ -93,10 +90,8 @@ public class JXLCodestreamDecoder {
             }
         } while (!frame.getFrameHeader().isLast);
 
-        if (imageHeader.isXYBEncoded()) {
+        if (imageHeader.isXYBEncoded())
             imageHeader.getOpsinInverseMatrix().invertXYB(buffer, imageHeader.getToneMapping().intensityTarget);
-            
-        }
 
         return new JXLImage(buffer, imageHeader);
     }
