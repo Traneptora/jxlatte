@@ -83,4 +83,54 @@ public final class MathHelper {
         double upper = max(a);
         return Math.min(Math.max(v, lower), upper);
     }
+
+    public static double[] matrixMutliply(double[][] matrix, double[] vector) {
+        if (matrix.length != vector.length || vector.length == 0)
+            throw new IllegalArgumentException();
+        double[] total = new double[matrix[0].length];
+        for (int j = 0; j < total.length; j++) {
+            for (int i = 0; i < vector.length; i++) {
+                total[j] += matrix[i][j] * vector[i];
+            }
+        }
+        return total;
+    }
+
+    public static double[][] matrixMutliply(double[][] left, double[][] right) {
+        if (left.length == 0 || left[0].length == 0 || right.length == 0 || left.length != right[0].length)
+            throw new IllegalArgumentException();
+        double[][] result = new double[right.length][];
+        for (int x = 0; x < right.length; x++)
+            result[x] = matrixMutliply(left, right[x]);
+        return result;
+    }
+
+    // expensive! do not use on the fly
+    public static double[][] invertMatrix3x3(double[][] matrix) {
+        if (matrix.length != 3)
+            throw new IllegalArgumentException();
+        double det = 0D;
+        for (int c = 0; c < 3; c++) {
+            if (matrix[c].length != 3)
+                throw new IllegalArgumentException();
+            int c1 = (c + 1) % 3;
+            int c2 = (c + 2) % 3;
+            det += matrix[c][0] * matrix[c1][1] * matrix[c1][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
+        }
+        if (det == 0D)
+            return null;
+        double invDet = 1D / det;
+        double[][] inverse = new double[3][3];
+        for (int x = 0; x < 3; x++) {
+            for (int y = 0; y < 3; y++) {
+                int x1 = (x + 1) % 3;
+                int x2 = (x + 2) % 3;
+                int y1 = (y + 1) % 3;
+                int y2 = (y + 2) % 3;
+                // because we're going cyclicly here we don't need to multiply by (-1)^(x + y)
+                inverse[y][x] = (matrix[x1][y1] * matrix[x2][y2] - matrix[x2][y1] * matrix[x1][y2]) * invDet;
+            }
+        }
+        return inverse;
+    }
 }

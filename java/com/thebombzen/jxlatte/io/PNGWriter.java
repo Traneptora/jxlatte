@@ -10,8 +10,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
-import com.thebombzen.jxlatte.bundle.color.ColorEncoding;
-import com.thebombzen.jxlatte.bundle.color.TransferFunction;
+import com.thebombzen.jxlatte.bundle.color.ColorFlags;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
@@ -38,7 +37,10 @@ public class PNGWriter {
     public PNGWriter(JXLImage image, int bitDepth, int deflateLevel) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException("PNG only supports 8 and 16");
-        image = image.transfer(TransferFunction.SRGB);
+        if (image.getColorEncoding() == ColorFlags.CE_GRAY)
+            image = image.transfer(ColorFlags.TF_SRGB);
+        else
+            image = image.transform(ColorFlags.PRI_SRGB, ColorFlags.WP_D65, ColorFlags.TF_SRGB);
         this.buffer = image.getBuffer();
         this.bitDepth = bitDepth;
         this.buffer = image.getBuffer();
@@ -47,7 +49,7 @@ public class PNGWriter {
         this.height = image.getHeight();
         this.alphaIndex = image.getAlphaIndex();
         this.deflateLevel = deflateLevel;
-        if (image.getColorEncoding() == ColorEncoding.GRAY) {
+        if (image.getColorEncoding() == ColorFlags.CE_GRAY) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
             this.colorChannels = 1;
         } else {

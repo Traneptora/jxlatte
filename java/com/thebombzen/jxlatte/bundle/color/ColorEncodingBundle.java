@@ -17,13 +17,13 @@ public class ColorEncodingBundle {
 
     public ColorEncodingBundle() {
         useIccProfile = false;
-        colorSpace = ColorEncoding.RGB;
-        whitePoint = WhitePoint.D65;
-        white = WhitePoint.getWhitePoint(whitePoint);
-        primaries = Primaries.SRGB;
-        prim = Primaries.getPrimaries(primaries);
-        tf = TransferFunction.SRGB;
-        renderingIntent = RenderingIntent.RELATIVE;
+        colorSpace = ColorFlags.CE_RGB;
+        whitePoint = ColorFlags.WP_D65;
+        white = ColorFlags.getWhitePoint(whitePoint);
+        primaries = ColorFlags.PRI_SRGB;
+        prim = ColorFlags.getPrimaries(primaries);
+        tf = ColorFlags.TF_SRGB;
+        renderingIntent = ColorFlags.RI_RELATIVE;
     }
 
     public ColorEncodingBundle(Bitreader reader) throws IOException {
@@ -32,32 +32,32 @@ public class ColorEncodingBundle {
         if (!allDefault)
             colorSpace = reader.readEnum();
         else
-            colorSpace = ColorEncoding.RGB;
-        if (!ColorEncoding.validate(colorSpace))
+            colorSpace = ColorFlags.CE_RGB;
+        if (!ColorFlags.validateColorEncoding(colorSpace))
             throw new InvalidBitstreamException("Invalid ColorSpace enum");
-        if (!allDefault && !useIccProfile && colorSpace != ColorEncoding.XYB)
+        if (!allDefault && !useIccProfile && colorSpace != ColorFlags.CE_XYB)
             whitePoint = reader.readEnum();
         else
-            whitePoint = WhitePoint.D65;
-        if (!WhitePoint.validate(whitePoint))
+            whitePoint = ColorFlags.WP_D65;
+        if (!ColorFlags.validateWhitePoint(whitePoint))
             throw new InvalidBitstreamException("Invalid WhitePoint enum");
-        if (whitePoint == WhitePoint.CUSTOM)
+        if (whitePoint == ColorFlags.WP_CUSTOM)
             white = new CustomXY(reader);
         else
-            white = WhitePoint.getWhitePoint(whitePoint);
-        if (!allDefault && !useIccProfile && colorSpace != ColorEncoding.XYB && colorSpace != ColorEncoding.GRAY)
+            white = ColorFlags.getWhitePoint(whitePoint);
+        if (!allDefault && !useIccProfile && colorSpace != ColorFlags.CE_XYB && colorSpace != ColorFlags.CE_GRAY)
             primaries = reader.readEnum();
         else
-            primaries = Primaries.SRGB;
-        if (!Primaries.validate(primaries))
+            primaries = ColorFlags.PRI_SRGB;
+        if (!ColorFlags.validatePrimaries(primaries))
             throw new InvalidBitstreamException("Invalid Primaries enum");
-        if (primaries == Primaries.CUSTOM) {
+        if (primaries == ColorFlags.PRI_CUSTOM) {
             CIEXY pRed = new CustomXY(reader);
             CIEXY pGreen = new CustomXY(reader);
             CIEXY pBlue = new CustomXY(reader);
             prim = new CIEPrimaries(pRed, pGreen, pBlue);
         } else {
-            prim = Primaries.getPrimaries(primaries);
+            prim = ColorFlags.getPrimaries(primaries);
         }
         if (!allDefault && !useIccProfile) {
             boolean useGamma = reader.readBool();
@@ -66,14 +66,14 @@ public class ColorEncodingBundle {
             } else {
                 tf = (1 << 24) + reader.readEnum();
             }
-            if (!TransferFunction.validate(tf))
+            if (!ColorFlags.validateTransfer(tf))
                 throw new InvalidBitstreamException("Illegal transfer function");
             renderingIntent = reader.readEnum();
-            if (!RenderingIntent.validate(renderingIntent))
+            if (!ColorFlags.validateRenderingIntent(renderingIntent))
                 throw new InvalidBitstreamException("Invalid RenderingIntent enum");
         } else {
-            tf = TransferFunction.SRGB;
-            renderingIntent = RenderingIntent.RELATIVE;
+            tf = ColorFlags.TF_SRGB;
+            renderingIntent = ColorFlags.RI_RELATIVE;
         }
     }
 }

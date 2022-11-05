@@ -58,39 +58,9 @@ public class JXLCodestreamDecoder {
         return 1 + p1 + 8 * p2;
     }
 
-    public JXLImage decode(int level) throws IOException {
-        this.imageHeader = ImageHeader.parse(bitreader, level);
-        if (imageHeader.getColorEncoding().useIccProfile) {
-            int encodedSize = Math.toIntExact(bitreader.readU64());
-            byte[] encodedIcc = new byte[encodedSize];
-            EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
-            for (int i = 0; i < encodedSize; i++)
-                encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
-        }
-        bitreader.zeroPadToByte();
-
-        Frame frame;
-        if (imageHeader.getPreviewHeader() != null) {
-            frame = new Frame(bitreader, imageHeader);
-            frame.readHeader();
-            frame.skipFrameData();
-        }
-
-        int height = imageHeader.getSize().height;
-        int width = imageHeader.getSize().width;
-        double[][][] buffer = new double[imageHeader.getTotalChannelCount()][height][width];
-
-        List<Frame> frames = new ArrayList<>();
-
-        do {
-            frame = new Frame(bitreader, imageHeader);
-            frame.readHeader();
-            frame.decodeFrame();
-            frames.add(frame);
-        } while (!frame.getFrameHeader().isLast);
-
+    private void computePatches(List<? extends Frame> frames) throws InvalidBitstreamException {
         for (int f = 0; f < frames.size(); f++) {
-            frame = frames.get(f);
+            Frame frame = frames.get(f);
             FrameHeader header = frame.getFrameHeader();
             double[][][] frameBuffer = frame.getBuffer();
             int colorChannels = imageHeader.getColorChannelCount();
@@ -188,6 +158,40 @@ public class JXLCodestreamDecoder {
                 }
             }
         }
+    }
+
+    public JXLImage decode(int level) throws IOException {
+        this.imageHeader = ImageHeader.parse(bitreader, level);
+        if (imageHeader.getColorEncoding().useIccProfile) {
+            int encodedSize = Math.toIntExact(bitreader.readU64());
+            byte[] encodedIcc = new byte[encodedSize];
+            EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
+            for (int i = 0; i < encodedSize; i++)
+                encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
+        }
+        bitreader.zeroPadToByte();
+
+        Frame frame;
+        if (imageHeader.getPreviewHeader() != null) {
+            frame = new Frame(bitreader, imageHeader);
+            frame.readHeader();
+            frame.skipFrameData();
+        }
+
+        int height = imageHeader.getSize().height;
+        int width = imageHeader.getSize().width;
+        double[][][] buffer = new double[imageHeader.getTotalChannelCount()][height][width];
+
+        List<Frame> frames = new ArrayList<>();
+
+        do {
+            frame = new Frame(bitreader, imageHeader);
+            frame.readHeader();
+            frame.decodeFrame();
+            frames.add(frame);
+        } while (!frame.getFrameHeader().isLast);    
+
+        computePatches(frames);
 
         for (int i = 0; i < frames.size(); i++) {
             Frame newFrame = frames.get(i);
