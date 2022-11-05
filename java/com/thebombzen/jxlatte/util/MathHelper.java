@@ -60,13 +60,27 @@ public final class MathHelper {
         return Arrays.stream(a).reduce(Integer.MIN_VALUE, Math::max);
     }
 
+    public static double min(double... a) {
+        return Arrays.stream(a).reduce(Double.MAX_VALUE, Math::min);
+    }
+
+    public static double max(double... a) {
+        return Arrays.stream(a).reduce(Double.MIN_VALUE, Math::max);
+    }
+
     public static double signedPow(double base, double exponent) {
         return Math.signum(base) * Math.pow(Math.abs(base), exponent);
     }
 
-    public static int clamp(int v, int a, int b) {
-        int lower = min(a, b);
-        int upper = max(a, b);
+    public static int clamp(int v, int... a) {
+        int lower = min(a);
+        int upper = max(a);
+        return Math.min(Math.max(v, lower), upper);
+    }
+
+    public static double clamp(double v, double... a) {
+        double lower = min(a);
+        double upper = max(a);
         return Math.min(Math.max(v, lower), upper);
     }
 }

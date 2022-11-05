@@ -34,6 +34,7 @@ public class Frame {
     private LFGlobal lfGlobal;
     public final ImageHeader globalMetadata;
     private boolean permutedTOC;
+    private double[][][] buffer;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
@@ -168,10 +169,10 @@ public class Frame {
         return permutation;
     }
 
-    public double[][][] decodeFrame() throws IOException {
+    public void decodeFrame() throws IOException {
 
         lfGlobal = new LFGlobal(getBitreader(0).join(), this);
-        double[][][] buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
+        buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         int lfRowStride = MathHelper.ceilDiv(header.width, header.groupDim << 3);
@@ -299,7 +300,8 @@ public class Frame {
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
-        for (int c = 0; c < buffer.length; c++) {
+        for (int c_ = 0; c_ < buffer.length; c_++) {
+            final int c = c_;
             double scaleFactor;
             int cOut = c;
             boolean xyb = globalMetadata.isXYBEncoded();
@@ -314,25 +316,21 @@ public class Frame {
             } else {
                 scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
             }
-            final int c_ = c;
             final int cOut_ = cOut;
-            for (int y = 0; y < header.height; y++) {
-                final int y_ = y;
+            for (int y_ = 0; y_ < header.height; y_++) {
+                final int y = y_;
                 tasks.submit(() -> {
                     for (int x = 0; x < header.width; x++) {
-                        if (xyb && c_ == 2) {
-                            buffer[cOut_][y_][x] = scaleFactor * (streamBuffer[0][y_][x] + streamBuffer[2][y_][x]);
+                        if (xyb && c == 2) {
+                            buffer[cOut_][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
                         } else {
-                            buffer[cOut_][y_][x] = scaleFactor * streamBuffer[c_][y_][x];
+                            buffer[cOut_][y][x] = scaleFactor * streamBuffer[c][y][x];
                         }
                     }
                 });
             }
         }
-
         tasks.collect();
-
-        return buffer;
     }
 
     public LFGlobal getLFGlobal() {
@@ -345,5 +343,9 @@ public class Frame {
 
     public int getNumGroups() {
         return numGroups;
+    }
+
+    public double[][][] getBuffer() {
+        return buffer;
     }
 }

@@ -1,11 +1,19 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import com.thebombzen.jxlatte.bundle.ExtraChannelType;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
+import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.frame.Frame;
+import com.thebombzen.jxlatte.frame.FrameFlags;
+import com.thebombzen.jxlatte.frame.FrameHeader;
+import com.thebombzen.jxlatte.frame.lfglobal.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
@@ -72,23 +80,122 @@ public class JXLCodestreamDecoder {
         int width = imageHeader.getSize().width;
         double[][][] buffer = new double[imageHeader.getTotalChannelCount()][height][width];
 
+        List<Frame> frames = new ArrayList<>();
+
         do {
             frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
-            double[][][] frameBuffer = frame.decodeFrame();
-            int x0 = Math.max(frame.getFrameHeader().x0, 0);
-            int y0 = Math.max(frame.getFrameHeader().y0, 0);
-            int frameWidth = frame.getFrameHeader().width;
-            int frameHeight = frame.getFrameHeader().height;
-            if (frameWidth + x0 > width)
-                frameWidth = width - x0;
-            if (frameHeight + x0 > height)
-                frameHeight = height - x0;
-            for (int c = 0; c < buffer.length; c++) {
-                for (int y = y0; y < frameHeight; y++)
-                    System.arraycopy(frameBuffer[c][y], x0, buffer[c][y], 0, frameWidth);
-            }
+            frame.decodeFrame();
+            frames.add(frame);
         } while (!frame.getFrameHeader().isLast);
+
+        for (int f = 0; f < frames.size(); f++) {
+            frame = frames.get(f);
+            FrameHeader header = frame.getFrameHeader();
+            double[][][] frameBuffer = frame.getBuffer();
+            int colorChannels = imageHeader.getColorChannelCount();
+            int extraChannels = imageHeader.getExtraChannelCount();
+            Patch[] patches = frame.getLFGlobal().patches;
+            for (int i = 0; i < patches.length; i++) {
+                Patch patch = patches[i];
+                if (patch.ref > f)
+                    throw new InvalidBitstreamException("Patch out of range");
+                Frame ref = frames.get(patch.ref);
+                double[][][] refBuffer = ref.getBuffer();
+                for (int j = 0; j < patch.positions.length; j++) {
+                    int x0 = patch.positions[j].x;
+                    int y0 = patch.positions[j].y;
+                    if (x0 < 0 || y0 < 0)
+                        throw new InvalidBitstreamException("Patch size out of bounds");
+                    if (patch.height + patch.y0 > ref.getFrameHeader().height
+                        || patch.width + patch.x0 > ref.getFrameHeader().width)
+                        throw new InvalidBitstreamException("Patch too large");
+                    if (patch.height + y0 > frame.getFrameHeader().height
+                        || patch.width + x0 > frame.getFrameHeader().width)
+                        throw new InvalidBitstreamException("Patch size out of bounds");
+                    for (int d = 0; d < colorChannels + extraChannels; d++) {
+                        int c = d < colorChannels ? 0 : d - colorChannels + 1;
+                        BlendingInfo info = patch.blendingInfos[j][c];
+                        boolean premult = imageHeader.hasAlpha()
+                            ? imageHeader.getExtraChannelInfo(info.alphaChannel).alphaAssociated
+                            : true;
+                        boolean isAlpha = c > 0 &&
+                            imageHeader.getExtraChannelInfo(c - 1).type == ExtraChannelType.ALPHA;
+                        if (info.mode > 3 && header.upsampling > 1 && c > 0 &&
+                                header.ecUpsampling[c - 1] << imageHeader.getExtraChannelInfo(c - 1).dimShift
+                                != header.upsampling) {
+                            throw new InvalidBitstreamException("Alpha channel upsampling mismatch during patches");
+                        }
+                        for (int y = 0; y < patch.height; y++) {
+                            for (int x = 0; x < patch.width; x++) {
+                                int oldX = x + x0;
+                                int oldY = y + y0;
+                                int newX = x + patch.x0;
+                                int newY = y + patch.y0;
+                                double oldSample = frameBuffer[d][oldY][oldX];
+                                double newSample = refBuffer[d][newY][newX];
+                                double newAlpha = imageHeader.hasAlpha()
+                                    ? refBuffer[colorChannels + info.alphaChannel][newY][newX]
+                                    : 1.0;
+                                double oldAlpha = imageHeader.hasAlpha()
+                                    ? frameBuffer[colorChannels + info.alphaChannel][oldY][oldX]
+                                    : 1.0;
+                                double alpha = oldAlpha + newAlpha * (1 - oldAlpha);
+                                if (info.clamp)
+                                    alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
+                                double sample;
+                                switch (info.mode) {
+                                    case 0:
+                                        sample = oldSample;
+                                        break;
+                                    case 1:
+                                        sample = newSample;
+                                        break;
+                                    case 2:
+                                        sample = oldSample + newSample;
+                                        break;
+                                    case 3:
+                                        sample = oldSample * newSample;
+                                        break;
+                                    case 4:
+                                        sample = isAlpha ? alpha : premult ? newSample + oldSample * (1 - newAlpha)
+                                            : (newSample * newAlpha + oldSample * oldAlpha * (1 - newAlpha)) / alpha;
+                                        break;
+                                    case 5:
+                                        sample = isAlpha ? alpha : premult ? oldSample + newSample * (1 - newAlpha)
+                                            : (oldSample * newAlpha + newSample * oldAlpha * (1 - newAlpha)) / alpha;
+                                        break;
+                                    case 6:
+                                        sample = isAlpha ? alpha : oldSample + alpha * newSample;
+                                        break;
+                                    case 7:
+                                        sample = isAlpha ? alpha : newSample + alpha * oldSample;
+                                        break;
+                                    default:
+                                        throw new IllegalStateException("Challenge complete how did we get here");
+                                }
+                                frameBuffer[d][oldY][oldX] = sample;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < frames.size(); i++) {
+            Frame newFrame = frames.get(i);
+            if (newFrame.getFrameHeader().type != FrameFlags.REGULAR_FRAME)
+                continue;
+            int frameWidth = newFrame.getFrameHeader().width;
+            int frameHeight = newFrame.getFrameHeader().height;
+            int x0 = newFrame.getFrameHeader().x0;
+            int y0 = newFrame.getFrameHeader().y0;
+            for (int c = 0; c < buffer.length; c++) {
+                for (int y = 0; y < frameHeight; y++) {
+                    System.arraycopy(newFrame.getBuffer()[c][y], 0, buffer[c][y + y0], x0, frameWidth);
+                }
+            }
+        }
 
         if (imageHeader.isXYBEncoded())
             imageHeader.getOpsinInverseMatrix().invertXYB(buffer, imageHeader.getToneMapping().intensityTarget);

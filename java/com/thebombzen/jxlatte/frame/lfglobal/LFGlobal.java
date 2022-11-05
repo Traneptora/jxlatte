@@ -2,6 +2,7 @@ package com.thebombzen.jxlatte.frame.lfglobal;
 
 import java.io.IOException;
 
+import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
@@ -28,7 +29,8 @@ public class LFGlobal {
                 patches[i] = new Patch(stream, reader,
                     parent.globalMetadata.getExtraChannelCount(), parent.globalMetadata.getNumAlphaChannels());
             }
-            throw new UnsupportedOperationException("Patches not yet implemented");
+            if (!stream.validateFinalState())
+                throw new InvalidBitstreamException("Illegal ANS final state");
         } else {
             patches = new Patch[0];
         }
