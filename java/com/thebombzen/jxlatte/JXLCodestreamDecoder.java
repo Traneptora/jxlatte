@@ -116,6 +116,8 @@ public class JXLCodestreamDecoder {
                     for (int d = 0; d < colorChannels + extraChannels; d++) {
                         int c = d < colorChannels ? 0 : d - colorChannels + 1;
                         BlendingInfo info = patch.blendingInfos[j][c];
+                        if (info.mode == 0)
+                            continue;
                         boolean premult = imageHeader.hasAlpha()
                             ? imageHeader.getExtraChannelInfo(info.alphaChannel).alphaAssociated
                             : true;
@@ -134,15 +136,20 @@ public class JXLCodestreamDecoder {
                                 int newY = y + patch.y0;
                                 double oldSample = frameBuffer[d][oldY][oldX];
                                 double newSample = refBuffer[d][newY][newX];
-                                double newAlpha = imageHeader.hasAlpha()
+                                double alpha = 0D, newAlpha = 0D, oldAlpha = 0D;
+                                if (c > 3) {
+                                    newAlpha = imageHeader.hasAlpha()
                                     ? refBuffer[colorChannels + info.alphaChannel][newY][newX]
-                                    : 1.0;
-                                double oldAlpha = imageHeader.hasAlpha()
-                                    ? frameBuffer[colorChannels + info.alphaChannel][oldY][oldX]
-                                    : 1.0;
-                                double alpha = oldAlpha + newAlpha * (1 - oldAlpha);
-                                if (info.clamp)
-                                    alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
+                                        : 1.0;
+                                    oldAlpha = imageHeader.hasAlpha()
+                                        ? frameBuffer[colorChannels + info.alphaChannel][oldY][oldX]
+                                        : 1.0;
+                                    if (c > 5 || isAlpha || !premult) {
+                                        alpha = oldAlpha + newAlpha * (1 - oldAlpha);
+                                        if (info.clamp)
+                                            alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
+                                    }
+                                }
                                 double sample;
                                 switch (info.mode) {
                                     case 0:

@@ -189,7 +189,7 @@ public class ModularChannel extends ModularChannelInfo {
             s += subpred[e] * weight[e];
         pred[x][y] = (int)((s * oneL24OverKP1[wSum - 1]) >> 24);
         if (((tN ^ tW) | (tN ^ tNW)) <= 0)
-            pred[x][y] = MathHelper.clamp(pred[x][y], MathHelper.min(w3, n3, ne3), MathHelper.max(w3, n3, ne3));
+            pred[x][y] = MathHelper.clamp(pred[x][y], w3, n3, ne3);
         int maxError = tW;
         if (Math.abs(tN) > Math.abs(maxError))
             maxError = tN;
