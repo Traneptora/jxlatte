@@ -28,7 +28,7 @@ public class GlobalModular {
         int ecStart = 0;
         if (header.encoding == FrameFlags.MODULAR) {
             if (!header.doYCbCr && !frame.globalMetadata.isXYBEncoded()
-                    && frame.globalMetadata.getColorEncoding().colorSpace == ColorFlags.CE_GRAY)
+                    && frame.globalMetadata.getColorEncoding().colorEncoding == ColorFlags.CE_GRAY)
                 ecStart = 1;
             else
                 ecStart = 3;

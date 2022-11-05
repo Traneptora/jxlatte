@@ -17,4 +17,9 @@ public class CIEXY {
         return Math.abs(x - xy.x) + Math.abs(y - xy.y) < 1e-4D;
     }
 
+    @Override
+    public String toString() {
+        return String.format("CIEXY [x=%s, y=%s]", x, y);
+    }
+
 }

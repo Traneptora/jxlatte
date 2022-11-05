@@ -115,7 +115,7 @@ public final class MathHelper {
                 throw new IllegalArgumentException();
             int c1 = (c + 1) % 3;
             int c2 = (c + 2) % 3;
-            det += matrix[c][0] * matrix[c1][1] * matrix[c1][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
+            det += matrix[c][0] * matrix[c1][1] * matrix[c2][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
         }
         if (det == 0D)
             return null;

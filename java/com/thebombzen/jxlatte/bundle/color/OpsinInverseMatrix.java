@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.bundle.color;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.ColorManagement;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
 
@@ -29,12 +30,20 @@ public class OpsinInverseMatrix {
     private double[] cbrtOpsinBias;
     private double[] quantBias;
     public final double quantBiasNumerator;
+    public final CIEPrimaries primaries;
+    public final CIEXY whitePoint;
 
     public OpsinInverseMatrix() {
+        this(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB), ColorFlags.getWhitePoint(ColorFlags.WP_D65));
+    }
+
+    private OpsinInverseMatrix(CIEPrimaries primaries, CIEXY whitePoint) {
         matrix = DEFAULT_MATRIX;
         opsinBias = DEFAULT_OPSIN_BIAS;
         quantBias = DEFAULT_QUANT_BIAS;
         quantBiasNumerator = DEFAULT_QBIAS_NUMERATOR;
+        this.primaries = primaries;
+        this.whitePoint = whitePoint;
         bakeCbrtBias();
     }
 
@@ -59,6 +68,8 @@ public class OpsinInverseMatrix {
                 quantBias[i] = reader.readF16();
             quantBiasNumerator = reader.readF16();
         }
+        this.primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
+        this.whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
         bakeCbrtBias();
     }
 
@@ -68,9 +79,14 @@ public class OpsinInverseMatrix {
             cbrtOpsinBias[c] = MathHelper.signedPow(opsinBias[c], 1D/3D);
     }
 
-    /** 
-     * @return linear sRGB
-     */
+    public OpsinInverseMatrix getMatrix(CIEPrimaries primaries, CIEXY whitePoint) {
+        OpsinInverseMatrix opsin = new OpsinInverseMatrix(primaries, whitePoint);
+        opsin.matrix = MathHelper.matrixMutliply(
+            ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries, this.whitePoint),
+            this.matrix);
+        return opsin;
+    }
+
     public void invertXYB(double[][][] buffer, double intensityTarget) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");

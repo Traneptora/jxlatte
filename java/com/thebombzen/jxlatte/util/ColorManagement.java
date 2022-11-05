@@ -12,9 +12,9 @@ public final class ColorManagement {
     }
 
     private static final double[][] BRADFORD = new double[][]{
-        {0.8951D, 0.2664D, -0.1614D},
-        {-0.7502D, 1.7135D, 0.0367D},
-        {-0.0389D, -0.0685D, 1.0296D}
+        {0.8951D, -0.7502D, 0.0389D},
+        {0.2664D, 1.7135D, -0.0685D},
+        {-0.1614D, 0.0367D, 1.0296D}
     };
 
     private static final double[] LMS50 = MathHelper.matrixMutliply(BRADFORD, new double[]{0.96422D, 1.0D, 0.82521D});
@@ -42,12 +42,15 @@ public final class ColorManagement {
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
         double[][] primaryMatrix = new double[][]{
-            {primaries.red.x, primaries.green.x, primaries.blue.x},
-            {primaries.red.y, primaries.green.y, primaries.blue.y},
-            {1.0D - primaries.red.x - primaries.red.y,
-                1.0D - primaries.green.x - primaries.green.y,
-                1.0D - primaries.blue.x - primaries.blue.y}
+            {primaries.red.x, primaries.red.y, 1.0D - primaries.red.x - primaries.red.y},
+            {primaries.green.x, primaries.green.y, 1.0D - primaries.green.x - primaries.green.y},
+            {primaries.blue.x, primaries.blue.y, 1.0D - primaries.blue.x - primaries.blue.y},
         };
+        for (int c = 0; c < 3; c++) {
+            primaryMatrix[c][0] /= primaryMatrix[c][1];
+            primaryMatrix[c][2] /= primaryMatrix[c][1];
+            primaryMatrix[c][1] = 1.0D;
+        }
         double[][] inversePrimaries = MathHelper.invertMatrix3x3(primaryMatrix);
         double[] w = new double[]{
             wp.x / wp.y,

@@ -7,7 +7,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ColorEncodingBundle {
     public final boolean useIccProfile;
-    public final int colorSpace;
+    public final int colorEncoding;
     public final int whitePoint;
     public final CIEXY white;
     public final int primaries;
@@ -17,7 +17,7 @@ public class ColorEncodingBundle {
 
     public ColorEncodingBundle() {
         useIccProfile = false;
-        colorSpace = ColorFlags.CE_RGB;
+        colorEncoding = ColorFlags.CE_RGB;
         whitePoint = ColorFlags.WP_D65;
         white = ColorFlags.getWhitePoint(whitePoint);
         primaries = ColorFlags.PRI_SRGB;
@@ -30,12 +30,12 @@ public class ColorEncodingBundle {
         boolean allDefault = reader.readBool();
         useIccProfile = allDefault ? false : reader.readBool();
         if (!allDefault)
-            colorSpace = reader.readEnum();
+            colorEncoding = reader.readEnum();
         else
-            colorSpace = ColorFlags.CE_RGB;
-        if (!ColorFlags.validateColorEncoding(colorSpace))
+            colorEncoding = ColorFlags.CE_RGB;
+        if (!ColorFlags.validateColorEncoding(colorEncoding))
             throw new InvalidBitstreamException("Invalid ColorSpace enum");
-        if (!allDefault && !useIccProfile && colorSpace != ColorFlags.CE_XYB)
+        if (!allDefault && !useIccProfile && colorEncoding != ColorFlags.CE_XYB)
             whitePoint = reader.readEnum();
         else
             whitePoint = ColorFlags.WP_D65;
@@ -45,7 +45,7 @@ public class ColorEncodingBundle {
             white = new CustomXY(reader);
         else
             white = ColorFlags.getWhitePoint(whitePoint);
-        if (!allDefault && !useIccProfile && colorSpace != ColorFlags.CE_XYB && colorSpace != ColorFlags.CE_GRAY)
+        if (!allDefault && !useIccProfile && colorEncoding != ColorFlags.CE_XYB && colorEncoding != ColorFlags.CE_GRAY)
             primaries = reader.readEnum();
         else
             primaries = ColorFlags.PRI_SRGB;

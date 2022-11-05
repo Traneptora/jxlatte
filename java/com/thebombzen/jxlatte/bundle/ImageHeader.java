@@ -239,7 +239,7 @@ public class ImageHeader {
     }
 
     public int getColorChannelCount() {
-        return getColorEncoding().colorSpace == ColorFlags.CE_GRAY ? 1 : 3;
+        return getColorEncoding().colorEncoding == ColorFlags.CE_GRAY ? 1 : 3;
     }
 
     public int getTotalChannelCount() {

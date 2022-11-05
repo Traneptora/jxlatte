@@ -10,6 +10,8 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
+import com.thebombzen.jxlatte.bundle.color.CIEPrimaries;
+import com.thebombzen.jxlatte.bundle.color.CIEXY;
 import com.thebombzen.jxlatte.bundle.color.ColorFlags;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -24,6 +26,8 @@ public class PNGWriter {
     private int colorChannels;
     private int alphaIndex;
     private int deflateLevel;
+    private CIEPrimaries primaries;
+    private CIEXY whitePoint;
     private CRC32 crc32 = new CRC32();
 
     public PNGWriter(JXLImage image) {
@@ -35,21 +39,28 @@ public class PNGWriter {
     }
 
     public PNGWriter(JXLImage image, int bitDepth, int deflateLevel) {
+        this(image, bitDepth, deflateLevel, null, null);
+    }
+
+    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, CIEPrimaries primaries, CIEXY whitePoint) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException("PNG only supports 8 and 16");
-        if (image.getColorEncoding() == ColorFlags.CE_GRAY)
-            image = image.transfer(ColorFlags.TF_SRGB);
-        else
-            image = image.transform(ColorFlags.PRI_SRGB, ColorFlags.WP_D65, ColorFlags.TF_SRGB);
+        boolean gray = image.getOriginalColorEncoding() == ColorFlags.CE_GRAY;
+        this.primaries = primaries;
+        this.whitePoint = whitePoint;
+        if (primaries == null)
+            primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
+        if (whitePoint == null)
+            whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        image = image.transform(primaries, whitePoint, ColorFlags.TF_SRGB);
         this.buffer = image.getBuffer();
         this.bitDepth = bitDepth;
-        this.buffer = image.getBuffer();
         this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.alphaIndex = image.getAlphaIndex();
         this.deflateLevel = deflateLevel;
-        if (image.getColorEncoding() == ColorFlags.CE_GRAY) {
+        if (gray) {
             this.colorMode = alphaIndex >= 0 ? 4 : 0;
             this.colorChannels = 1;
         } else {
@@ -78,6 +89,33 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
+    private void writeCHRM() throws IOException {
+        if (primaries == null && whitePoint == null)
+            return;
+        if (primaries == null)
+            primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
+        if (whitePoint == null)
+            whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        DataOutputStream dout = new DataOutputStream(bout);
+        dout.writeInt(0x63_48_52_4D);
+        dout.writeInt((int)(100000D * whitePoint.x));
+        dout.writeInt((int)(100000D * whitePoint.y));
+        dout.writeInt((int)(100000D * primaries.red.x));
+        dout.writeInt((int)(100000D * primaries.red.y));
+        dout.writeInt((int)(100000D * primaries.green.x));
+        dout.writeInt((int)(100000D * primaries.green.y));
+        dout.writeInt((int)(100000D * primaries.blue.x));
+        dout.writeInt((int)(100000D * primaries.blue.y));
+        dout.close();
+        byte[] buf = bout.toByteArray();
+        crc32.reset();
+        out.writeInt(buf.length - 4);
+        out.write(buf);
+        crc32.update(buf);
+        out.writeInt((int)crc32.getValue());
+    }
+
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
         int s = MathHelper.round(buffer[c][y][x] * maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
@@ -87,10 +125,7 @@ public class PNGWriter {
             dout.writeShort(s);
     }
 
-    public void write(OutputStream outputStream) throws IOException {
-        this.out = new DataOutputStream(outputStream);
-        out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
-        writeIHDR();
+    private void writeIDAT() throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         bout.write(new byte[]{'I', 'D', 'A', 'T'});
         DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout, new Deflater(deflateLevel)));
@@ -111,6 +146,14 @@ public class PNGWriter {
         crc32.reset();
         crc32.update(buff);
         out.writeInt((int)crc32.getValue());
+    }
+
+    public void write(OutputStream outputStream) throws IOException {
+        this.out = new DataOutputStream(outputStream);
+        out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
+        writeIHDR();
+        writeCHRM();
+        writeIDAT();
         out.writeInt(0);
         out.writeInt(0x49_45_4E_44); // IEND
         out.writeInt(0xAE_42_60_82); // crc32 for IEND

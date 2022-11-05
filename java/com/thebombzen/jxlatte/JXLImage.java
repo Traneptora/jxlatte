@@ -14,35 +14,35 @@ import com.thebombzen.jxlatte.util.TaskList;
 public class JXLImage {
     private double[][][] buffer;
     private ImageHeader imageHeader;
+    private int originalColorEncoding;
     private int colorEncoding;
     private int alphaIndex;
 
     private int primaries;
     private int whitePoint;
     private int transfer;
+    private int taggedTransfer;
 
     private CIEXY white1931;
     private CIEPrimaries primaries1931;
 
-    public JXLImage(double[][][] buffer, ImageHeader header) {
+    protected JXLImage(double[][][] buffer, ImageHeader header) {
         this.buffer = buffer;
-        this.colorEncoding = buffer.length >= 3 ? ColorFlags.CE_RGB : ColorFlags.CE_GRAY;
+        this.originalColorEncoding = header.getColorEncoding().colorEncoding;
+        this.colorEncoding = header.isXYBEncoded() ? ColorFlags.CE_XYB : this.originalColorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
         this.imageHeader = header;
-        if (header.isXYBEncoded()) {
-            this.primaries = ColorFlags.PRI_SRGB;
-            this.whitePoint = ColorFlags.WP_D65;
+        ColorEncodingBundle bundle = header.getColorEncoding();
+        if (colorEncoding == ColorFlags.CE_XYB) {
             this.transfer = ColorFlags.TF_LINEAR;
-            this.primaries1931 = ColorFlags.getPrimaries(primaries);
-            this.white1931 = ColorFlags.getWhitePoint(whitePoint);
         } else {
-            ColorEncodingBundle bundle = header.getColorEncoding();
-            this.primaries = bundle.primaries;
-            this.whitePoint = bundle.whitePoint;
             this.transfer = bundle.tf;
-            this.primaries1931 = bundle.prim;
-            this.white1931 = bundle.white;
         }
+        this.taggedTransfer = bundle.tf;
+        this.primaries = bundle.primaries;
+        this.whitePoint = bundle.whitePoint;
+        this.primaries1931 = bundle.prim;
+        this.white1931 = bundle.white;
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
@@ -54,6 +54,7 @@ public class JXLImage {
         this.transfer = image.transfer;
         this.primaries1931 = image.primaries1931;
         this.white1931 = image.white1931;
+        this.originalColorEncoding = image.originalColorEncoding;
         if (copyBuffer) {
             buffer = new double[image.buffer.length][][];
             for (int c = 0; c < buffer.length; c++) {
@@ -86,6 +87,9 @@ public class JXLImage {
         return buffer;
     }
 
+    /*
+     * Assumes Linear Light
+     */
     private JXLImage toneMapLinear(CIEPrimaries primaries, CIEXY whitePoint) {
         if (this.primaries1931.matches(primaries) && this.white1931.matches(whitePoint))
             return this;
@@ -120,9 +124,9 @@ public class JXLImage {
         int w = getWidth();
         int h = getHeight();
         double[][][] newBuffer = new double[buffer.length + 2][h][w];
-        for (int c = 0; c < 3; c++) {
+        for (int c = 0; c < newBuffer.length; c++) {
             for (int y = 0; y < h; y++) {
-                System.arraycopy(buffer[0][y], 0, newBuffer[c][y], 0, w);
+                System.arraycopy(buffer[c > 2 ? c - 2 : 0][y], 0, newBuffer[c][y], 0, w);
             }
         }
         JXLImage image = new JXLImage(this, false);
@@ -131,9 +135,47 @@ public class JXLImage {
         return image;
     }
 
+    public JXLImage flattenColor() {
+        if (this.colorEncoding == ColorFlags.CE_GRAY)
+            return this;
+        int w = getWidth();
+        int h = getHeight();
+        double[][][] newBuffer = new double[buffer.length - 2][h][w];
+        for (int c = 0; c < newBuffer.length; c++) {
+            for (int y = 0; y < h; y++) {
+                System.arraycopy(buffer[c > 1 ? c + 2 : 1][y], 0, newBuffer[c][y], 0, w);
+            }
+        }
+        JXLImage image = new JXLImage(this, false);
+        image.buffer = newBuffer;
+        image.colorEncoding = ColorFlags.CE_GRAY;
+        return image;
+    }
+
+    public JXLImage invertXYB() {
+        return invertXYB(this.primaries1931, this.white1931);
+    }
+
+    public JXLImage invertXYB(CIEPrimaries primaries, CIEXY whitePoint) {
+        if (this.colorEncoding != ColorFlags.CE_XYB)
+            return this;
+        JXLImage image = new JXLImage(this);
+        image.primaries1931 = primaries;
+        image.primaries = ColorFlags.getPrimaries(primaries);
+        image.white1931 = whitePoint;
+        image.whitePoint = ColorFlags.getWhitePoint(whitePoint);
+        imageHeader.getOpsinInverseMatrix().getMatrix(primaries, whitePoint)
+            .invertXYB(image.buffer, imageHeader.getToneMapping().intensityTarget);
+        image.colorEncoding = ColorFlags.CE_RGB;
+        return image;
+    }
+
     public JXLImage transform(CIEPrimaries primaries, CIEXY whitePoint, int transfer) {
-        if (this.primaries1931.matches(primaries) && this.white1931.matches(whitePoint))
-            return this.transfer(transfer);
+        JXLImage image = this;
+        if (image.colorEncoding == ColorFlags.CE_XYB)
+            image = image.invertXYB(primaries, whitePoint);
+        if (image.primaries1931.matches(primaries) && image.white1931.matches(whitePoint))
+            return image.transfer(transfer);
         return this.transfer(ColorFlags.TF_LINEAR)
             .fillColor()
             .toneMapLinear(primaries, whitePoint)
@@ -153,9 +195,13 @@ public class JXLImage {
     }
 
     public JXLImage transfer(int transfer) {
-        if (transfer == this.transfer)
-            return this;
-        JXLImage image = new JXLImage(this);
+        JXLImage image = this;
+        if (image.colorEncoding == ColorFlags.CE_XYB)
+            image = this.invertXYB();
+        if (transfer == image.transfer)
+            return image;
+        image = image == this ? new JXLImage(image) : image;
+        final JXLImage image_ = image;
         DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(this.transfer);
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
         DoubleUnaryOperator composed = inverse.andThen(forward);
@@ -168,7 +214,7 @@ public class JXLImage {
                 final int y = y_;
                 tasks.submit(() -> {
                     for (int x = 0; x < width; x++)
-                        image.buffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
+                        image_.buffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
                 });
             }
         }
@@ -207,5 +253,13 @@ public class JXLImage {
 
     public int getAlphaIndex() {
         return alphaIndex;
+    }
+
+    public int getOriginalColorEncoding() {
+        return this.originalColorEncoding;
+    }
+
+    public int getTaggedTransfer() {
+        return this.taggedTransfer;
     }
 }

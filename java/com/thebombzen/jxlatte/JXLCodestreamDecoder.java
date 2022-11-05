@@ -208,9 +208,6 @@ public class JXLCodestreamDecoder {
             }
         }
 
-        if (imageHeader.isXYBEncoded())
-            imageHeader.getOpsinInverseMatrix().invertXYB(buffer, imageHeader.getToneMapping().intensityTarget);
-
         return new JXLImage(buffer, imageHeader);
     }
 }
