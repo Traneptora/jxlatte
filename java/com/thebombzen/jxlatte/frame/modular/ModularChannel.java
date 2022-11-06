@@ -201,7 +201,7 @@ public class ModularChannel extends ModularChannelInfo {
     }
 
     public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree,
-            int channelIndex, int streamIndex, int distMultiplier) throws IOException {
+            ModularStream parent, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
         if (decoded)
             return;
         decoded = true;
@@ -260,7 +260,29 @@ public class ModularChannel extends ModularChannelInfo {
                         case 15:
                             return maxError;
                         default:
-                            throw new UnsupportedOperationException("Properties > 15 not yet implmented");
+                            if (k - 16 >= 4 * channelIndex)
+                                return 0;
+                            int k2 = 16;
+                            for (int j = channelIndex - 1; j >= 0; j--) {
+                                ModularChannel channel = parent.getChannel(j);
+                                if (channel.width != width || channel.height != height
+                                        || channel.hshift != hshift || channel.vshift != vshift)
+                                    continue;
+                                int rC = channel.get(x, y);
+                                if (k2++ == k)
+                                    return Math.abs(rC);
+                                if (k2++ == k)
+                                    return rC;
+                                int rW = x > 0 ? channel.get(x - 1, y) : 0;
+                                int rN = y > 0 ? channel.get(x, y - 1) : rW;
+                                int rNW = x > 0 && y > 0 ? channel.get(x - 1, y - 1) : rW;
+                                int rG = rC - MathHelper.clamp(rW + rN - rNW, rN, rW);
+                                if (k2++ == k)
+                                    return Math.abs(rG);
+                                if (k2++ == k)
+                                    return rG;
+                            }
+                            return 0;
                     }
                 });
                 int diff = stream.readSymbol(reader, leafNode.getContext(), distMultiplier);

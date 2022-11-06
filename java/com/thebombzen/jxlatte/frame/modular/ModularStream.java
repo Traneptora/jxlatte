@@ -192,7 +192,7 @@ public class ModularStream {
             ModularChannel channel = getChannel(i);
             if (partial && i >= nbMetaChannels && (channel.width > groupDim || channel.height > groupDim))
                 break;
-            channel.decode(reader, stream, wpParams, tree, i, streamIndex, distMultiplier);
+            channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier);
         }
         if (stream != null && !stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final modular state");
