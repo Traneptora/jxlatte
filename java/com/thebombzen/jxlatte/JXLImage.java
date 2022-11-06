@@ -71,22 +71,6 @@ public class JXLImage {
         this(image, true);
     }
 
-    public ImageHeader getHeader() {
-        return imageHeader;
-    }
-
-    public int getWidth() {
-        return imageHeader.getSize().width;
-    }
-
-    public int getHeight() {
-        return imageHeader.getSize().height;
-    }
-
-    public double[][][] getBuffer() {
-        return buffer;
-    }
-
     /*
      * Assumes Linear Light
      */
@@ -176,7 +160,7 @@ public class JXLImage {
             image = image.invertXYB(primaries, whitePoint);
         if (image.primaries1931.matches(primaries) && image.white1931.matches(whitePoint))
             return image.transfer(transfer);
-        return this.transfer(ColorFlags.TF_LINEAR)
+        return image.transfer(ColorFlags.TF_LINEAR)
             .fillColor()
             .toneMapLinear(primaries, whitePoint)
             .transfer(transfer);
@@ -197,12 +181,12 @@ public class JXLImage {
     public JXLImage transfer(int transfer) {
         JXLImage image = this;
         if (image.colorEncoding == ColorFlags.CE_XYB)
-            image = this.invertXYB();
+            image = image.invertXYB();
         if (transfer == image.transfer)
             return image;
         image = image == this ? new JXLImage(image) : image;
         final JXLImage image_ = image;
-        DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(this.transfer);
+        DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(image.transfer);
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
         DoubleUnaryOperator composed = inverse.andThen(forward);
         TaskList<?> tasks = new TaskList<>();
@@ -261,5 +245,21 @@ public class JXLImage {
 
     public int getTaggedTransfer() {
         return this.taggedTransfer;
+    }
+
+    public ImageHeader getHeader() {
+        return imageHeader;
+    }
+
+    public int getWidth() {
+        return imageHeader.getSize().width;
+    }
+
+    public int getHeight() {
+        return imageHeader.getSize().height;
+    }
+
+    public double[][][] getBuffer() {
+        return buffer;
     }
 }

@@ -21,5 +21,4 @@ public class CIEXY {
     public String toString() {
         return String.format("CIEXY [x=%s, y=%s]", x, y);
     }
-
 }
