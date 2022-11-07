@@ -17,60 +17,60 @@ public final class ColorManagement {
         {-0.1614D, 0.0367D, 1.0296D}
     };
 
-    private static final double[] LMS50 = MathHelper.matrixMutliply(BRADFORD, new double[]{0.96422D, 1.0D, 0.82521D});
     private static final double[][] BRADFORD_INVERSE = MathHelper.invertMatrix3x3(BRADFORD);
 
-    private static double[][] mapToXYZD50(CIEXY whitePoint) {
-        if (whitePoint.x < 0 || whitePoint.x > 1 || whitePoint.y <= 0 || whitePoint.y > 1)
+    private static double[] getXYZ(CIEXY xy) {
+        validateXY(xy);
+        double invY = 1.0D / xy.y;
+        return new double[]{xy.x * invY, 1.0D, (1.0D - xy.x - xy.y) * invY};
+    }
+
+    private static void validateXY(CIEXY xy) {
+        if (xy.x < 0 || xy.x > 1 || xy.y <= 0 || xy.y > 1)
             throw new IllegalArgumentException();
-        double[] w = new double[]{
-            whitePoint.x / whitePoint.y,
-            1.0D,
-            (1.0D - whitePoint.x - whitePoint.y) / whitePoint.y
-        };
-        double[] lms = MathHelper.matrixMutliply(BRADFORD, w);
-        if (lms[0] == 0D || lms[1] == 0D || lms[2] == 0D)
-            throw new IllegalArgumentException();
+    }
+
+    private static void validateLMS(double[] lms) {
+        for (int i = 0; i < lms.length; i++) {
+            if (Math.abs(lms[i]) < 1e-8D) {
+                throw new IllegalArgumentException();
+            }
+        }
+    }
+
+    private static double[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
+        double[] wCurrent = getXYZ(currentWP);
+        double[] lmsCurrent = MathHelper.matrixMutliply(BRADFORD, wCurrent);
+        double[] wTarget = getXYZ(targetWP);
+        double[] lmsTarget = MathHelper.matrixMutliply(BRADFORD, wTarget);
+        validateLMS(lmsCurrent);
         double[][] a = new double[3][3];
         for (int i = 0; i < 3; i++)
-            a[i][i] = LMS50[i] / lms[i];
-        double[][] b = MathHelper.matrixMutliply(BRADFORD_INVERSE, a);
-        return MathHelper.matrixMutliply(b, BRADFORD);
+            a[i][i] = lmsTarget[i] / lmsCurrent[i];
+        return MathHelper.matrixMutliply(BRADFORD_INVERSE, a, BRADFORD);
     }
 
     private static double[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
-        double[][] primaryMatrix = new double[][]{
-            {primaries.red.x, primaries.red.y, 1.0D - primaries.red.x - primaries.red.y},
-            {primaries.green.x, primaries.green.y, 1.0D - primaries.green.x - primaries.green.y},
-            {primaries.blue.x, primaries.blue.y, 1.0D - primaries.blue.x - primaries.blue.y},
-        };
-        for (int c = 0; c < 3; c++) {
-            primaryMatrix[c][0] /= primaryMatrix[c][1];
-            primaryMatrix[c][2] /= primaryMatrix[c][1];
-            primaryMatrix[c][1] = 1.0D;
-        }
+        double[][] primaryMatrix = new double[][]{getXYZ(primaries.red), getXYZ(primaries.green), getXYZ(primaries.blue)};
         double[][] inversePrimaries = MathHelper.invertMatrix3x3(primaryMatrix);
-        double[] w = new double[]{
-            wp.x / wp.y,
-            1.0D,
-            (1.0D - wp.x - wp.y) / wp.y
-        };
+        double[] w = getXYZ(wp);
         double[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
         double[][] a = new double[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
         return MathHelper.matrixMutliply(primaryMatrix, a);
     }
 
-    private static double[][] primariesToXYZD50(CIEPrimaries primaries, CIEXY wp) {
-        return MathHelper.matrixMutliply(mapToXYZD50(wp), primariesToXYZ(primaries, wp));
-    }
-
     public static double[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,
             CIEPrimaries currentPrim, CIEXY currentWP) {
-        double[][] inverse = MathHelper.invertMatrix3x3(primariesToXYZD50(currentPrim, currentWP));
-        double[][] forward = primariesToXYZD50(targetPrim, targetWP);
-        return MathHelper.matrixMutliply(forward, inverse);
+        if (targetPrim.matches(currentPrim) && targetWP.matches(currentWP))
+            return MathHelper.matrixIdentity(3);
+        double[][] whitePointConv = null;
+        if (!targetWP.matches(currentWP))
+            whitePointConv = adaptWhitePoint(targetWP, currentWP);
+        double[][] forward = primariesToXYZ(currentPrim, currentWP);
+        double[][] reverse = MathHelper.invertMatrix3x3(primariesToXYZ(targetPrim, targetWP));
+        return MathHelper.matrixMutliply(reverse, whitePointConv, forward);
     }
 
     public static DoubleUnaryOperator getTransferFunction(int transfer) {

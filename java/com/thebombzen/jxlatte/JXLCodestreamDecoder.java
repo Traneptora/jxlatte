@@ -214,6 +214,8 @@ public class JXLCodestreamDecoder {
             }
         }
 
-        return new JXLImage(buffer, imageHeader);
+        JXLImage image = new JXLImage(buffer, imageHeader).invertXYB();
+
+        return image;
     }
 }

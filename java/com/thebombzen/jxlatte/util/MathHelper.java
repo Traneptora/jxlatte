@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.Arrays;
+import java.util.Collection;
 
 public final class MathHelper {
 
@@ -85,6 +86,8 @@ public final class MathHelper {
     }
 
     public static double[] matrixMutliply(double[][] matrix, double[] vector) {
+        if (matrix == null)
+            return vector;
         if (matrix.length != vector.length || vector.length == 0)
             throw new IllegalArgumentException();
         double[] total = new double[matrix[0].length];
@@ -97,6 +100,10 @@ public final class MathHelper {
     }
 
     public static double[][] matrixMutliply(double[][] left, double[][] right) {
+        if (left == null)
+            return right;
+        if (right == null)
+            return left;
         if (left.length == 0 || left[0].length == 0 || right.length == 0 || left.length != right[0].length)
             throw new IllegalArgumentException();
         double[][] result = new double[right.length][];
@@ -105,8 +112,25 @@ public final class MathHelper {
         return result;
     }
 
-    // expensive! do not use on the fly
+    public static double[][] matrixIdentity(int n) {
+        double[][] identity = new double[n][n];
+        for (int i = 0; i < n; i++)
+            identity[i][i] = 1.0D;
+        return identity;
+    }
+
+    public static double[][] matrixMutliply(double[][]... matrices) {
+        return matrixMutliply(Arrays.asList(matrices));
+    }
+
+    public static double[][] matrixMutliply(Collection<double[][]> matrices) {
+        return matrices.stream().reduce(MathHelper::matrixMutliply).orElse(null);
+    }
+
+    // expensive! try not to use on the fly
     public static double[][] invertMatrix3x3(double[][] matrix) {
+        if (matrix == null)
+            return null;
         if (matrix.length != 3)
             throw new IllegalArgumentException();
         double det = 0D;
