@@ -43,7 +43,7 @@ public class JXLCodestreamDecoder {
             p1 = 6;
         else
             p1 = 7;
-        
+
         if (b2 >= 'a' && b2 <= 'z' || b2 >= 'A' && b2 <= 'Z')
             p2 = 0;
         else if (b2 >= '0' && b2 <= '9' || b2 == '.' || b2 == ',')
@@ -168,6 +168,8 @@ public class JXLCodestreamDecoder {
             EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
             for (int i = 0; i < encodedSize; i++)
                 encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
+            if (!iccDistribution.validateFinalState())
+                throw new InvalidBitstreamException("ICC Stream");
         }
         bitreader.zeroPadToByte();
 
@@ -201,6 +203,10 @@ public class JXLCodestreamDecoder {
             int frameHeight = newFrame.getFrameHeader().height;
             int x0 = newFrame.getFrameHeader().x0;
             int y0 = newFrame.getFrameHeader().y0;
+            if (frameHeight + y0 > height)
+                frameHeight = height - y0;
+            if (frameWidth + x0 > width)
+                frameWidth = width - x0;
             for (int c = 0; c < buffer.length; c++) {
                 for (int y = 0; y < frameHeight; y++) {
                     System.arraycopy(newFrame.getBuffer()[c][y], 0, buffer[c][y + y0], x0, frameWidth);
