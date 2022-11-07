@@ -12,7 +12,7 @@ public class LFGlobal {
     public final Frame frame;
     public final Patch[] patches;
     public final Splines splines;
-    public final NoiseParamters noiseParamters;
+    public final NoiseParameters noiseParameters;
     public final double[] lfDequant = new double[]{1D / 4096D, 1D / 512D, 1D / 256D};
     public final Quantizer quantizer;
     public final HFBlockContext hfBlockCtx;
@@ -35,14 +35,16 @@ public class LFGlobal {
             patches = new Patch[0];
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
-            throw new UnsupportedOperationException("Splines");
+            splines = new Splines(reader);
+            System.err.println("TODO: Splines will not be rendered");
         } else {
             splines = null;
         }
         if ((frame.getFrameHeader().flags & FrameFlags.NOISE) != 0) {
-            throw new UnsupportedOperationException("Noise");
+            noiseParameters = new NoiseParameters(reader);
+            System.err.println("TODO: Noise will not be rendered");
         } else {
-            noiseParamters = null;
+            noiseParameters = null;
         }
         if (!reader.readBool()) {
             for (int i = 0; i < 3; i++) {
@@ -56,7 +58,8 @@ public class LFGlobal {
         } else {
             quantizer = null;
             hfBlockCtx = null;
-            lfChanCorr = null;
+            // default value used for splines in modular mode
+            lfChanCorr = new LFChannelCorrelation();
         }
         gModular = new GlobalModular(reader, frame);
     }

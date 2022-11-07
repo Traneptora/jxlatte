@@ -94,6 +94,7 @@ public class ImageHeader {
     private float[] up2weights;
     private float[] up4weights;
     private float[] up8weights;
+    private double[][][][][] upWeights = null;
     private int[] alphaIndices;
 
     private ImageHeader() {
@@ -280,6 +281,37 @@ public class ImageHeader {
 
     public float[] getUp8Weights() {
         return up8weights;
+    }
+
+    public double[][][][][] getUpWeights() {
+        if (upWeights != null)
+            return upWeights;
+        upWeights = new double[3][][][][];
+        for (int l = 0; l < 3; l++) {
+            int k = 1 << (l + 1);
+            float[] upKWeights = k == 8 ? getUp8Weights() :
+                            k == 4 ? getUp4Weights() :
+                            k == 2 ? getUp2Weights() : 
+                            null;
+            if (upKWeights == null)
+                throw new Error("Challenge Complete how did we get here");
+            upWeights[l] = new double[k][k][5][5];
+            for (int ky = 0; ky < k; ky++) {
+                for (int kx = 0; kx < k; kx++) {
+                    for (int ix = 0; ix < 5; ix++) {
+                        for (int iy = 0; iy < 5; iy++) {
+                            int j = (ky < k/2) ? (iy + 5 * ky) : ((4 - iy) + 5 * (k - 1 - ky));
+                            int i = (kx < k/2) ? (ix + 5 * kx) : ((4 - ix) + 5 * (k - 1 - kx));
+                            int x = Math.max(i, j);
+                            int y = Math.min(i, j);
+                            int index = 5 * k * y / 2 - y * (y - 1) / 2 + x - y;
+                            upWeights[l][ky][kx][iy][ix] = upKWeights[index];
+                        }
+                    }
+                }
+            }
+        }
+        return upWeights;
     }
 
     public void setLevel(int level) throws InvalidBitstreamException {

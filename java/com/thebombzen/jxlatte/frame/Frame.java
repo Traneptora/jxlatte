@@ -30,15 +30,53 @@ public class Frame {
     private CompletableFuture<byte[]>[] buffers;
     private int[] tocPermuation;
     private int[] tocLengths;
-    private int[] groupOffsets;
     private LFGlobal lfGlobal;
     public final ImageHeader globalMetadata;
     private boolean permutedTOC;
     private double[][][] buffer;
+    private boolean decoded = false;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
+    }
+
+    public Frame(Frame frame) {
+        this(frame, true);
+    }
+
+    public Frame(Frame frame, boolean copyBuffer) {
+        if (!frame.decoded)
+            throw new IllegalArgumentException();
+        this.decoded = frame.decoded;
+        this.header = new FrameHeader(frame.header);
+        this.numGroups = frame.numGroups;
+        this.numLFGroups = frame.numLFGroups;
+        this.tocPermuation = frame.tocPermuation;
+        this.tocLengths = frame.tocLengths;
+        this.lfGlobal = frame.lfGlobal;
+        this.globalMetadata = frame.globalMetadata;
+        this.permutedTOC = frame.permutedTOC;
+        this.buffer = new double[frame.buffer.length][][];
+        for (int c = 0; c < buffer.length; c++) {
+            if (copyBuffer) {
+                buffer[c] = new double[frame.buffer[c].length][];
+            } else {
+                buffer[c] = new double[globalMetadata.getSize().height][];
+            }
+            for (int y = 0; y < buffer[c].length; y++) {
+                if (copyBuffer)
+                    buffer[c][y] = Arrays.copyOf(frame.buffer[c][y], frame.buffer[c][y].length);
+                else
+                    buffer[c][y] = new double[globalMetadata.getSize().width];
+            }
+        }
+        if (!copyBuffer) {
+            header.width = globalMetadata.getSize().width;
+            header.height = globalMetadata.getSize().height;
+            header.x0 = 0;
+            header.y0 = 0;
+        }
     }
 
     public void readHeader() throws IOException {
@@ -97,16 +135,8 @@ public class Frame {
         for (int i = 0; i < tocEntries; i++)
             buffers[i] = new CompletableFuture<>();
 
-        int[] unPermgroupOffsets = new int[tocEntries];
-        for (int i = 0; i < tocEntries; i++) {
-            if (i > 0)
-                unPermgroupOffsets[i] = unPermgroupOffsets[i - 1] + tocLengths[i - 1];
-            tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
-        }
-
-        groupOffsets = new int[tocEntries];
         for (int i = 0; i < tocEntries; i++)
-            groupOffsets[i] = unPermgroupOffsets[tocPermuation[i]];
+            tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
 
         globalReader.zeroPadToByte();
 
@@ -169,8 +199,74 @@ public class Frame {
         return permutation;
     }
 
-    public void decodeFrame() throws IOException {
+    private static int mirrorCoordinate(int coordinate, int size) {
+        if (coordinate < 0)
+            return mirrorCoordinate(-coordinate - 1, size);
+        if (coordinate >= size)
+            return mirrorCoordinate(2 * size - coordinate - 1, size);
+        return coordinate;
+    }
 
+    private void upsample() {
+        for (int c = 0; c < buffer.length; c++) {
+            performUpsampling(c);
+        }
+        header.width *= header.upsampling;
+        header.height *= header.upsampling;
+        header.x0 *= header.upsampling;
+        header.y0 *= header.upsampling;
+    }
+
+    private void performUpsampling(int c) {
+        int color = globalMetadata.getColorChannelCount();
+        int k;
+        if (c < color)
+            k = header.upsampling;
+        else
+            k = header.ecUpsampling[c - color];
+        if (k == 1)
+            return;
+        int l = MathHelper.ceilLog1p(k - 1) - 1;
+        double[][][][] upWeights = globalMetadata.getUpWeights()[l];
+        double[][] newBuffer = new double[buffer[c].length * k][];
+        TaskList<Void> taskList = new TaskList<>();
+        for (int y_ = 0; y_ < buffer[c].length; y_++) {
+            final int y = y_;
+            taskList.submit(() -> {
+                for (int ky = 0; ky < k; ky++) {
+                    newBuffer[y*k + ky] = new double[buffer[c][y].length * k];
+                    for (int x = 0; x < buffer[c][y].length; x++) {
+                        for (int kx = 0; kx < k; kx++) {
+                            double[][] weights = upWeights[ky][kx];
+                            double total = 0D;
+                            double min = Double.MAX_VALUE;
+                            double max = Double.MIN_VALUE;
+                            for (int iy = 0; iy < 5; iy++) {
+                                for (int ix = 0; ix < 5; ix++) {
+                                    int newY = mirrorCoordinate(y + iy - 2, buffer[c].length);
+                                    int newX = mirrorCoordinate(x + ix - 2, buffer[c][newY].length);
+                                    double sample = buffer[c][newY][newX];
+                                    if (sample < min)
+                                        min = sample;
+                                    if (sample > max)
+                                        max = sample;
+                                    total += weights[iy][ix] * sample;
+                                }
+                            }
+                            newBuffer[y*k + ky][x*k + kx] = MathHelper.clamp(total, min, max);
+                        }
+                    }
+                }
+            });
+        }
+        taskList.collect();
+        buffer[c] = newBuffer;
+    }
+
+    public void decodeFrame() throws IOException {
+        if (this.decoded)
+            return;
+        this.decoded = true;
         lfGlobal = new LFGlobal(getBitreader(0).join(), this);
         buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
@@ -331,6 +427,8 @@ public class Frame {
             }
         }
         tasks.collect();
+
+        upsample();
     }
 
     public LFGlobal getLFGlobal() {
@@ -347,5 +445,17 @@ public class Frame {
 
     public double[][][] getBuffer() {
         return buffer;
+    }
+
+    public boolean isDecoded() {
+        return this.decoded;
+    }
+
+    /* gets the sample for the IMAGE position x and y */
+    public double getSample(int c, int x, int y) {
+        return x < header.x0 || y < header.y0
+            || x - header.x0 >= header.width
+            || y - header.y0 >= header.height
+            ? 0 : buffer[c][y - header.y0][x - header.x0];
     }
 }

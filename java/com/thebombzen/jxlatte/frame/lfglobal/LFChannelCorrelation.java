@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame.lfglobal;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FunctionalHelper;
 
 public class LFChannelCorrelation {
     public final int colorFactor;
@@ -10,8 +11,8 @@ public class LFChannelCorrelation {
     public final float baseCorrelationB;
     public final int xFactorLF;
     public final int bFactorLF;
-    public LFChannelCorrelation(Bitreader reader) throws IOException {
-        boolean allDefault = reader.readBool();
+
+    private LFChannelCorrelation(Bitreader reader, boolean allDefault) {
         if (allDefault) {
             colorFactor = 84;
             baseCorrelationX = 0.0f;
@@ -19,11 +20,25 @@ public class LFChannelCorrelation {
             xFactorLF = 127;
             bFactorLF = 127;
         } else {
-            colorFactor = reader.readU32(84, 0, 256, 0, 2, 8, 258, 16);
-            baseCorrelationX = reader.readF16();
-            baseCorrelationB = reader.readF16();
-            xFactorLF = reader.readBits(8);
-            bFactorLF = reader.readBits(8);
+            try {
+                colorFactor = reader.readU32(84, 0, 256, 0, 2, 8, 258, 16);
+                baseCorrelationX = reader.readF16();
+                baseCorrelationB = reader.readF16();
+                xFactorLF = reader.readBits(8);
+                bFactorLF = reader.readBits(8);
+            } catch (IOException ex) {
+                FunctionalHelper.sneakyThrow(ex);
+                // prevent the compiler from whining about final fields
+                throw null;
+            }
         }
+    }
+
+    public LFChannelCorrelation() {
+        this(null, true);
+    }
+
+    public LFChannelCorrelation(Bitreader reader) throws IOException {
+        this(reader, reader.readBool());
     }   
 }

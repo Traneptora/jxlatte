@@ -14,7 +14,6 @@ import com.thebombzen.jxlatte.util.TaskList;
 public class JXLImage {
     private double[][][] buffer;
     private ImageHeader imageHeader;
-    private int originalColorEncoding;
     private int colorEncoding;
     private int alphaIndex;
 
@@ -28,12 +27,11 @@ public class JXLImage {
 
     protected JXLImage(double[][][] buffer, ImageHeader header) {
         this.buffer = buffer;
-        this.originalColorEncoding = header.getColorEncoding().colorEncoding;
-        this.colorEncoding = header.isXYBEncoded() ? ColorFlags.CE_XYB : this.originalColorEncoding;
+        this.colorEncoding = header.getColorEncoding().colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
         this.imageHeader = header;
         ColorEncodingBundle bundle = header.getColorEncoding();
-        if (colorEncoding == ColorFlags.CE_XYB) {
+        if (imageHeader.isXYBEncoded()) {
             this.transfer = ColorFlags.TF_LINEAR;
         } else {
             this.transfer = bundle.tf;
@@ -54,7 +52,6 @@ public class JXLImage {
         this.transfer = image.transfer;
         this.primaries1931 = image.primaries1931;
         this.white1931 = image.white1931;
-        this.originalColorEncoding = image.originalColorEncoding;
         if (copyBuffer) {
             buffer = new double[image.buffer.length][][];
             for (int c = 0; c < buffer.length; c++) {
@@ -237,10 +234,6 @@ public class JXLImage {
 
     public int getAlphaIndex() {
         return alphaIndex;
-    }
-
-    public int getOriginalColorEncoding() {
-        return this.originalColorEncoding;
     }
 
     public int getTaggedTransfer() {

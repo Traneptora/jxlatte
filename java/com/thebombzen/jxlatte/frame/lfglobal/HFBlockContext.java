@@ -12,6 +12,7 @@ public class HFBlockContext {
     public final int numClusters;
     public final int[][] lfThresholds = new int[3][];
     public final int[] qfThresholds;
+
     public HFBlockContext(Bitreader reader) throws IOException {
         boolean useDefault = reader.readBool();
         if (useDefault) {

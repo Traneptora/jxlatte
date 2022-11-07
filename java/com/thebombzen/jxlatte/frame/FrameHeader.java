@@ -25,10 +25,10 @@ public class FrameHeader {
     public final PassesInfo passes;
     public final int lfLevel;
     public final boolean haveCrop;
-    public final int x0;
-    public final int y0;
-    public final int width;
-    public final int height;
+    public int x0;
+    public int y0;
+    public int width;
+    public int height;
     public final BlendingInfo blendingInfo;
     public final BlendingInfo[] ecBlendingInfo;
     public final int duration;
@@ -39,6 +39,37 @@ public class FrameHeader {
     public final String name;
     public final RestorationFilter restorationFilter;
     public final Extensions extensions;
+
+    public FrameHeader(FrameHeader header) {
+        this.type = header.type;
+        this.encoding = header.encoding;
+        this.flags = header.flags;
+        this.doYCbCr = header.doYCbCr;
+        this.jpegUpsampling = header.jpegUpsampling;
+        this.upsampling = header.upsampling;
+        this.ecUpsampling = header.ecUpsampling;
+        this.groupSizeShift = header.groupSizeShift;
+        this.groupDim = header.groupDim;
+        this.xqmScale = header.xqmScale;
+        this.bqmScale = header.bqmScale;
+        this.passes = header.passes;
+        this.lfLevel = header.lfLevel;
+        this.haveCrop = header.haveCrop;
+        this.x0 = header.x0;
+        this.y0 = header.y0;
+        this.width = header.width;
+        this.height = header.height;
+        this.blendingInfo =  header.blendingInfo;
+        this.ecBlendingInfo = header.ecBlendingInfo;
+        this.duration = header.duration;
+        this.timecode = header.timecode;
+        this.isLast = header.isLast;
+        this.saveAsReference = header.saveAsReference;
+        this.saveBeforeCT = header.saveBeforeCT;
+        this.name = header.name;
+        this.restorationFilter = header.restorationFilter;
+        this.extensions = header.extensions;
+    }
 
     public FrameHeader(Bitreader reader, ImageHeader parent) throws IOException {
         boolean allDefault = reader.readBool();
@@ -83,15 +114,15 @@ public class FrameHeader {
             x0 = y0 = 0;
         }
         if (haveCrop) {
-            width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
-            height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
+            height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
         } else {
-            width = parent.getSize().width;
-            height = parent.getSize().height;
+            width = parent.getSize().width / upsampling;
+            height = parent.getSize().height / upsampling;
         }
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
-        boolean fullFrame = x0 <= 0 && y0 <= 0 && (width + x0) >= parent.getSize().width
-            && (height + y0) >= parent.getSize().height;
+        boolean fullFrame = x0 <= 0 && y0 <= 0 && (width * upsampling + x0) >= parent.getSize().width
+            && (height * upsampling + y0) >= parent.getSize().height;
         ecBlendingInfo = new BlendingInfo[parent.getExtraChannelCount()];
         if (normalFrame) {
             blendingInfo = new BlendingInfo(reader, ecBlendingInfo.length > 0, fullFrame);

@@ -45,7 +45,7 @@ public class PNGWriter {
     public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, CIEPrimaries primaries, CIEXY whitePoint) {
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException("PNG only supports 8 and 16");
-        boolean gray = image.getOriginalColorEncoding() == ColorFlags.CE_GRAY;
+        boolean gray = image.getColorEncoding() == ColorFlags.CE_GRAY;
         this.primaries = primaries;
         this.whitePoint = whitePoint;
         if (primaries == null)
