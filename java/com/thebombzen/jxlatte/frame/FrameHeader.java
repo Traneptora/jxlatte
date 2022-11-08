@@ -8,6 +8,7 @@ import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
+import com.thebombzen.jxlatte.util.Point;
 
 public class FrameHeader {
 
@@ -25,8 +26,7 @@ public class FrameHeader {
     public final PassesInfo passes;
     public final int lfLevel;
     public final boolean haveCrop;
-    public int x0;
-    public int y0;
+    public Point origin;
     public int width;
     public int height;
     public final BlendingInfo blendingInfo;
@@ -55,8 +55,7 @@ public class FrameHeader {
         this.passes = header.passes;
         this.lfLevel = header.lfLevel;
         this.haveCrop = header.haveCrop;
-        this.x0 = header.x0;
-        this.y0 = header.y0;
+        this.origin = new Point(header.origin);
         this.width = header.width;
         this.height = header.height;
         this.blendingInfo =  header.blendingInfo;
@@ -106,12 +105,13 @@ public class FrameHeader {
         lfLevel = type == FrameFlags.LF_FRAME ? 1 + reader.readBits(2) : 0;
         haveCrop = (!allDefault && type != FrameFlags.LF_FRAME) ? reader.readBool() : false;
         if (haveCrop && type != FrameFlags.REFERENCE_ONLY) {
-            int ux0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
-            int uy0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
-            x0 = MathHelper.unpackSigned(ux0);
-            y0 = MathHelper.unpackSigned(uy0);
+            int x0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            int y0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            x0 = MathHelper.unpackSigned(x0);
+            y0 = MathHelper.unpackSigned(y0);
+            this.origin = new Point(x0, y0);
         } else {
-            x0 = y0 = 0;
+            this.origin = new Point();
         }
         if (haveCrop) {
             width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
@@ -121,8 +121,8 @@ public class FrameHeader {
             height = parent.getSize().height / upsampling;
         }
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
-        boolean fullFrame = x0 <= 0 && y0 <= 0 && (width * upsampling + x0) >= parent.getSize().width
-            && (height * upsampling + y0) >= parent.getSize().height;
+        boolean fullFrame = origin.x <= 0 && origin.y <= 0 && (width * upsampling + origin.x) >= parent.getSize().width
+            && (height * upsampling + origin.y) >= parent.getSize().height;
         ecBlendingInfo = new BlendingInfo[parent.getExtraChannelCount()];
         if (normalFrame) {
             blendingInfo = new BlendingInfo(reader, ecBlendingInfo.length > 0, fullFrame);

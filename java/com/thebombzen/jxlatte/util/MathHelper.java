@@ -5,6 +5,10 @@ import java.util.Collection;
 
 public final class MathHelper {
 
+    public static final double SQRT_2 = StrictMath.sqrt(2.0D);
+    public static final double SQRT_H = StrictMath.sqrt(0.5D);
+    public static final double SQRT_F = StrictMath.sqrt(0.125D);
+
     private MathHelper() {
 
     }
@@ -19,6 +23,24 @@ public final class MathHelper {
         return (int)(d + 0.5D);
     }
 
+    public static double erf(double z) {
+        double az = Math.abs(z);
+        double absErf;
+        if (az > 1e-4D) {
+            double t = 1.0D / (1.0D + 0.5D * az);
+            absErf = 1.0D - t * Math.exp(-z * z - 1.26551223D + t * (1.00002368D
+                + t * (0.37409196D + t * (0.09678418D + t * (-0.18628806D + t * (0.27886807D
+                + t * (-1.13520398D + t * (1.48851587D + t * (-0.82215223D + t * 0.17087277D)))))))));
+        } else {
+            double t = 1.0D / (1.0D + 0.47047D * az);
+            double u = t * (0.3480242D + t * (-0.0958798D + t * 0.7478556D));
+            absErf = 1.0D - u * Math.exp(-z * z);
+        }
+        if (z < 0)
+            return -absErf;
+        return absErf;
+    }
+
     /**
      * @return ceil(log2(x + 1))
      */
@@ -26,26 +48,11 @@ public final class MathHelper {
         return 64 - Long.numberOfLeadingZeros(x);
     }
 
-    /**
-     * @return ceil(log2(x + 1))
-     */
-    public static int ceilLog1p(int x) {
-        return 32 - Integer.numberOfLeadingZeros(x);
-    }
-
     public static int ceilDiv(int numerator, int denominator) {
         return ((numerator - 1) / denominator) + 1;
     }
 
     public static int floorLog1p(long x) {
-        int c = ceilLog1p(x);
-        // if x + 1 is not a power of 2
-        if (((x + 1) & x) != 0)
-            return c - 1;
-        return c;
-    }
-
-    public static int floorLog1p(int x) {
         int c = ceilLog1p(x);
         // if x + 1 is not a power of 2
         if (((x + 1) & x) != 0)

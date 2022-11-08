@@ -1,6 +1,5 @@
 package com.thebombzen.jxlatte.frame.lfglobal;
 
-import java.awt.Point;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -8,20 +7,22 @@ import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
+import com.thebombzen.jxlatte.util.Point;
 
 
 public class Patch {
     public final int width;
     public final int height;
     public final int ref;
-    public final int x0, y0;
+    public final Point origin;
     public final Point[] positions;
     public final BlendingInfo[][] blendingInfos;
 
     public Patch(EntropyStream stream, Bitreader reader, int extraChannelCount, int alphaChannelCount) throws IOException {
         this.ref = stream.readSymbol(reader, 1);
-        this.x0 = stream.readSymbol(reader, 3);
-        this.y0 = stream.readSymbol(reader, 3);
+        int x0 = stream.readSymbol(reader, 3);
+        int y0 = stream.readSymbol(reader, 3);
+        this.origin = new Point(x0, y0);
         this.width = 1 + stream.readSymbol(reader, 2);
         this.height = 1 + stream.readSymbol(reader, 2);
         int count = 1 + stream.readSymbol(reader, 7);

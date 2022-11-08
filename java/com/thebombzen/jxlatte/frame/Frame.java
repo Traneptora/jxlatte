@@ -3,8 +3,10 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,6 +21,7 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
+import com.thebombzen.jxlatte.util.Point;
 import com.thebombzen.jxlatte.util.TaskList;
 
 public class Frame {
@@ -74,8 +77,7 @@ public class Frame {
         if (!copyBuffer) {
             header.width = globalMetadata.getSize().width;
             header.height = globalMetadata.getSize().height;
-            header.x0 = 0;
-            header.y0 = 0;
+            header.origin = new Point();
         }
     }
 
@@ -213,8 +215,7 @@ public class Frame {
         }
         header.width *= header.upsampling;
         header.height *= header.upsampling;
-        header.x0 *= header.upsampling;
-        header.y0 *= header.upsampling;
+        header.origin.timesEquals(header.upsampling);
     }
 
     private void performUpsampling(int c) {
@@ -431,6 +432,177 @@ public class Frame {
         upsample();
     }
 
+    private static double fourierICT(double[] coeffs, double t) {
+        double total = MathHelper.SQRT_H * coeffs[0];
+        for (int i = 1; i < 32; i++) {
+            total += coeffs[i] * Math.cos(i * (Math.PI / 32D) * (t + 0.5D));
+        }
+        return total * MathHelper.SQRT_2;
+    }
+
+    public void renderSplines() {
+        if (lfGlobal.splines == null)
+            return;
+        double quantAdjust = lfGlobal.splines.quantAdjust / 8D;
+        double qa = quantAdjust >= 0 ? 1D + quantAdjust : 1D / (1.0D - quantAdjust);
+        double invQa = 1D / qa;
+        for (int s = 0; s < lfGlobal.splines.numSplines; s++) {
+            double[] coeffX = new double[32];
+            double[] coeffY = new double[32];
+            double[] coeffB = new double[32];
+            double[] coeffSigma = new double[32];
+            for (int i = 0; i < 32; i++) {
+                coeffY[i] = lfGlobal.splines.coeffY[s][i] * 0.075D * invQa;
+                coeffX[i] = lfGlobal.splines.coeffX[s][i] * 0.0042D * invQa
+                    + lfGlobal.lfChanCorr.baseCorrelationX * coeffY[i];
+                coeffB[i] = lfGlobal.splines.coeffB[s][i] * 0.07D * invQa
+                    + lfGlobal.lfChanCorr.baseCorrelationB * coeffY[i];
+                coeffSigma[i] = lfGlobal.splines.coeffSigma[s][i] * 0.3333D * invQa;
+            }
+            double[] upsampledX;
+            double[] upsampledY;
+            Point[] controlPoints = lfGlobal.splines.controlPoints[s];
+            if (controlPoints.length == 1) {
+                upsampledX = new double[]{controlPoints[0].x};
+                upsampledY = new double[]{controlPoints[0].y};
+            } else {
+                double[] extendedX = new double[controlPoints.length + 2];
+                double[] extendedY = new double[controlPoints.length + 2];
+                extendedX[0] = controlPoints[0].x * 2 - controlPoints[1].x;
+                extendedY[0] = controlPoints[0].y * 2 - controlPoints[1].y;
+                for (int i = 0; i < controlPoints.length; i++) {
+                    extendedX[i + 1] = controlPoints[i].x;
+                    extendedY[i + 1] = controlPoints[i].y;
+                }
+                extendedX[extendedX.length - 1] = controlPoints[controlPoints.length - 1].x * 2
+                    - controlPoints[controlPoints.length - 2].x;
+                extendedY[extendedY.length - 1] = controlPoints[controlPoints.length - 1].y * 2
+                    - controlPoints[controlPoints.length - 2].y;
+                double[] px = new double[4];
+                double[] py = new double[4];
+                double[] t = new double[4];
+                double[] ax = new double[3];
+                double[] ay = new double[3];
+                double[] bx = new double[2];
+                double[] by = new double[2];
+                upsampledX = new double[16 * (extendedX.length - 3) + 1];
+                upsampledY = new double[16 * (extendedY.length - 3) + 1];
+                for (int i = 0; i < extendedX.length - 3; i++) {
+                    for (int k = 0; k < 4; k++) {
+                        px[k] = extendedX[i + k];
+                        py[k] = extendedY[i + k];
+                    }
+                    upsampledX[i * 16] = px[1];
+                    upsampledY[i * 16] = py[1];
+                    t[0] = 0D;
+                    for (int k = 1; k < 4; k++) {
+                        double dx = px[k] - px[k - 1];
+                        double dy = py[k] - py[k - 1];
+                        t[k] = t[k - 1] + Math.sqrt(Math.hypot(dx, dy));
+                    }
+                    for (int step = 1; step < 16; step++) {
+                        double knot = t[1] + 0.0625D * step * (t[2] - t[1]);
+                        for (int k = 0; k < 3; k++) {
+                            double f = (knot - t[k]) / (t[k + 1] - t[k]);
+                            ax[k] = px[k] + f * (px[k + 1] - px[k]);
+                            ay[k] = py[k] + f * (py[k + 1] - py[k]);
+                        }
+                        for (int k = 0; k < 2; k++) {
+                            double f = (knot - t[k]) / (t[k + 2] - t[k]);
+                            bx[k] = ax[k] + f * (ax[k + 1] - ax[k]);
+                            by[k] = ay[k] + f * (ay[k + 1] - ay[k]);
+                        }
+                        double f = (knot - t[1]) / (t[2] - t[1]);
+                        upsampledX[i * 16 + step] = bx[0] + f * (bx[1] - bx[0]);
+                        upsampledY[i * 16 + step] = by[0] + f * (by[1] - by[0]);
+                    }
+                }
+                upsampledX[upsampledX.length - 1] = controlPoints[controlPoints.length - 1].x;
+                upsampledY[upsampledY.length - 1] = controlPoints[controlPoints.length - 1].y;
+            }
+            double currX = upsampledX[0];
+            double currY = upsampledY[0];
+            int nextID = 0;
+            Deque<Double> allSamplesX = new ArrayDeque<>();
+            Deque<Double> allSamplesY = new ArrayDeque<>();
+            Deque<Double> allSamplesLength = new ArrayDeque<>();
+            allSamplesX.addLast(currX);
+            allSamplesY.addLast(currY);
+            final double renderDistance = 1.0D;
+            allSamplesLength.addLast(renderDistance);
+            while (nextID < upsampledX.length) {
+                double prevX = currX;
+                double prevY = currY;
+                double arcLengthFromPrevious = 0D;
+                while (true) {
+                    if (nextID >= upsampledX.length) {
+                        allSamplesX.addLast(prevX);
+                        allSamplesY.addLast(prevY);
+                        allSamplesLength.addLast(arcLengthFromPrevious);
+                        break;
+                    }
+                    double nextX = upsampledX[nextID];
+                    double nextY = upsampledY[nextID];
+                    double arcLengthToNext = Math.hypot(nextX - prevX, nextY - prevY);
+                    if (arcLengthFromPrevious + arcLengthToNext >= renderDistance) {
+                        double f = (renderDistance - arcLengthFromPrevious) / arcLengthToNext;
+                        currX = prevX + f * (nextX - prevX);
+                        currY = prevY + f * (nextY - prevY);
+                        allSamplesX.addLast(currX);
+                        allSamplesY.addLast(currY);
+                        allSamplesLength.addLast(renderDistance);
+                        break;
+                    }
+                    arcLengthFromPrevious += arcLengthToNext;
+                    prevX = nextX;
+                    prevY = nextY;
+                    nextID++;
+                }
+            }
+            double arcLength = (allSamplesLength.size() - 2D) * renderDistance + allSamplesLength.peekLast();
+            if (arcLength <= 0D)
+                continue;
+            int i = 0;
+            TaskList<Void> tasks = new TaskList<>();
+            while (allSamplesLength.size() > 0) {
+                double progressAlongArc = Math.min(1.0D, i++ * renderDistance / arcLength);
+                double arcX = allSamplesX.removeFirst();
+                double arcY = allSamplesY.removeFirst();
+                double multiplier = allSamplesLength.removeFirst();
+                double t = 31D * progressAlongArc;
+                double[] values = new double[3];
+                values[0] = fourierICT(coeffX, t) * multiplier;
+                values[1] = fourierICT(coeffY, t) * multiplier;
+                values[2] = fourierICT(coeffB, t) * multiplier;
+                double sigma = fourierICT(coeffSigma, t);
+                double inverseSigma = 1D / sigma;
+                double maxColor = MathHelper.max(0.01D, values[0], values[1], values[2]);
+                double maxDist = Math.sqrt(-2D * sigma * sigma * (Math.log(0.1D) * 3D - maxColor));
+                int xBegin = Math.max(0, MathHelper.round(arcX - maxDist));
+                int xEnd = Math.min(header.width - 1, MathHelper.round(arcX + maxDist));
+                int yBegin = Math.max(0, MathHelper.round(arcY - maxDist));
+                int yEnd = Math.min(header.height - 1, MathHelper.round(arcY + maxDist));
+                for (int c_ = 0; c_ < 3; c_++) {
+                    final int c = c_;
+                    for (int x_ = xBegin; x_ <= xEnd; x_++) {
+                        final int x = x_;
+                        tasks.submit(() -> {
+                            for (int y = yBegin; y <= yEnd; y++) {
+                                double diffX = x - arcX;
+                                double diffY = y - arcY;
+                                double distance = Math.sqrt(diffX * diffX + diffY * diffY);
+                                double factor = MathHelper.erf((0.5D * distance + MathHelper.SQRT_F) * inverseSigma);
+                                    factor -= MathHelper.erf((0.5D * distance - MathHelper.SQRT_F) * inverseSigma);
+                                buffer[c][y][x] += 0.25D * values[c] * sigma * factor * factor;
+                            };
+                        });
+                    }
+                }
+            }
+            tasks.collect();
+        }
+    }
+
     public LFGlobal getLFGlobal() {
         return lfGlobal;
     }
@@ -453,9 +625,9 @@ public class Frame {
 
     /* gets the sample for the IMAGE position x and y */
     public double getSample(int c, int x, int y) {
-        return x < header.x0 || y < header.y0
-            || x - header.x0 >= header.width
-            || y - header.y0 >= header.height
-            ? 0 : buffer[c][y - header.y0][x - header.x0];
+        return x < header.origin.x || y < header.origin.y
+            || x - header.origin.x >= header.width
+            || y - header.origin.y >= header.height
+            ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 }

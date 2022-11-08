@@ -82,8 +82,8 @@ public class JXLCodestreamDecoder {
                 int y0 = patch.positions[j].y;
                 if (x0 < 0 || y0 < 0)
                     throw new InvalidBitstreamException("Patch size out of bounds");
-                if (patch.height + patch.y0 > ref.getFrameHeader().height
-                    || patch.width + patch.x0 > ref.getFrameHeader().width)
+                if (patch.height + patch.origin.y > ref.getFrameHeader().height
+                    || patch.width + patch.origin.x > ref.getFrameHeader().width)
                     throw new InvalidBitstreamException("Patch too large");
                 if (patch.height + y0 > frame.getFrameHeader().height
                     || patch.width + x0 > frame.getFrameHeader().width)
@@ -107,8 +107,8 @@ public class JXLCodestreamDecoder {
                         for (int x = 0; x < patch.width; x++) {
                             int oldX = x + x0;
                             int oldY = y + y0;
-                            int newX = x + patch.x0;
-                            int newY = y + patch.y0;
+                            int newX = x + patch.origin.x;
+                            int newY = y + patch.origin.y;
                             double oldSample = frameBuffer[d][oldY][oldX];
                             double newSample = refBuffer[d][newY][newX];
                             double alpha = 0D, newAlpha = 0D, oldAlpha = 0D;
@@ -174,10 +174,10 @@ public class JXLCodestreamDecoder {
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         FrameHeader header = frame.getFrameHeader();
-        int frameXStart = header.x0 < 0 ? 0 : header.x0;
-        int frameYStart = header.y0 < 0 ? 0 : header.y0;
-        int frameXEnd = header.width + header.x0 >= width ? width : header.width + header.x0;
-        int frameYEnd = header.height + header.y0 >= height ? height : header.height + header.y0;
+        int frameXStart = Math.max(0, header.origin.x);
+        int frameYStart = Math.max(0, header.origin.y);
+        int frameXEnd = Math.min(width, header.width + header.origin.x);
+        int frameYEnd = Math.min(height, header.height + header.origin.y);
         int colorChannels = imageHeader.getColorChannelCount();
         for (int c = 0; c < canvas.length; c++) {
             double[][] newBuffer = frame.getBuffer()[c];
@@ -307,6 +307,7 @@ public class JXLCodestreamDecoder {
             if (save && header.saveBeforeCT)
                 reference[header.saveAsReference] = new Frame(frame);
             computePatches(reference, frame);
+            frame.renderSplines();
             performColorTransforms(matrix, frame);
             if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE) {
                 blendFrame(storage.getBuffer(), reference, frame);

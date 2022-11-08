@@ -36,7 +36,6 @@ public class LFGlobal {
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
             splines = new Splines(reader);
-            System.err.println("TODO: Splines will not be rendered");
         } else {
             splines = null;
         }

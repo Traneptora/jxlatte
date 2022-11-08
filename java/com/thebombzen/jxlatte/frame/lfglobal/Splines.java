@@ -1,12 +1,12 @@
 package com.thebombzen.jxlatte.frame.lfglobal;
 
-import java.awt.Point;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
+import com.thebombzen.jxlatte.util.Point;
 
 public class Splines {
 
@@ -23,7 +23,6 @@ public class Splines {
     public Splines(Bitreader reader) throws IOException {
         EntropyStream stream = new EntropyStream(reader, 6);
         numSplines = 1 + stream.readSymbol(reader, 2);
-        quantAdjust = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
         splinePos = new Point[numSplines];
         for (int i = 0; i < numSplines; i++) {
             int x = stream.readSymbol(reader, 1);
@@ -34,7 +33,7 @@ public class Splines {
             }
             splinePos[i] = new Point(x, y);
         }
-
+        quantAdjust = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
         controlCount = new int[numSplines];
         controlPoints = new Point[numSplines][];
         for (int i = 0; i < numSplines; i++) {
@@ -63,13 +62,13 @@ public class Splines {
         coeffSigma = new int[numSplines][32];
         for (int i = 0; i < numSplines; i++) {
             for (int j = 0; j < 32; j++)
-                coeffX[i][j] = stream.readSymbol(reader, 5);
+                coeffX[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));
             for (int j = 0; j < 32; j++)
-                coeffY[i][j] = stream.readSymbol(reader, 5);
+                coeffY[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));
             for (int j = 0; j < 32; j++)
-                coeffB[i][j] = stream.readSymbol(reader, 5);
+                coeffB[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));
             for (int j = 0; j < 32; j++)
-                coeffSigma[i][j] = stream.readSymbol(reader, 5);
+                coeffSigma[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));
         }
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final ANS state");
