@@ -113,13 +113,17 @@ public class Spline {
         coeffSigma = new double[32];
         double quantAdjust = lfGlobal.splines.quantAdjust / 8D;
         double invQa = quantAdjust >= 0 ? 1D / (1D + quantAdjust) : 1.0D - quantAdjust;
+        double yAdjust = 0.106066017D * invQa;
+        double xAdjust = 0.005939697D * invQa;
+        double bAdjust = 0.098994949D * invQa;
+        double sigmaAdjust = 0.47135738D * invQa;
         for (int i = 0; i < 32; i++) {
-            coeffY[i] = lfGlobal.splines.coeffY[splineID][i] * 0.106066017D * invQa;
-            coeffX[i] = lfGlobal.splines.coeffX[splineID][i] * 0.005939697D * invQa
+            coeffY[i] = lfGlobal.splines.coeffY[splineID][i] * yAdjust;
+            coeffX[i] = lfGlobal.splines.coeffX[splineID][i] * xAdjust
                 + lfGlobal.lfChanCorr.baseCorrelationX * coeffY[i];
-            coeffB[i] = lfGlobal.splines.coeffB[splineID][i] * 0.098994949D * invQa
+            coeffB[i] = lfGlobal.splines.coeffB[splineID][i] * bAdjust
                 + lfGlobal.lfChanCorr.baseCorrelationB * coeffY[i];
-            coeffSigma[i] = lfGlobal.splines.coeffSigma[splineID][i] * 0.47135738D * invQa;
+            coeffSigma[i] = lfGlobal.splines.coeffSigma[splineID][i] * sigmaAdjust;
         }
     }
 
@@ -133,8 +137,8 @@ public class Spline {
             return;
         TaskList<Void> tasks = new TaskList<>();
         for (int i = 0; i < arcs.length; i++) {
-            SplineArc arc = arcs[i];
             tasks.submit(i, (j) -> {
+                SplineArc arc = arcs[j];
                 double progressAlongArc = Math.min(1.0D, j * renderDistance / arcLength);
                 double t = 31D * progressAlongArc;
                 double[] values = new double[3];
