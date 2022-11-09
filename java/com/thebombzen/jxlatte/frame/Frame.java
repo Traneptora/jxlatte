@@ -207,15 +207,6 @@ public class Frame {
         return coordinate;
     }
 
-    private void upsample() {
-        for (int c = 0; c < buffer.length; c++) {
-            performUpsampling(c);
-        }
-        header.width *= header.upsampling;
-        header.height *= header.upsampling;
-        header.origin.timesEquals(header.upsampling);
-    }
-
     private void performUpsampling(int c) {
         int color = globalMetadata.getColorChannelCount();
         int k;
@@ -398,36 +389,36 @@ public class Frame {
         for (int c_ = 0; c_ < buffer.length; c_++) {
             final int c = c_;
             double scaleFactor;
-            int cOut = c;
             boolean xyb = globalMetadata.isXYBEncoded();
-            if (xyb) {
-                if (c < 2) {
-                    // X, Y, B is encoded as Y, X, (B - Y)
-                    cOut = 1 - c;
-                }
+            // X, Y, B is encoded as Y, X, (B - Y)
+            int cOut = xyb && c < 2 ? 1 - c : c;
+            if (xyb)
                 scaleFactor = lfGlobal.lfDequant[cOut];
-            } else if (globalMetadata.getBitDepthHeader().expBits != 0) {
+            else if (globalMetadata.getBitDepthHeader().expBits != 0)
                 scaleFactor = 1.0D;
-            } else {
+            else
                 scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-            }
-            final int cOut_ = cOut;
             for (int y_ = 0; y_ < header.height; y_++) {
                 final int y = y_;
                 tasks.submit(() -> {
                     for (int x = 0; x < header.width; x++) {
-                        if (xyb && c == 2) {
-                            buffer[cOut_][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
-                        } else {
-                            buffer[cOut_][y][x] = scaleFactor * streamBuffer[c][y][x];
-                        }
+                        // X, Y, B is encoded as Y, X, (B - Y)
+                        if (xyb && c == 2)
+                            buffer[cOut][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
+                        else
+                            buffer[cOut][y][x] = scaleFactor * streamBuffer[c][y][x];
                     }
                 });
             }
         }
         tasks.collect();
 
-        upsample();
+        for (int c = 0; c < buffer.length; c++)
+            performUpsampling(c);
+
+        header.width *= header.upsampling;
+        header.height *= header.upsampling;
+        header.origin.timesEquals(header.upsampling);
     }
 
     public void renderSplines() {
