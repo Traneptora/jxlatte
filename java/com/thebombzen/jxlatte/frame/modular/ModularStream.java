@@ -11,8 +11,8 @@ import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.ExceptionalIntBiConsumer;
 import com.thebombzen.jxlatte.util.TaskList;
+import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
 public class ModularStream {
 

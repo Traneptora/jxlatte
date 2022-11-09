@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.bundle.color;
+package com.thebombzen.jxlatte.color;
 
 public class CIEPrimaries {
     public final CIEXY red;

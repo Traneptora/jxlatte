@@ -4,6 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import com.thebombzen.jxlatte.util.functional.ExceptionalFunction;
+import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
+import com.thebombzen.jxlatte.util.functional.ExceptionalIntConsumer;
+import com.thebombzen.jxlatte.util.functional.ExceptionalRunnable;
+import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
+import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+
 public class TaskList<T> {
 
     private List<List<CompletableFuture<? extends T>>> tasks;

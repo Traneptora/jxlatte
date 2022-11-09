@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.util;
+package com.thebombzen.jxlatte.util.functional;
 
 @FunctionalInterface
 public interface ExceptionalIntBiConsumer {

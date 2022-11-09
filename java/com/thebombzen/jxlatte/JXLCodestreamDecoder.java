@@ -7,9 +7,9 @@ import java.util.List;
 
 import com.thebombzen.jxlatte.bundle.ExtraChannelType;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.bundle.color.CIEPrimaries;
-import com.thebombzen.jxlatte.bundle.color.CIEXY;
-import com.thebombzen.jxlatte.bundle.color.OpsinInverseMatrix;
+import com.thebombzen.jxlatte.color.CIEPrimaries;
+import com.thebombzen.jxlatte.color.CIEXY;
+import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.frame.Frame;

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.group;
+package com.thebombzen.jxlatte.frame.vardct;
 
 import java.io.IOException;
 

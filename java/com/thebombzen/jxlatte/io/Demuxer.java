@@ -8,7 +8,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.util.FunctionalHelper;
+import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Demuxer implements Runnable {
 

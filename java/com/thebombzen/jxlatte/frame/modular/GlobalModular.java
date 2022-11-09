@@ -2,7 +2,7 @@ package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.bundle.color.ColorFlags;
+import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;

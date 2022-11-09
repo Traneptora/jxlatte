@@ -3,11 +3,11 @@ package com.thebombzen.jxlatte;
 import java.util.function.DoubleUnaryOperator;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.bundle.color.CIEPrimaries;
-import com.thebombzen.jxlatte.bundle.color.CIEXY;
-import com.thebombzen.jxlatte.bundle.color.ColorEncodingBundle;
-import com.thebombzen.jxlatte.bundle.color.ColorFlags;
-import com.thebombzen.jxlatte.util.ColorManagement;
+import com.thebombzen.jxlatte.color.CIEPrimaries;
+import com.thebombzen.jxlatte.color.CIEXY;
+import com.thebombzen.jxlatte.color.ColorEncodingBundle;
+import com.thebombzen.jxlatte.color.ColorFlags;
+import com.thebombzen.jxlatte.color.ColorManagement;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
 

@@ -1,10 +1,8 @@
-package com.thebombzen.jxlatte.util;
+package com.thebombzen.jxlatte.color;
 
 import java.util.function.DoubleUnaryOperator;
 
-import com.thebombzen.jxlatte.bundle.color.CIEPrimaries;
-import com.thebombzen.jxlatte.bundle.color.CIEXY;
-import com.thebombzen.jxlatte.bundle.color.ColorFlags;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public final class ColorManagement {
     private ColorManagement() {

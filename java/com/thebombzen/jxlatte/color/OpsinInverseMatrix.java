@@ -1,9 +1,8 @@
-package com.thebombzen.jxlatte.bundle.color;
+package com.thebombzen.jxlatte.color;
 
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.ColorManagement;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
 

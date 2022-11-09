@@ -3,10 +3,10 @@ package com.thebombzen.jxlatte.bundle;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.bundle.color.ColorEncodingBundle;
-import com.thebombzen.jxlatte.bundle.color.ColorFlags;
-import com.thebombzen.jxlatte.bundle.color.OpsinInverseMatrix;
-import com.thebombzen.jxlatte.bundle.color.ToneMapping;
+import com.thebombzen.jxlatte.color.ColorEncodingBundle;
+import com.thebombzen.jxlatte.color.ColorFlags;
+import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
+import com.thebombzen.jxlatte.color.ToneMapping;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ImageHeader {

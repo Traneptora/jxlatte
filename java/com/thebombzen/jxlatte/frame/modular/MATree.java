@@ -40,10 +40,10 @@ public class MATree {
         int nodesRemaining = 1;
         while (nodesRemaining-- > 0) {
             int property = stream.readSymbol(reader, 1) - 1;
+            MATree node = nodes.size() == 0 ? this : new MATree();
             if (property >= 0) {
                 int value = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
                 int leftChild = nodes.size() + nodesRemaining + 1;
-                MATree node = nodes.size() == 0 ? this : new MATree();
                 node.property = property;
                 node.predictor = -1;
                 node.value = value;
@@ -60,7 +60,6 @@ public class MATree {
                 int mulLog = stream.readSymbol(reader, 4);
                 int mulBits = stream.readSymbol(reader, 5);
                 int multiplier = (mulBits + 1) << mulLog;
-                MATree node = nodes.size() == 0 ? this : new MATree();
                 node.context = context;
                 node.predictor = predictor;
                 node.multiplier = multiplier;
@@ -71,9 +70,9 @@ public class MATree {
         }
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal MA Tree Entropy Stream");
-        
+
         this.stream = new EntropyStream(reader, (nodes.size() + 1) / 2);
-        
+
         for (int n = 0; n < nodes.size(); n++) {
             MATree node = nodes.get(n);
             node.stream = this.stream;
@@ -111,7 +110,8 @@ public class MATree {
             default:
                 return this;
         }
-        return (prop > this.value ? leftChildNode : rightChildNode).compactify(channelIndex, streamIndex);
+        MATree branch = prop > this.value ? leftChildNode : rightChildNode;
+        return branch.compactify(channelIndex, streamIndex);
     }
 
     public MATree compactify(int channelIndex, int streamIndex, int y) {
@@ -129,18 +129,15 @@ public class MATree {
             default:
                 return this;
         }
-        return (prop > this.value ? leftChildNode : rightChildNode).compactify(channelIndex, streamIndex, y);
+        MATree branch = prop > this.value ? leftChildNode : rightChildNode;
+        return branch.compactify(channelIndex, streamIndex, y);
     }
 
     public MATree walk(IntUnaryOperator property) {
-        MATree node = this;
-        while (!node.isLeafNode()) {
-            if (property.applyAsInt(node.property) > node.value)
-                node = node.leftChildNode;
-            else
-                node = node.rightChildNode;
-        }
-        return node;
+        if (isLeafNode())
+            return this;
+        MATree branch = property.applyAsInt(this.property) > this.value ? leftChildNode : rightChildNode;
+        return branch.walk(property);
     }
 
     public int getSize() {
