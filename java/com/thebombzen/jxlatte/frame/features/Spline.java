@@ -1,9 +1,10 @@
-package com.thebombzen.jxlatte.frame;
+package com.thebombzen.jxlatte.frame.features;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
+import com.thebombzen.jxlatte.frame.Frame;
+import com.thebombzen.jxlatte.frame.LFGlobal;
 import com.thebombzen.jxlatte.util.DoublePoint;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -133,8 +134,7 @@ public class Spline {
         TaskList<Void> tasks = new TaskList<>();
         for (int i = 0; i < arcs.length; i++) {
             SplineArc arc = arcs[i];
-            final int j = i;
-            tasks.submit(() -> {
+            tasks.submit(i, (j) -> {
                 double progressAlongArc = Math.min(1.0D, j * renderDistance / arcLength);
                 double t = 31D * progressAlongArc;
                 double[] values = new double[3];

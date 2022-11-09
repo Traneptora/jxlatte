@@ -1,17 +1,22 @@
-package com.thebombzen.jxlatte.frame.lfglobal;
+package com.thebombzen.jxlatte.frame;
 
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.FrameFlags;
+import com.thebombzen.jxlatte.frame.features.NoiseParameters;
+import com.thebombzen.jxlatte.frame.features.Patch;
+import com.thebombzen.jxlatte.frame.features.SplinesBundle;
+import com.thebombzen.jxlatte.frame.modular.GlobalModular;
+import com.thebombzen.jxlatte.frame.vardct.HFBlockContext;
+import com.thebombzen.jxlatte.frame.vardct.LFChannelCorrelation;
+import com.thebombzen.jxlatte.frame.vardct.Quantizer;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class LFGlobal {
     public final Frame frame;
     public final Patch[] patches;
-    public final Splines splines;
+    public final SplinesBundle splines;
     public final NoiseParameters noiseParameters;
     public final double[] lfDequant = new double[]{1D / 4096D, 1D / 512D, 1D / 256D};
     public final Quantizer quantizer;
@@ -35,7 +40,7 @@ public class LFGlobal {
             patches = new Patch[0];
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
-            splines = new Splines(reader);
+            splines = new SplinesBundle(reader);
         } else {
             splines = null;
         }

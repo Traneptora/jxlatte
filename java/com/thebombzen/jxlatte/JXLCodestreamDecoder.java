@@ -15,7 +15,7 @@ import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
-import com.thebombzen.jxlatte.frame.lfglobal.Patch;
+import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
 

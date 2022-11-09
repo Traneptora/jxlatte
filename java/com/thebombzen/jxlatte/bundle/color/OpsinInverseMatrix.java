@@ -92,8 +92,7 @@ public class OpsinInverseMatrix {
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         TaskList<Void> tasks = new TaskList<>();
         for (int y_ = 0; y_ < buffer[0].length; y_++) {
-            final int y = y_;
-            tasks.submit(() -> {
+            tasks.submit(y_, (y) -> {
                 for (int x = 0; x < buffer[0][y].length; x++) {
                     double gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
                     double gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];

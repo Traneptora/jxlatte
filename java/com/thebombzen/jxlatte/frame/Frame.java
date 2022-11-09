@@ -13,7 +13,10 @@ import java.util.function.IntUnaryOperator;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.lfglobal.LFGlobal;
+import com.thebombzen.jxlatte.frame.features.Spline;
+import com.thebombzen.jxlatte.frame.group.LFGroup;
+import com.thebombzen.jxlatte.frame.group.Pass;
+import com.thebombzen.jxlatte.frame.group.PassGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -220,9 +223,8 @@ public class Frame {
         double[][][][] upWeights = globalMetadata.getUpWeights()[l];
         double[][] newBuffer = new double[buffer[c].length * k][];
         TaskList<Void> taskList = new TaskList<>();
-        for (int y_ = 0; y_ < buffer[c].length; y_++) {
-            final int y = y_;
-            taskList.submit(() -> {
+        for (int y0 = 0; y0 < buffer[c].length; y0++) {
+            taskList.submit(y0, (y) -> {
                 for (int ky = 0; ky < k; ky++) {
                     newBuffer[y*k + ky] = new double[buffer[c][y].length * k];
                     for (int x = 0; x < buffer[c][y].length; x++) {
@@ -279,7 +281,7 @@ public class Frame {
 
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
             final int lfGroupID = lfGroupID0;
-            lfGroupTasks.submit(() -> {
+            lfGroupTasks.submit(getBitreader(1 + lfGroupID), (reader) -> {
                 int row = lfGroupID / lfRowStride;
                 int column = lfGroupID % lfRowStride;
                 ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
@@ -296,7 +298,7 @@ public class Frame {
                     info.x0 = x0;
                     info.y0 = y0;
                 }
-                return new LFGroup(getBitreader(1 + lfGroupID).join(), this, lfGroupID, replaced);
+                return new LFGroup(reader, this, lfGroupID, replaced);
             });
         }
 
@@ -307,11 +309,10 @@ public class Frame {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 ModularChannel newChannel = lfGroups[lfGroupID].lfStream.getChannel(j);
-                for (int y = 0; y < newChannel.height; y++) {
-                    final int y_ = y;
-                    tasks.submit(() -> {
+                for (int y_ = 0; y_ < newChannel.height; y_++) {
+                    tasks.submit(y_, (y) -> {
                         for (int x = 0; x < newChannel.width; x++) {
-                            channel.set(x + newChannel.x0, y_ + newChannel.y0, newChannel.get(x, y_));
+                            channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
                         }
                     });
                 }
@@ -333,29 +334,19 @@ public class Frame {
             passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                passGroupTasks.submit(pass, () -> {
+                passGroupTasks.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
                         int passGroupWidth = header.groupDim >> info.hshift;
                         int passGroupHeight = header.groupDim >> info.vshift;
                         int rowStride = MathHelper.ceilDiv(info.width, passGroupWidth);
-                        int x0 = (group % rowStride) * passGroupWidth;
-                        int y0 = (group / rowStride) * passGroupHeight;
-                        int width = passGroupWidth;
-                        int height = passGroupHeight;
-                        if (width + x0 > info.width) {
-                            width = info.width - x0;
-                        }
-                        if (height + y0 > info.height) {
-                            height = info.height - y0;
-                        }
-                        info.x0 = x0;
-                        info.y0 = y0;
-                        info.width = width;
-                        info.height = height;
+                        info.x0 = (group % rowStride) * passGroupWidth;
+                        info.y0 = (group / rowStride) * passGroupHeight;
+                        info.width = Math.min(passGroupWidth, info.width - info.x0);
+                        info.height = Math.min(passGroupHeight, info.height - info.y0);
                     }
-                    return new PassGroup(getBitreader(2 + numLFGroups + pass * numGroups + group).join(), Frame.this,
+                    return new PassGroup(reader, Frame.this,
                         18 + 3 * numLFGroups + numGroups * pass + group, replaced);
                 });
             }
@@ -369,11 +360,10 @@ public class Frame {
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    for (int y = 0; y < newChannel.height; y++) {
-                        final int y_ = y;
-                        tasks.submit(() -> {
+                    for (int y_ = 0; y_ < newChannel.height; y_++) {
+                        tasks.submit(y_, (y) -> {
                             for (int x = 0; x < newChannel.width; x++) {
-                                channel.set(x + newChannel.x0, y_ + newChannel.y0, newChannel.get(x, y_));
+                                channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
                             }
                         });
                     }
@@ -386,8 +376,7 @@ public class Frame {
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
-        for (int c_ = 0; c_ < buffer.length; c_++) {
-            final int c = c_;
+        for (int c = 0; c < buffer.length; c++) {
             double scaleFactor;
             boolean xyb = globalMetadata.isXYBEncoded();
             // X, Y, B is encoded as Y, X, (B - Y)
@@ -399,14 +388,13 @@ public class Frame {
             else
                 scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
             for (int y_ = 0; y_ < header.height; y_++) {
-                final int y = y_;
-                tasks.submit(() -> {
+                tasks.submit(y_, c, (y, c2) -> {
                     for (int x = 0; x < header.width; x++) {
                         // X, Y, B is encoded as Y, X, (B - Y)
-                        if (xyb && c == 2)
+                        if (xyb && c2 == 2)
                             buffer[cOut][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
                         else
-                            buffer[cOut][y][x] = scaleFactor * streamBuffer[c][y][x];
+                            buffer[cOut][y][x] = scaleFactor * streamBuffer[c2][y][x];
                     }
                 });
             }

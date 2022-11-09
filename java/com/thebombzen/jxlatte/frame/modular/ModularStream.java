@@ -11,7 +11,7 @@ import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntBiConsumer;
+import com.thebombzen.jxlatte.util.ExceptionalIntBiConsumer;
 import com.thebombzen.jxlatte.util.TaskList;
 
 public class ModularStream {
@@ -40,7 +40,7 @@ public class ModularStream {
     private int distMultiplier;
 
     private MATree tree;
-    private WPHeader wpParams;
+    private WPParams wpParams;
     private TransformInfo[] transforms;
     private Frame frame;
     private EntropyStream stream = null;
@@ -71,7 +71,7 @@ public class ModularStream {
             return;
         }
         boolean useGlobalTree = reader.readBool();
-        wpParams = new WPHeader(reader);
+        wpParams = new WPParams(reader);
         int nbTransforms = reader.readU32(0, 0, 1, 0, 2, 4, 18, 8);
         transforms = new TransformInfo[nbTransforms];
         for (int i = 0; i < nbTransforms; i++)
@@ -164,6 +164,7 @@ public class ModularStream {
                 }
             } else if (transforms[i].tr == TransformInfo.RCT) {
                 // RCT doesn't modify the channel list
+                continue;
             } else {
                 throw new InvalidBitstreamException("Illegal Transform " + i + ": " + transforms[i].tr);
             }
@@ -175,11 +176,7 @@ public class ModularStream {
         }
         this.stream = new EntropyStream(tree.getStream());
 
-        int d = 0;               
-        for (int i = nbMetaChannels; i < channels.size(); i++) {
-            d = Math.max(channels.get(i).width, d);
-        }
-        distMultiplier = d;
+        distMultiplier = channels.stream().mapToInt(c -> c.width).reduce(0, Math::max);
     }
 
     public void decodeChannels(Bitreader reader, boolean partial) throws IOException {
@@ -254,7 +251,7 @@ public class ModularStream {
                 int start = transforms[i].beginC;
                 for (int j = 0; j < 3; j++)
                     v[j] = getChannel(start + j);
-                IntBiConsumer rct;
+                ExceptionalIntBiConsumer rct;
                 switch(type) {
                     case 0:
                         rct = (x, y) -> {};
@@ -304,11 +301,10 @@ public class ModularStream {
                         throw new IllegalStateException("Challenge complete how did we get here");
                 }
                 TaskList<Void> tasks = new TaskList<Void>();
-                for (int y = 0; y < v[0].height; y++) {
-                    final int y0 = y;
-                    tasks.submit(() -> {
+                for (int y0 = 0; y0 < v[0].height; y0++) {
+                    tasks.submit(y0, (y) -> {
                         for (int x = 0; x < v[0].width; x++) {
-                            rct.consume(x, y0);
+                            rct.consume(x, y);
                         }
                     });
                 }

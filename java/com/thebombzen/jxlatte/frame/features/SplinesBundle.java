@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.lfglobal;
+package com.thebombzen.jxlatte.frame.features;
 
 import java.io.IOException;
 
@@ -8,7 +8,7 @@ import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
-public class Splines {
+public class SplinesBundle {
 
     public final int numSplines;
     public final int quantAdjust;
@@ -20,7 +20,7 @@ public class Splines {
     public final int[][] coeffB;
     public final int[][] coeffSigma;
 
-    public Splines(Bitreader reader) throws IOException {
+    public SplinesBundle(Bitreader reader) throws IOException {
         EntropyStream stream = new EntropyStream(reader, 6);
         numSplines = 1 + stream.readSymbol(reader, 2);
         splinePos = new IntPoint[numSplines];

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame;
+package com.thebombzen.jxlatte.frame.features;
 
 import com.thebombzen.jxlatte.util.DoublePoint;
 

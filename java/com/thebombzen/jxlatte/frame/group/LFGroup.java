@@ -1,8 +1,10 @@
-package com.thebombzen.jxlatte.frame;
+package com.thebombzen.jxlatte.frame.group;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.frame.lfglobal.GlobalModular;
+import com.thebombzen.jxlatte.frame.Frame;
+import com.thebombzen.jxlatte.frame.FrameFlags;
+import com.thebombzen.jxlatte.frame.modular.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;

@@ -1,9 +1,10 @@
-package com.thebombzen.jxlatte.frame;
+package com.thebombzen.jxlatte.frame.group;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.thebombzen.jxlatte.frame.lfglobal.GlobalModular;
+import com.thebombzen.jxlatte.frame.Frame;
+import com.thebombzen.jxlatte.frame.modular.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.util.MathHelper;

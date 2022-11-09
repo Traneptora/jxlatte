@@ -35,6 +35,34 @@ public class TaskList<T> {
         tasks.get(bin).add(CompletableFuture.supplyAsync(s.uncheck()));
     }
 
+    public <U> void submit(CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
+        submit(0, supplier, f);
+    }
+
+    public <U> void submit(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
+        tasks.get(bin).add(supplier.thenApplyAsync(f.uncheck()));
+    }
+
+    public void submit(int bin, int a, int b, ExceptionalIntBiConsumer consumer) {
+        submit(bin, () -> {
+            consumer.consume(a, b);
+        });
+    }
+
+    public void submit(int a, int b, ExceptionalIntBiConsumer consumer) {
+        submit(0, a, b, consumer);
+    }
+
+    public void submit(int bin, int a, ExceptionalIntConsumer consumer) {
+        submit(bin, () -> {
+            consumer.consume(a);
+        });
+    }
+
+    public void submit(int a, ExceptionalIntConsumer consumer) {
+        submit(0, a, consumer);
+    }
+
     public List<T> collect(int bin) {
         List<T> results = new ArrayList<>();
         for (CompletableFuture<? extends T> future : tasks.get(bin)) {

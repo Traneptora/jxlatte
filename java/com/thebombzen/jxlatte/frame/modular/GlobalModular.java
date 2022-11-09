@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.lfglobal;
+package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
 
@@ -6,8 +6,6 @@ import com.thebombzen.jxlatte.bundle.color.ColorFlags;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
-import com.thebombzen.jxlatte.frame.modular.MATree;
-import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class GlobalModular {

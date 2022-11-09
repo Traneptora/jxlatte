@@ -70,6 +70,6 @@ public final class FunctionalHelper {
      * Joins all of the futures and preserves their order
      */
     public static <T> T[] join(IntFunction<T[]> generator, CompletableFuture<?>... futures) {
-        return  join(generator, Arrays.asList(futures));
+        return join(generator, Arrays.asList(futures));
     }
 }

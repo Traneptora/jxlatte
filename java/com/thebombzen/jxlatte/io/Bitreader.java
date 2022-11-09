@@ -7,8 +7,20 @@ import com.thebombzen.jxlatte.InvalidBitstreamException;
 
 public interface Bitreader extends Closeable {
 
+    /**
+     * @param bits Reads 0-32 bits from the bitstream
+     * @return the value of those bits
+     */
     public int readBits(int bits) throws IOException;
+    /**
+     * @param bits Reads 0-32 bits from the bitstream, but puts them back
+     * @return the value of those bits
+     */
     public int showBits(int bits) throws IOException;
+    /**
+     * @param bits Skips any number of bits from the bitstream
+     * @return The number of bits skipped
+     */
     public long skipBits(long bits) throws IOException;
     public long getBitsCount();
     public int readBytes(byte[] buffer, int offset, int length) throws IOException;
@@ -23,22 +35,9 @@ public interface Bitreader extends Closeable {
 
     public default int readU32(int c0, int u0, int c1, int u1, int c2, int u2, int c3, int u3) throws IOException {
         int choice = readBits(2);
-        int c, u;
-        switch (choice) {
-            case 1:
-                c = c1; u = u1;
-                break;
-            case 2:
-                c = c2; u = u2;
-                break;
-            case 3:
-                c = c3; u = u3;
-                break;
-            default:
-                c = c0; u = u0;
-        }
-
-        return c + readBits(u);
+        int[] c = new int[]{c0, c1, c2, c3};
+        int[] u = new int[]{u0, u1, u2, u3};
+        return c[choice] + readBits(u[choice]);
     }
 
     public default long readU64() throws IOException {

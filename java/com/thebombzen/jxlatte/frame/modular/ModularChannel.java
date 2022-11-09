@@ -148,7 +148,7 @@ public class ModularChannel extends ModularChannelInfo {
         }
     }
 
-    private int prePredictWP(WPHeader wpParams, int x, int y) {
+    private int prePredictWP(WPParams wpParams, int x, int y) {
         int n3 = north(x, y) << 3;
         int nw3 = northWest(x, y) << 3;
         int ne3 = northEast(x, y) << 3;
@@ -159,13 +159,13 @@ public class ModularChannel extends ModularChannelInfo {
         int tNE = errorNorthEast(x, y, 4);
         int tNW = errorNorthWest(x, y, 4);
         subpred[0] = w3 + ne3 - n3;
-        subpred[1] = n3 - (((tW + tN + tNE) * wpParams.wp_p1) >> 5);
-        subpred[2] = w3 - (((tW + tN + tNW) * wpParams.wp_p2) >> 5);
-        subpred[3] = n3 - ((tNW * wpParams.wp_p3a
-            + tN * wpParams.wp_p3b
-            + tNE * wpParams.wp_p3c
-            + (nn3 - n3) * wpParams.wp_p3d
-            + (nw3 - w3) * wpParams.wp_p3e) >> 5);
+        subpred[1] = n3 - (((tW + tN + tNE) * wpParams.param1) >> 5);
+        subpred[2] = w3 - (((tW + tN + tNW) * wpParams.param2) >> 5);
+        subpred[3] = n3 - ((tNW * wpParams.param3a
+            + tN * wpParams.param3b
+            + tNE * wpParams.param3c
+            + (nn3 - n3) * wpParams.param3d
+            + (nw3 - w3) * wpParams.param3e) >> 5);
         int wSum = 0;
         for (int e = 0; e < 4; e++) {
             int eSum = errorNorth(x, y, e) + errorWest(x, y, e) + errorNorthWest(x, y, e)
@@ -175,7 +175,7 @@ public class ModularChannel extends ModularChannelInfo {
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
                 shift = 0;
-            weight[e] = 4 + ((wpParams.wp_w[e] * oneL24OverKP1[eSum >> shift]) >> shift);
+            weight[e] = 4 + ((wpParams.weight[e] * oneL24OverKP1[eSum >> shift]) >> shift);
             wSum += weight[e];
         }
         int logWeight = MathHelper.floorLog1p(wSum - 1) - 4;
@@ -200,7 +200,7 @@ public class ModularChannel extends ModularChannelInfo {
         return maxError;
     }
 
-    public void decode(Bitreader reader, EntropyStream stream, WPHeader wpParams, MATree tree,
+    public void decode(Bitreader reader, EntropyStream stream, WPParams wpParams, MATree tree,
             ModularStream parent, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
         if (decoded)
             return;

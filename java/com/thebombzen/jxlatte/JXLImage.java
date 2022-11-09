@@ -80,8 +80,7 @@ public class JXLImage {
         int height = getHeight();
         JXLImage image = new JXLImage(this);
         for (int y_ = 0; y_ < height; y_++) {
-            final int y = y_;
-            tasks.submit(() -> {
+            tasks.submit(y_, (y) -> {
                 for (int x = 0; x < width; x++) {
                     double[] rgb = new double[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
                     double[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
@@ -182,20 +181,18 @@ public class JXLImage {
         if (transfer == image.transfer)
             return image;
         image = image == this ? new JXLImage(image) : image;
-        final JXLImage image_ = image;
         DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(image.transfer);
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
         DoubleUnaryOperator composed = inverse.andThen(forward);
         TaskList<?> tasks = new TaskList<>();
         int width = getWidth();
         int height = getHeight();
+        double[][][] imBuffer = image.buffer;
         for (int c_ = 0; c_ < buffer.length; c_++) {
-            final int c = c_;
             for (int y_ = 0; y_ < height; y_++) {
-                final int y = y_;
-                tasks.submit(() -> {
+                tasks.submit(c_, y_, (c, y) -> {
                     for (int x = 0; x < width; x++)
-                        image_.buffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
+                        imBuffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
                 });
             }
         }

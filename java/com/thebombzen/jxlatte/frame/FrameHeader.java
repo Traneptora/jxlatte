@@ -6,6 +6,8 @@ import java.util.Arrays;
 
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
+import com.thebombzen.jxlatte.frame.features.RestorationFilter;
+import com.thebombzen.jxlatte.frame.group.PassesInfo;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
