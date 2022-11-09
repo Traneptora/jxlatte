@@ -26,12 +26,22 @@ public final class MathHelper {
     public static double erf(double z) {
         double az = Math.abs(z);
         double absErf;
+        // first method is more accurate for most z, but becomes inaccurate for very small z
+        // so we fall back on the second method
         if (az > 1e-4D) {
+            /*
+             * William H. Press, Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery. 1992.
+             * Numerical recipes in C (2nd ed.): the art of scientific computing. Cambridge University Press, USA.
+             */
             double t = 1.0D / (1.0D + 0.5D * az);
-            absErf = 1.0D - t * Math.exp(-z * z - 1.26551223D + t * (1.00002368D
-                + t * (0.37409196D + t * (0.09678418D + t * (-0.18628806D + t * (0.27886807D
-                + t * (-1.13520398D + t * (1.48851587D + t * (-0.82215223D + t * 0.17087277D)))))))));
+            double u = -1.26551223D + t * (1.00002368D + t * (0.37409196D + t * (0.09678418D + t * (-0.18628806D
+                + t * (0.27886807D + t * (-1.13520398D + t * (1.48851587D + t * (-0.82215223D + t * 0.17087277D))))))));
+            absErf = 1.0D - t * Math.exp(-z * z + u);
         } else {
+            /*
+             * Milton Abramowitz and Irene A. Stegun. 1964. Handbook of Mathematical Functions with formulas,
+             * graphs, and mathematical tables, Dover Publications, USA.
+             */
             double t = 1.0D / (1.0D + 0.47047D * az);
             double u = t * (0.3480242D + t * (-0.0958798D + t * 0.7478556D));
             absErf = 1.0D - u * Math.exp(-z * z);
