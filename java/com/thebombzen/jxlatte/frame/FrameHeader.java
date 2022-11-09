@@ -7,8 +7,8 @@ import java.util.Arrays;
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
-import com.thebombzen.jxlatte.util.Point;
 
 public class FrameHeader {
 
@@ -26,7 +26,7 @@ public class FrameHeader {
     public final PassesInfo passes;
     public final int lfLevel;
     public final boolean haveCrop;
-    public Point origin;
+    public IntPoint origin;
     public int width;
     public int height;
     public final BlendingInfo blendingInfo;
@@ -55,7 +55,7 @@ public class FrameHeader {
         this.passes = header.passes;
         this.lfLevel = header.lfLevel;
         this.haveCrop = header.haveCrop;
-        this.origin = new Point(header.origin);
+        this.origin = new IntPoint(header.origin);
         this.width = header.width;
         this.height = header.height;
         this.blendingInfo =  header.blendingInfo;
@@ -109,9 +109,9 @@ public class FrameHeader {
             int y0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
             x0 = MathHelper.unpackSigned(x0);
             y0 = MathHelper.unpackSigned(y0);
-            this.origin = new Point(x0, y0);
+            this.origin = new IntPoint(x0, y0);
         } else {
-            this.origin = new Point();
+            this.origin = new IntPoint();
         }
         if (haveCrop) {
             width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
