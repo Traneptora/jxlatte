@@ -31,7 +31,7 @@ public class PNGWriter {
     private CRC32 crc32 = new CRC32();
 
     public PNGWriter(JXLImage image) {
-        this(image, 8);
+        this(image, image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8);
     }
 
     public PNGWriter(JXLImage image, int bitDepth) {

@@ -301,13 +301,25 @@ public class JXLCodestreamDecoder {
 
         Frame storage = new Frame(frames.get(0), false);
 
+        long invisibleFrames = 0;
+        long visibleFrames = 0;
+
         for (Frame frame : frames) {
             header = frame.getFrameHeader();
             boolean save = (header.saveAsReference != 0 || header.duration == 0) && !header.isLast && header.type != FrameFlags.LF_FRAME;
+            if (frame.isVisible()) {
+                visibleFrames++;
+                invisibleFrames = 0;
+            } else {
+                invisibleFrames++;
+            }
+            frame.initializeNoise((visibleFrames << 32) | invisibleFrames);
+            frame.upsample();
             if (save && header.saveBeforeCT)
                 reference[header.saveAsReference] = new Frame(frame);
             computePatches(reference, frame);
             frame.renderSplines();
+            frame.synthesizeNoise();
             performColorTransforms(matrix, frame);
             if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE) {
                 blendFrame(storage.getBuffer(), reference, frame);

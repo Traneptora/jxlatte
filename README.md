@@ -52,10 +52,11 @@ Features currently supported at this time:
 - VarDCT
   - HF Block Contexts
   - LF Channel Correlation
-- Image features
+- Image features: DONE
   - Upsampling
   - Patches
   - Splines
+  - Noise Synthesis
 - Color transforms
   - XYB
 - Rendering: DONE
@@ -77,8 +78,6 @@ Features not yet supported at this time:
 - Restoration Filters
   - Gaborish
   - Edge Preserving Filter
-- Image features
-  - Noise Synthesis
 - Color transform
   - JPEG Upsampling
   - YCbCr

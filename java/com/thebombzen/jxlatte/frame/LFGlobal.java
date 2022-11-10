@@ -40,13 +40,16 @@ public class LFGlobal {
             patches = new Patch[0];
         }
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
+            if (frame.globalMetadata.getColorChannelCount() < 3)
+                throw new InvalidBitstreamException("Cannot do splines in grayscale");
             splines = new SplinesBundle(reader);
         } else {
             splines = null;
         }
         if ((frame.getFrameHeader().flags & FrameFlags.NOISE) != 0) {
+            if (frame.globalMetadata.getColorChannelCount() < 3)
+                throw new InvalidBitstreamException("Cannot do noise in grayscale");
             noiseParameters = new NoiseParameters(reader);
-            System.err.println("TODO: Noise will not be rendered");
         } else {
             noiseParameters = null;
         }
@@ -62,7 +65,7 @@ public class LFGlobal {
         } else {
             quantizer = null;
             hfBlockCtx = null;
-            // default value used for splines in modular mode
+            // default value used for splines and noise in modular mode
             lfChanCorr = new LFChannelCorrelation();
         }
         gModular = new GlobalModular(reader, frame);

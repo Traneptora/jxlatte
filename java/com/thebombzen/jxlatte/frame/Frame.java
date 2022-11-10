@@ -13,6 +13,7 @@ import java.util.function.IntUnaryOperator;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
+import com.thebombzen.jxlatte.frame.features.NoiseGroup;
 import com.thebombzen.jxlatte.frame.features.Spline;
 import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.group.Pass;
@@ -24,6 +25,7 @@ import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
+import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
     private Bitreader globalReader;
@@ -38,6 +40,7 @@ public class Frame {
     public final ImageHeader globalMetadata;
     private boolean permutedTOC;
     private double[][][] buffer;
+    private double[][][] noiseBuffer;
     private boolean decoded = false;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
@@ -210,7 +213,7 @@ public class Frame {
         return coordinate;
     }
 
-    private void performUpsampling(int c) {
+    private double[][] performUpsampling(double[][] buffer, int c) {
         int color = globalMetadata.getColorChannelCount();
         int k;
         if (c < color)
@@ -218,16 +221,16 @@ public class Frame {
         else
             k = header.ecUpsampling[c - color];
         if (k == 1)
-            return;
+            return buffer;
         int l = MathHelper.ceilLog1p(k - 1) - 1;
         double[][][][] upWeights = globalMetadata.getUpWeights()[l];
-        double[][] newBuffer = new double[buffer[c].length * k][];
-        TaskList<Void> taskList = new TaskList<>();
-        for (int y0 = 0; y0 < buffer[c].length; y0++) {
-            taskList.submit(y0, (y) -> {
+        double[][] newBuffer = new double[buffer.length * k][];
+        TaskList<Void> tasks = new TaskList<>();
+        for (int y0 = 0; y0 < buffer.length; y0++) {
+            tasks.submit(y0, (y) -> {
                 for (int ky = 0; ky < k; ky++) {
-                    newBuffer[y*k + ky] = new double[buffer[c][y].length * k];
-                    for (int x = 0; x < buffer[c][y].length; x++) {
+                    newBuffer[y*k + ky] = new double[buffer[y].length * k];
+                    for (int x = 0; x < buffer[y].length; x++) {
                         for (int kx = 0; kx < k; kx++) {
                             double[][] weights = upWeights[ky][kx];
                             double total = 0D;
@@ -235,9 +238,9 @@ public class Frame {
                             double max = Double.MIN_VALUE;
                             for (int iy = 0; iy < 5; iy++) {
                                 for (int ix = 0; ix < 5; ix++) {
-                                    int newY = mirrorCoordinate(y + iy - 2, buffer[c].length);
-                                    int newX = mirrorCoordinate(x + ix - 2, buffer[c][newY].length);
-                                    double sample = buffer[c][newY][newX];
+                                    int newY = mirrorCoordinate(y + iy - 2, buffer.length);
+                                    int newX = mirrorCoordinate(x + ix - 2, buffer[newY].length);
+                                    double sample = buffer[newY][newX];
                                     if (sample < min)
                                         min = sample;
                                     if (sample > max)
@@ -251,15 +254,16 @@ public class Frame {
                 }
             });
         }
-        taskList.collect();
-        buffer[c] = newBuffer;
+        tasks.collect();
+        return newBuffer;
     }
 
     public void decodeFrame() throws IOException {
         if (this.decoded)
             return;
         this.decoded = true;
-        lfGlobal = new LFGlobal(getBitreader(0).join(), this);
+        lfGlobal = FunctionalHelper.join(getBitreader(0).thenApplyAsync(
+            FunctionalHelper.uncheck((reader) -> new LFGlobal(reader, this))));
         buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
@@ -400,10 +404,11 @@ public class Frame {
             }
         }
         tasks.collect();
+    }
 
+    public void upsample() {
         for (int c = 0; c < buffer.length; c++)
-            performUpsampling(c);
-
+            buffer[c] = performUpsampling(buffer[c], c);
         header.width *= header.upsampling;
         header.height *= header.upsampling;
         header.origin.timesEquals(header.upsampling);
@@ -415,6 +420,95 @@ public class Frame {
         for (int s = 0; s < lfGlobal.splines.numSplines; s++) {
             Spline spline = new Spline(s, lfGlobal.splines.controlPoints[s]);
             spline.renderSpline(this);
+        }
+    }
+
+    public void initializeNoise(long seed0) {
+        if (lfGlobal.noiseParameters == null)
+            return;
+        int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
+        int height = header.height * header.upsampling;
+        int width = header.width * header.upsampling;
+        double[][][] noiseBuffer = new double[3][height][width];
+        int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
+        TaskList<Void> tasks = new TaskList<>();
+        for (int group = 0; group < numGroups; group++) {
+            int groupX = group % rowStride;
+            int groupY = group / rowStride;
+            // SPEC: spec doesn't mention how noise groups interact with upsampling
+            for (int iy = 0; iy < header.upsampling; iy++) {
+                for (int ix = 0; ix < header.upsampling; ix++) {
+                    int x0 = (groupX * header.upsampling + ix) * header.groupDim;
+                    int y0 = (groupY * header.upsampling + iy) * header.groupDim;
+                    tasks.submit(() -> new NoiseGroup(header, seed0, noiseBuffer, x0, y0));
+                }
+            }
+        }
+        double[][] laplacian = new double[5][5];
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                laplacian[i][j] = (i == 2 && j == 2 ? -3.84D : 0.16D);
+            }
+        }
+        this.noiseBuffer = new double[3][height][width];
+        tasks.collect();
+        for (int c_ = 0; c_ < 3; c_++) {
+            for (int y_ = 0; y_ < height; y_++) {
+                tasks.submit(c_, y_, (c, y) -> {
+                    for (int x = 0; x < width; x++) {
+                        for (int iy = 0; iy < 5; iy++) {
+                            for (int ix = 0; ix < 5; ix++) {
+                                int cy = mirrorCoordinate(y + iy - 2, height);
+                                int cx = mirrorCoordinate(x + ix - 2, width);
+                                this.noiseBuffer[c][y][x] += noiseBuffer[c][cy][cx] * laplacian[iy][ix];
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        tasks.collect();
+    }
+
+    public void synthesizeNoise() {
+        if (lfGlobal.noiseParameters == null)
+            return;
+        double[] lut = lfGlobal.noiseParameters.lut;
+        for (int y = 0; y < header.height; y++) {
+            for (int x = 0; x < header.width; x++) {
+                // SPEC: spec doesn't mention the *0.5 here, it says *6
+                // SPEC: spec doesn't mention clamping to 0 here
+                double inScaledR = 3D * Math.max(0D, buffer[1][y][x] + buffer[0][y][x]);
+                double inScaledG = 3D * Math.max(0D, buffer[1][y][x] - buffer[0][y][x]);
+                int intInR;
+                double fracInR;
+                // LIBJXL: libjxl bug makes this >= 6D and 5, making lut[7] unused
+                // SPEC: spec bug makes this >= 8D and 7, making lut[8] overflow
+                if (inScaledR >= 7D) {
+                    intInR = 6;
+                    fracInR = 1D;
+                } else {
+                    intInR = (int)inScaledR;
+                    fracInR = inScaledR - intInR;
+                }
+                int intInG;
+                double fracInG;
+                if (inScaledG >= 7D) {
+                    intInG = 6;
+                    fracInG = 1D;
+                } else {
+                    intInG = (int)inScaledG;
+                    fracInG = inScaledG - intInG;
+                }
+                double sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
+                double sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
+                double nr = 0.22D * sr * (0.0078125D * noiseBuffer[0][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
+                double ng = 0.22D * sg * (0.0078125D * noiseBuffer[1][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
+                double nrg = nr + ng;
+                buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
+                buffer[1][y][x] += nrg;
+                buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
+            }
         }
     }
 
@@ -436,6 +530,11 @@ public class Frame {
 
     public boolean isDecoded() {
         return this.decoded;
+    }
+
+    public boolean isVisible() {
+        return (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE)
+            && (header.duration != 0 || header.isLast);
     }
 
     /* gets the sample for the IMAGE position x and y */
