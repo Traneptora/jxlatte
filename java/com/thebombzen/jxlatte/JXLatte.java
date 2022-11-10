@@ -49,7 +49,7 @@ public class JXLatte {
     }
 
     public static void main(String[] args) throws Throwable {
-        if (args.length == 0) {
+        if (args.length == 0 || args[0].equals("--help")) {
             String[] lines = new String[]{
                 "jxlatte, version: " + JXLATTE_VERSION,
                 "Usage: java -jar jxlatte.jar <input.jxl> [output.png]",
@@ -57,7 +57,7 @@ public class JXLatte {
                 "If the output filename is not provided, jxlatte will discard the decoded pixels.",
             };
             Stream.of(lines).forEach(System.out::println);
-            System.exit(1);
+            System.exit(args.length > 0 ? 0 : 1);
         }
         String inputFilename = args[0];
         String outputFilename = args.length > 1 ? args[1] : null;
