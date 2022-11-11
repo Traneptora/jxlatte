@@ -9,7 +9,9 @@ public final class IOHelper {
         
     }
 
-    // nonzero return value indicates how much wasn't read
+    /**
+     * @return How much wasn't read due to EOF
+     */
     public static int readFully(InputStream in, byte[] buffer) throws IOException {
         return readFully(in, buffer, 0, buffer.length);
     }

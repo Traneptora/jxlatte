@@ -41,6 +41,7 @@ public class Frame {
     private boolean permutedTOC;
     private double[][][] buffer;
     private double[][][] noiseBuffer;
+    private Pass[] passes;
     private boolean decoded = false;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
@@ -258,13 +259,8 @@ public class Frame {
         return newBuffer;
     }
 
-    public void decodeFrame() throws IOException {
-        if (this.decoded)
-            return;
-        this.decoded = true;
-        lfGlobal = FunctionalHelper.join(getBitreader(0).thenApplyAsync(
-            FunctionalHelper.uncheck((reader) -> new LFGlobal(reader, this))));
-        buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
+    private void decodeLFGroups(TaskList<?> tasks) throws IOException {
+
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         int lfRowStride = MathHelper.ceilDiv(header.width, header.groupDim << 3);
@@ -280,7 +276,6 @@ public class Frame {
             }
         }
 
-        TaskList<Void> tasks = new TaskList<>();
         TaskList<LFGroup> lfGroupTasks = new TaskList<>();
 
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
@@ -308,11 +303,12 @@ public class Frame {
 
         LFGroup[] lfGroups = lfGroupTasks.collect().stream().toArray(LFGroup[]::new);
 
+        /* decode populate LF Groups */
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                ModularChannel newChannel = lfGroups[lfGroupID].lfStream.getChannel(j);
+                ModularChannel newChannel = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
                 for (int y_ = 0; y_ < newChannel.height; y_++) {
                     tasks.submit(y_, (y) -> {
                         for (int x = 0; x < newChannel.width; x++) {
@@ -322,20 +318,27 @@ public class Frame {
                 }
             }
         }
+    }
 
-        if (header.encoding == FrameFlags.VARDCT) {
-            throw new UnsupportedOperationException("VarDCT is not yet implemented");
+    private void decodeHFGlobal(TaskList<?> tasks) throws IOException {
+
+    }
+
+    private void decodePasses(TaskList<?> tasks) throws IOException {
+        passes = new Pass[header.passes.numPasses];
+        for (int pass = 0; pass < passes.length; pass++) {
+            passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
         }
+    }
 
-        int numPasses = header.passes.numPasses;
-        Pass[] passes = new Pass[numPasses];
+    private void decodePassGroups(TaskList<?> tasks) throws IOException {
+
+        int numPasses = passes.length;
         PassGroup[][] passGroups = new PassGroup[numPasses][];
-
         TaskList<PassGroup> passGroupTasks = new TaskList<>(numPasses);
 
         for (int pass0 = 0; pass0 < numPasses; pass0++) {
             final int pass = pass0;
-            passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
                 passGroupTasks.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
@@ -376,6 +379,26 @@ public class Frame {
         }
 
         tasks.collect();
+    }
+
+    public void decodeFrame() throws IOException {
+        if (this.decoded)
+            return;
+        this.decoded = true;
+        lfGlobal = FunctionalHelper.join(getBitreader(0).thenApplyAsync(
+            FunctionalHelper.uncheck((reader) -> new LFGlobal(reader, this))));
+        buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
+        TaskList<Void> tasks = new TaskList<>();
+
+        decodeLFGroups(tasks);
+
+        if (header.encoding == FrameFlags.VARDCT) {
+            decodeHFGlobal(tasks);
+            throw new UnsupportedOperationException("VarDCT is not yet implemented");
+        }
+
+        decodePasses(tasks);
+        decodePassGroups(tasks);
 
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();

@@ -22,6 +22,5 @@ public class PassGroup {
         GlobalModular globalModular = frame.getLFGlobal().gModular;
         stream = new ModularStream(reader, globalModular.globalTree, frame, streamIndex, replacedChannels);
         stream.decodeChannels(reader, false);
-        stream.applyTransforms();
     }
 }

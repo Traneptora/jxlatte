@@ -1,7 +1,7 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.stream.Stream;
 
 public final class MathHelper {
 
@@ -137,11 +137,7 @@ public final class MathHelper {
     }
 
     public static double[][] matrixMutliply(double[][]... matrices) {
-        return matrixMutliply(Arrays.asList(matrices));
-    }
-
-    public static double[][] matrixMutliply(Collection<double[][]> matrices) {
-        return matrices.stream().reduce(MathHelper::matrixMutliply).orElse(null);
+        return Stream.of(matrices).reduce(MathHelper::matrixMutliply).orElse(null);
     }
 
     // expensive! try not to use on the fly

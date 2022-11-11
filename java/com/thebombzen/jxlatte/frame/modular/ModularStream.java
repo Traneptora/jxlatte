@@ -193,6 +193,8 @@ public class ModularStream {
         }
         if (stream != null && !stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final modular state");
+        if (!partial)
+            applyTransforms();
     }
 
     public int getEncodedChannelCount() {
@@ -242,9 +244,7 @@ public class ModularStream {
                     for (int c = 0; c < end - begin + 1; c++)
                         channels.remove(offset);
                 }
-            }
-
-            if (transforms[i].tr == TransformInfo.RCT) {
+            } else if (transforms[i].tr == TransformInfo.RCT) {
                 int permutation = transforms[i].rctType / 7;
                 int type = transforms[i].rctType % 7;
                 ModularChannel[] v = new ModularChannel[3];
@@ -311,9 +311,7 @@ public class ModularStream {
                 tasks.collect();
                 for (int j = 0; j < 3; j++)
                     channels.set(start + permutationLut[permutation][j], v[j]);
-            }
-
-            if (transforms[i].tr == TransformInfo.PALETTE) {
+            } else if (transforms[i].tr == TransformInfo.PALETTE) {
                 int first = transforms[i].beginC + 1;
                 int endC = transforms[i].beginC + transforms[i].numC - 1;
                 int last = endC + 1;

@@ -18,7 +18,8 @@ public class FrameHeader {
     public final int encoding;
     public final long flags;
     public final boolean doYCbCr;
-    public final int[] jpegUpsampling;
+    public final int[] jpegUpsamplingX;
+    public final int[] jpegUpsamplingY;
     public final int upsampling;
     public final int[] ecUpsampling;
     public final int groupSizeShift;
@@ -47,7 +48,8 @@ public class FrameHeader {
         this.encoding = header.encoding;
         this.flags = header.flags;
         this.doYCbCr = header.doYCbCr;
-        this.jpegUpsampling = header.jpegUpsampling;
+        this.jpegUpsamplingX = header.jpegUpsamplingX;
+        this.jpegUpsamplingY = header.jpegUpsamplingY;
         this.upsampling = header.upsampling;
         this.ecUpsampling = header.ecUpsampling;
         this.groupSizeShift = header.groupSizeShift;
@@ -78,12 +80,16 @@ public class FrameHeader {
         encoding = allDefault ? FrameFlags.VARDCT : reader.readBits(1);
         flags = allDefault ? 0 : reader.readU64();
         doYCbCr = (!allDefault && !parent.isXYBEncoded()) ? reader.readBool() : false;
-        jpegUpsampling = new int[3];
+        jpegUpsamplingX = new int[3];
+        jpegUpsamplingY = new int[3];
         if (doYCbCr && (flags & FrameFlags.USE_LF_FRAME) == 0) {
-            for (int i = 0; i < 3; i++)
-                jpegUpsampling[i] = reader.readBits(2);
+            for (int i = 0; i < 3; i++) {
+                jpegUpsamplingY[i] = reader.readBits(1);
+                jpegUpsamplingX[i] = 1 - reader.readBits(1);
+            }
         } else {
-            Arrays.fill(jpegUpsampling, 1);
+            Arrays.fill(jpegUpsamplingX, 0);
+            Arrays.fill(jpegUpsamplingY, 0);
         }
         ecUpsampling = new int[parent.getExtraChannelCount()];
         if (!allDefault && (flags & FrameFlags.USE_LF_FRAME) == 0) {
