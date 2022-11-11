@@ -20,6 +20,7 @@ import com.thebombzen.jxlatte.frame.group.Pass;
 import com.thebombzen.jxlatte.frame.group.PassGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
+import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
@@ -43,6 +44,7 @@ public class Frame {
     private double[][][] noiseBuffer;
     private Pass[] passes;
     private boolean decoded = false;
+    private HFGlobal hfGlobal;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
@@ -320,10 +322,6 @@ public class Frame {
         }
     }
 
-    private void decodeHFGlobal(TaskList<?> tasks) throws IOException {
-
-    }
-
     private void decodePasses(TaskList<?> tasks) throws IOException {
         passes = new Pass[header.passes.numPasses];
         for (int pass = 0; pass < passes.length; pass++) {
@@ -393,8 +391,11 @@ public class Frame {
         decodeLFGroups(tasks);
 
         if (header.encoding == FrameFlags.VARDCT) {
-            decodeHFGlobal(tasks);
+            hfGlobal = FunctionalHelper.join(getBitreader(1 + numLFGroups).thenApplyAsync(
+            FunctionalHelper.uncheck((reader) -> new HFGlobal(reader, this))));
             throw new UnsupportedOperationException("VarDCT is not yet implemented");
+        } else {
+            hfGlobal = null;
         }
 
         decodePasses(tasks);
