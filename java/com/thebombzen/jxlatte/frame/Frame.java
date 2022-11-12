@@ -21,6 +21,7 @@ import com.thebombzen.jxlatte.frame.group.PassGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
+import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
@@ -29,6 +30,9 @@ import com.thebombzen.jxlatte.util.TaskList;
 import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
+
+    private static double[][] laplacian = null;
+
     private Bitreader globalReader;
     private FrameHeader header;
     private int numGroups;
@@ -45,6 +49,9 @@ public class Frame {
     private Pass[] passes;
     private boolean decoded = false;
     private HFGlobal hfGlobal;
+    private LFGroup[] lfGroups;
+    private int groupRowStride;
+    private int lfGroupRowStride;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
@@ -96,9 +103,10 @@ public class Frame {
         height = MathHelper.ceilDiv(height, header.upsampling);
         width = MathHelper.ceilDiv(width, 1 << (3 * header.lfLevel));
         height = MathHelper.ceilDiv(height, 1 << (3 * header.lfLevel));
-        numGroups = MathHelper.ceilDiv(width, header.groupDim) * MathHelper.ceilDiv(height, header.groupDim);
-        numLFGroups = MathHelper.ceilDiv(width, header.groupDim << 3)
-            * MathHelper.ceilDiv(height, header.groupDim << 3);
+        groupRowStride = MathHelper.ceilDiv(width, header.groupDim);
+        lfGroupRowStride = MathHelper.ceilDiv(width, header.groupDim << 3);
+        numGroups = groupRowStride * MathHelper.ceilDiv(height, header.groupDim);
+        numLFGroups = lfGroupRowStride * MathHelper.ceilDiv(height, header.groupDim << 3);
         readTOC();
     }
 
@@ -122,8 +130,11 @@ public class Frame {
         }
 
         permutedTOC = globalReader.readBool();
-        if (permutedTOC) {          
-            tocPermuation = readPermutation(globalReader, tocEntries, 0);
+        if (permutedTOC) {
+            EntropyStream tocStream = new EntropyStream(globalReader, 8);
+            tocPermuation = readPermutation(globalReader, tocStream, tocEntries, 0);
+            if (!tocStream.validateFinalState())
+                throw new InvalidBitstreamException("Invalid final ANS state decoding TOC");
         } else {
             tocPermuation = new int[tocEntries];
             for (int i = 0; i < tocEntries; i++)
@@ -165,7 +176,7 @@ public class Frame {
 
     private byte[] readBuffer(int index) throws IOException {
         int length = tocLengths[index];
-        byte[] buffer = new byte[length];
+        byte[] buffer = new byte[length + 4];
         int read = globalReader.readBytes(buffer, 0, length);
         if (read < length)
             throw new EOFException("Unable to read full TOC entry");
@@ -173,30 +184,25 @@ public class Frame {
     }
 
     private CompletableFuture<Bitreader> getBitreader(int index) throws IOException {
-        if (tocLengths.length == 1) {
-            this.globalReader.zeroPadToByte();
+        if (tocLengths.length == 1)
             return CompletableFuture.completedFuture(this.globalReader);
-        }
         int permutedIndex = tocPermuation[index];
         return buffers[permutedIndex].thenApply((buff) -> {
             return new InputStreamBitreader(new ByteArrayInputStream(buff));
         });
     }
 
-    public static int[] readPermutation(Bitreader reader, int size, int skip) throws IOException {
-        EntropyStream stream = new EntropyStream(reader, 8);
+    public static int[] readPermutation(Bitreader reader, EntropyStream stream, int size, int skip) throws IOException {
         IntUnaryOperator ctx = x -> Math.min(7, MathHelper.ceilLog1p(x));
         int end = stream.readSymbol(reader, ctx.applyAsInt(size));
         if (end > size - skip)
             throw new InvalidBitstreamException("Illegal end value in lehmer sequence");
-        int[] lehmer = new int[skip + end];
+        int[] lehmer = new int[size];
         for (int i = skip; i < end + skip; i++) {
             lehmer[i] = stream.readSymbol(reader, ctx.applyAsInt(i > skip ? lehmer[i - 1] : 0));
             if (lehmer[i] >= size - i)
                 throw new InvalidBitstreamException("Illegal lehmer value in lehmer sequence");
         }
-        if (!stream.validateFinalState())
-            throw new InvalidBitstreamException("Invalid stream decoding TOC");
         List<Integer> temp = new LinkedList<Integer>();
         int[] permutation = new int[size];
         for (int i = 0; i < size; i++)
@@ -303,9 +309,9 @@ public class Frame {
             });
         }
 
-        LFGroup[] lfGroups = lfGroupTasks.collect().stream().toArray(LFGroup[]::new);
+        lfGroups = lfGroupTasks.collect().stream().toArray(LFGroup[]::new);
 
-        /* decode populate LF Groups */
+        /* populate decoded LF Groups */
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
@@ -322,10 +328,10 @@ public class Frame {
         }
     }
 
-    private void decodePasses(TaskList<?> tasks) throws IOException {
+    private void decodePasses(Bitreader reader, TaskList<?> tasks) throws IOException {
         passes = new Pass[header.passes.numPasses];
         for (int pass = 0; pass < passes.length; pass++) {
-            passes[pass] = new Pass(this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
+            passes[pass] = new Pass(reader, this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
         }
     }
 
@@ -339,7 +345,7 @@ public class Frame {
             final int pass = pass0;
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                passGroupTasks.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
+                passGroupTasks.submitNow(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
@@ -351,8 +357,7 @@ public class Frame {
                         info.width = Math.min(passGroupWidth, info.width - info.x0);
                         info.height = Math.min(passGroupHeight, info.height - info.y0);
                     }
-                    return new PassGroup(reader, Frame.this,
-                        18 + 3 * numLFGroups + numGroups * pass + group, replaced);
+                    return new PassGroup(reader, Frame.this, pass, group, replaced);
                 });
             }
         }
@@ -390,44 +395,49 @@ public class Frame {
 
         decodeLFGroups(tasks);
 
+        Bitreader hfGlobalReader = FunctionalHelper.join(getBitreader(1 + numLFGroups));
         if (header.encoding == FrameFlags.VARDCT) {
-            hfGlobal = FunctionalHelper.join(getBitreader(1 + numLFGroups).thenApplyAsync(
-            FunctionalHelper.uncheck((reader) -> new HFGlobal(reader, this))));
-            throw new UnsupportedOperationException("VarDCT is not yet implemented");
+            hfGlobal = new HFGlobal(hfGlobalReader, this);
         } else {
             hfGlobal = null;
         }
 
-        decodePasses(tasks);
+        decodePasses(hfGlobalReader, tasks);
         decodePassGroups(tasks);
 
         lfGlobal.gModular.stream.applyTransforms();
-        int[][][] streamBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
+        int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
-        for (int c = 0; c < buffer.length; c++) {
-            double scaleFactor;
-            boolean xyb = globalMetadata.isXYBEncoded();
-            // X, Y, B is encoded as Y, X, (B - Y)
-            int cOut = xyb && c < 2 ? 1 - c : c;
-            if (xyb)
-                scaleFactor = lfGlobal.lfDequant[cOut];
-            else if (globalMetadata.getBitDepthHeader().expBits != 0)
-                scaleFactor = 1.0D;
-            else
-                scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-            for (int y_ = 0; y_ < header.height; y_++) {
-                tasks.submit(y_, c, (y, c2) -> {
-                    for (int x = 0; x < header.width; x++) {
-                        // X, Y, B is encoded as Y, X, (B - Y)
-                        if (xyb && c2 == 2)
-                            buffer[cOut][y][x] = scaleFactor * (streamBuffer[0][y][x] + streamBuffer[2][y][x]);
-                        else
-                            buffer[cOut][y][x] = scaleFactor * streamBuffer[c2][y][x];
-                    }
-                });
-            }
+        if (header.encoding == FrameFlags.VARDCT) {
+            throw new UnsupportedOperationException("VarDCT not yet supported");
         }
-        tasks.collect();
+
+        if (header.encoding == FrameFlags.MODULAR) {
+            for (int c = 0; c < buffer.length; c++) {
+                double scaleFactor;
+                boolean xyb = globalMetadata.isXYBEncoded();
+                // X, Y, B is encoded as Y, X, (B - Y)
+                int cOut = xyb && c < 2 ? 1 - c : c;
+                if (xyb)
+                    scaleFactor = lfGlobal.lfDequant[cOut];
+                else if (globalMetadata.getBitDepthHeader().expBits != 0)
+                    scaleFactor = 1.0D;
+                else
+                    scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
+                for (int y_ = 0; y_ < header.height; y_++) {
+                    tasks.submit(y_, c, (y, c2) -> {
+                        for (int x = 0; x < header.width; x++) {
+                            // X, Y, B is encoded as Y, X, (B - Y)
+                            if (xyb && c2 == 2)
+                                buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
+                            else
+                                buffer[cOut][y][x] = scaleFactor * modularBuffer[c2][y][x];
+                        }
+                    });
+                }
+            }
+            tasks.collect();
+        }
     }
 
     public void upsample() {
@@ -468,12 +478,16 @@ public class Frame {
                 }
             }
         }
-        double[][] laplacian = new double[5][5];
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                laplacian[i][j] = (i == 2 && j == 2 ? -3.84D : 0.16D);
+
+        if (laplacian == null) {
+            laplacian = new double[5][5];
+            for (int i = 0; i < 5; i++) {
+                for (int j = 0; j < 5; j++) {
+                    laplacian[i][j] = (i == 2 && j == 2 ? -3.84D : 0.16D);
+                }
             }
         }
+
         this.noiseBuffer = new double[3][height][width];
         tasks.collect();
         for (int c_ = 0; c_ < 3; c_++) {
@@ -540,6 +554,21 @@ public class Frame {
         return lfGlobal;
     }
 
+    public HFGlobal getHFGlobal() {
+        return hfGlobal;
+    }
+
+    public HFPass getHFPass(int index) {
+        return passes[index].hfPass;
+    }
+
+    public LFGroup getLFGroupForGroup(int group) {
+        IntPoint groupXY = groupXY(group);
+        int lfGroupX = groupXY.x >> 3;
+        int lfGroupY = groupXY.y >> 3;
+        return lfGroups[lfGroupY * lfGroupRowStride + lfGroupX];
+    }
+
     public int getNumLFGroups() {
         return numLFGroups;
     }
@@ -548,12 +577,40 @@ public class Frame {
         return numGroups;
     }
 
+    public int getGroupRowStride() {
+        return groupRowStride;
+    }
+
+    public int getLFGroupRowStride() {
+        return lfGroupRowStride;
+    }
+
     public double[][][] getBuffer() {
         return buffer;
     }
 
     public boolean isDecoded() {
         return this.decoded;
+    }
+
+    public IntPoint groupXY(int group) {
+        return new IntPoint(group % groupRowStride, group / groupRowStride);
+    }
+
+    public IntPoint getLFGroupXY(int lfGroup) {
+        return new IntPoint(lfGroup % lfGroupRowStride, lfGroup / lfGroupRowStride);
+    }
+
+    public IntPoint groupSize(int group) {
+        IntPoint groupxy = groupXY(group);
+        return new IntPoint(Math.min(header.groupDim, header.width - groupxy.x * header.groupDim),
+            Math.min(header.groupDim, header.height - groupxy.y * header.groupDim));
+    }
+
+    public IntPoint getLFGroupSize(int lfGroup) {
+        IntPoint lfGroupXY = getLFGroupXY(lfGroup);
+        return new IntPoint(Math.min(header.lfGroupDim, header.width - lfGroupXY.x * header.lfGroupDim),
+            Math.min(header.lfGroupDim, header.height - lfGroupXY.y * header.lfGroupDim));
     }
 
     public boolean isVisible() {

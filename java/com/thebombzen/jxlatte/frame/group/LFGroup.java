@@ -14,18 +14,21 @@ import com.thebombzen.jxlatte.io.Bitreader;
 public class LFGroup {
     public final ModularStream modularLFGroup;
     public final LFCoefficients lfCoeff;
-    public final HFMetadata hfCoeff;
+    public final HFMetadata hfMetadata;
+    public final int lfGroupID;
+
     public LFGroup(Bitreader reader, Frame parent, int index, ModularChannelInfo[] replaced) throws IOException {
+        this.lfGroupID = index;
         GlobalModular gModular = parent.getLFGlobal().gModular;
         modularLFGroup = new ModularStream(reader, gModular.globalTree, parent,
             1 + parent.getNumLFGroups() + index, replaced);
         modularLFGroup.decodeChannels(reader, false);
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT) {
-            this.lfCoeff = new LFCoefficients(reader, parent, 1 + index);
-            this.hfCoeff = new HFMetadata(reader, parent, 1 + 2*parent.getNumLFGroups() + index);
+            this.lfCoeff = new LFCoefficients(reader, this, parent, 1 + index);
+            this.hfMetadata = new HFMetadata(reader, this, parent, 1 + 2*parent.getNumLFGroups() + index);
         } else {
             this.lfCoeff = null;
-            this.hfCoeff = null;
+            this.hfMetadata = null;
         }
     }
 }

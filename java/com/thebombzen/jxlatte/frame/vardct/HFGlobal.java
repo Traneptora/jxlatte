@@ -15,6 +15,7 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class HFGlobal {
 
+    public static final DCTParams[] defaultParams = new DCTParams[17];
     private static final double[] afvFreqs = {0, 0, 0.8517778890324296, 5.37778436506804,
         0, 0, 4.734747904497923, 5.449245381693219, 1.6598270267479331, 4, 7.275749096817861,
         10.423227632456525, 2.662932286148962,  7.630657783650829, 8.962388608184032, 12.97166202570235};
@@ -68,12 +69,7 @@ public class HFGlobal {
         return weights;
     }
 
-    public final DCTParams[] defaultParams = new DCTParams[17];
-    public final DCTParams[] params;
-    public final double[][][][] weights;
-    public final int numHfPresets;
-
-    private void setupDefaultParams() {
+    private static void setupDefaultParams() {
         defaultParams[0] = new DCTParams(new double[][]{
             {3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
              {560.0, 0.0, -0.3, -0.3, -0.3, -0.3},
@@ -181,6 +177,14 @@ public class HFGlobal {
         }, new double[][]{}, TransformType.MODE_DCT);
     }
 
+    static {
+        setupDefaultParams();
+    }
+
+    public final DCTParams[] params;
+    public final double[][][][] weights;
+    public final int numHfPresets;
+
     private void setupDCTParam(Bitreader reader, Frame frame, int index) throws IOException {
         int encodingMode = reader.readBits(3);
         TransformType.validateIndex(index, encodingMode);
@@ -221,7 +225,7 @@ public class HFGlobal {
                 break;
             case TransformType.MODE_RAW:
                 double den = reader.readF16();
-                reader.zeroPadToByte();
+                // SPEC: do not zero pad to byte here
                 TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index).findFirst().get();
                 ModularChannelInfo[] info = new ModularChannelInfo[3];
@@ -382,8 +386,9 @@ public class HFGlobal {
                                 / params[index].denominator;
                         }
                     }
+                    break;
                 default:
-                    throw new UnsupportedOperationException("Unsupported DCT Type at this time");
+                    throw new UnsupportedOperationException("Challenge complete how did we get here");
             }
             for (int y = 0; y < tt.matrixHeight; y++) {
                 for (int x = 0; x < tt.matrixWidth; x++) {
@@ -397,7 +402,6 @@ public class HFGlobal {
 
     public HFGlobal(Bitreader reader, Frame frame) throws IOException {
         boolean quantAllDefault = reader.readBool();
-        setupDefaultParams();
         if (quantAllDefault) {
             params = defaultParams;
         } else {

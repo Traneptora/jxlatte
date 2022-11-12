@@ -29,20 +29,29 @@ writer.write(output);
 although at the moment it's too WIP to produce an image for many input files.
 
 ## Features
-Features currently supported at this time:
+
+TL;DR Supported features:
+- Anything in Modular Mode
+  - All Lossless Images
+  - All JXL Art
+
+Features currently implemented at this time:
 
 - Image Header
   - Image Header parsing
 - Entropy decoding: DONE
   - Prefix Coding
   - ANS Coding
-- Frame Decoding
+- Frame Header: DONE
   - Frame Header parsing
   - TOC
     - Permutation
     - Parsing
+- Frame Data Sections: DONE
   - LF Global
-  - Groups
+  - LF Groups
+  - HFGlobal / HF Pass Data
+  - Pass Groups
 - Modular mode: DONE
   - Prediction
   - Transforms
@@ -52,6 +61,9 @@ Features currently supported at this time:
 - VarDCT
   - HF Block Contexts
   - LF Channel Correlation
+  - LF Coefficients
+  - HF Metadata
+  - HF Coefficients
 - Image features: DONE
   - Upsampling
   - Patches
@@ -69,12 +81,9 @@ Features not yet supported at this time:
 - Image Header
   - ICC Profile decoding
 - VarDCT
-  - LFGlobal VarDCT data
-    - HF Coefficients
-    - LF Coefficients
-  - LF Group VarDCT data
-  - HF Pass Data
   - Inverse DCT
+  - AFV
+  - Hornuss
 - Restoration Filters
   - Gaborish
   - Edge Preserving Filter

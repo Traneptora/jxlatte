@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.util;
 
+import java.util.Objects;
+
 public class IntPoint {
     public int x;
     public int y;
@@ -43,5 +45,36 @@ public class IntPoint {
         this.x = (int)(this.x * factor);
         this.y = (int)(this.y * factor);
     }
-}
 
+    public IntPoint transpose() {
+        return new IntPoint(this.y, this.x);
+    }
+
+    public void transposeEquals() {
+        int tmp = this.y;
+        this.y = this.x;
+        this.x = tmp;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        IntPoint other = (IntPoint) obj;
+        return x == other.x && y == other.y;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[x=%s, y=%s]", x, y);
+    }
+}

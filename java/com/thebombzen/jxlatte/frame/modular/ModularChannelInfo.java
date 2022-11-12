@@ -50,4 +50,10 @@ public class ModularChannelInfo {
         return width == other.width && height == other.height && hshift == other.hshift && vshift == other.vshift
                 && x0 == other.x0 && y0 == other.y0 && forceWP == other.forceWP;
     }
+
+    @Override
+    public String toString() {
+        return String.format("ModularChannelInfo [width=%s, height=%s, hshift=%s, vshift=%s, x0=%s, y0=%s, forceWP=%s]",
+                width, height, hshift, vshift, x0, y0, forceWP);
+    }
 }

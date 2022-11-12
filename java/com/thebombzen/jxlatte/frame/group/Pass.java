@@ -1,12 +1,16 @@
 package com.thebombzen.jxlatte.frame.group;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.thebombzen.jxlatte.frame.Frame;
+import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.modular.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
+import com.thebombzen.jxlatte.frame.vardct.HFPass;
+import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class Pass {
@@ -15,8 +19,9 @@ public class Pass {
     public final int maxShift;
     public final int[] replacedChannelIndices;
     public final ModularChannelInfo[] replacedChannels;
+    public final HFPass hfPass;
 
-    public Pass(Frame frame, int passIndex, int prevMinshift) {
+    public Pass(Bitreader reader, Frame frame, int passIndex, int prevMinshift) throws IOException {
         maxShift = passIndex > 0 ? prevMinshift : 3;
         int n = -1;
         PassesInfo passes = frame.getFrameHeader().passes;
@@ -43,5 +48,9 @@ public class Pass {
 
         this.replacedChannelIndices = replacedChannelIndices.stream().mapToInt(Integer::intValue).toArray();
         this.replacedChannels = channels.stream().toArray(ModularChannelInfo[]::new);
+        if (frame.getFrameHeader().encoding == FrameFlags.VARDCT)
+            hfPass = new HFPass(reader, frame, passIndex);
+        else
+            hfPass = null;
     }
 }

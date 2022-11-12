@@ -53,15 +53,11 @@ public class Demuxer implements Runnable {
     }
 
     public void joinExceptionally() {
-        try {
-            exception.join();
-        } catch (CompletionException ex) {
-            FunctionalHelper.sneakyThrow(ex);
-        }
+        FunctionalHelper.join(exception);
     }
 
     public int getLevel() {
-        return level.join();
+        return FunctionalHelper.join(level);
     }
 
     private void dummyDemux() throws Throwable {
@@ -100,13 +96,13 @@ public class Demuxer implements Runnable {
                 if (size > 0)
                     size -= 8;
             }
-            if (IOHelper.readFully(in, boxTag) != 0)
-                throw new InvalidBitstreamException("Truncated box tag");
-            int tag = (int)makeTag(boxTag);
             if (size > 0)
                 size -= 8;
             if (size < 0)
                 throw new InvalidBitstreamException("Illegal box size");
+            if (IOHelper.readFully(in, boxTag) != 0)
+                throw new InvalidBitstreamException("Truncated box tag");
+            int tag = (int)makeTag(boxTag);
             if (tag == JXLL) {
                 if (size != 1L)
                     throw new InvalidBitstreamException("jxll box must be size == 1");
