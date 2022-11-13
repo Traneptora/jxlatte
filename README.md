@@ -20,8 +20,8 @@ The JAR can also be used as a library. To use it, add it to your application's c
 ```java
 InputStream input = someInputStream;
 OutputStream output = someOutputStream;
-JXLatte jxlatte = new JXLatte(input);
-JXLImage image = jxlatte.decode();
+JXLDecoder decoder = new JXLDecoder(input);
+JXLImage image = decoder.decode();
 PNGWriter writer = new PNGWriter(image);
 writer.write(output);
 ```
