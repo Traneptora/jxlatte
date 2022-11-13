@@ -10,7 +10,6 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
 
 public class LFCoefficients {
     public final int extraPrecision;
@@ -29,8 +28,8 @@ public class LFCoefficients {
         for (int i = 0; i < 3; i++) {
             int hshift = header.jpegUpsampling[i].x;
             int vshift = header.jpegUpsampling[i].y;
-            int width = MathHelper.ceilDiv(size.x, 8) >> hshift;
-            int height = MathHelper.ceilDiv(size.y, 8) >> vshift;
+            int width = size.x >> (3 + hshift);
+            int height = size.y >> (3 + vshift);
             info[c[i]] = new ModularChannelInfo(width, height, hshift, vshift);
         }
         this.lfQuant = new ModularStream(reader, frame.getLFGlobal().gModular.globalTree, frame, streamIndex, info);

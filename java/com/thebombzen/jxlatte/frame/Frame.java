@@ -603,14 +603,20 @@ public class Frame {
 
     public IntPoint groupSize(int group) {
         IntPoint groupxy = groupXY(group);
-        return new IntPoint(Math.min(header.groupDim, header.width - groupxy.x * header.groupDim),
-            Math.min(header.groupDim, header.height - groupxy.y * header.groupDim));
+        IntPoint paddedSize = getPaddedFrameSize();
+        return new IntPoint(Math.min(header.groupDim, paddedSize.x - groupxy.x * header.groupDim),
+            Math.min(header.groupDim, paddedSize.y - groupxy.y * header.groupDim));
     }
 
     public IntPoint getLFGroupSize(int lfGroup) {
         IntPoint lfGroupXY = getLFGroupXY(lfGroup);
-        return new IntPoint(Math.min(header.lfGroupDim, header.width - lfGroupXY.x * header.lfGroupDim),
-            Math.min(header.lfGroupDim, header.height - lfGroupXY.y * header.lfGroupDim));
+        IntPoint paddedSize = getPaddedFrameSize();
+        return new IntPoint(Math.min(header.lfGroupDim, paddedSize.x - lfGroupXY.x * header.lfGroupDim),
+            Math.min(header.lfGroupDim, paddedSize.y - lfGroupXY.y * header.lfGroupDim));
+    }
+
+    public IntPoint getPaddedFrameSize() {
+        return new IntPoint(MathHelper.ceilDiv(header.width, 8), MathHelper.ceilDiv(header.height, 8)).times(8);
     }
 
     public boolean isVisible() {

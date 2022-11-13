@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -84,8 +85,16 @@ public class FrameHeader {
         if (doYCbCr && (flags & FrameFlags.USE_LF_FRAME) == 0) {
             for (int i = 0; i < 3; i++) {
                 int y = reader.readBits(1);
-                int x = 1 - reader.readBits(1);
-                jpegUpsampling[i] = new IntPoint(x, y);
+                int x = reader.readBits(1);
+                jpegUpsampling[i] = new IntPoint(x ^ y, y);
+            }
+            int maxX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
+            int maxY = Stream.of(jpegUpsampling).mapToInt(p -> p.y).reduce(Math::max).getAsInt();
+            width = MathHelper.ceilDiv(width, 1 << maxX) << maxX;
+            height = MathHelper.ceilDiv(height, 1 << maxY) << maxY;
+            for (int i = 0; i < 3; i++) {
+                jpegUpsampling[i].x = maxX - jpegUpsampling[i].x;
+                jpegUpsampling[i].y = maxY - jpegUpsampling[i].y;
             }
         } else {
             Arrays.fill(jpegUpsampling, new IntPoint());
