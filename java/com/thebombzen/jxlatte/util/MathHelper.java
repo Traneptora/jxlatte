@@ -58,6 +58,10 @@ public final class MathHelper {
         return 64 - Long.numberOfLeadingZeros(x);
     }
 
+    public static int ceilLog2(long x) {
+        return ceilLog1p(x - 1);
+    }
+
     public static int ceilDiv(int numerator, int denominator) {
         return ((numerator - 1) / denominator) + 1;
     }

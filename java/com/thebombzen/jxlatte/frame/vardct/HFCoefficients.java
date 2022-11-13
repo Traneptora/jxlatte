@@ -14,7 +14,9 @@ import com.thebombzen.jxlatte.util.MathHelper;
 public class HFCoefficients {
 
     private static final int[] coeffFreqCtx = {
-        0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+        // the first number is unused
+        // if it's ever used I want to throw an ArrayIndexOOBException
+        -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
         15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22,
         23, 23, 23, 23, 24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 26,
         27, 27, 27, 27, 28, 28, 28, 28, 29, 29, 29, 29, 30, 30, 30, 30
@@ -22,7 +24,10 @@ public class HFCoefficients {
 
     private static final int[] coeffNumNonzeroCtx = {
         // SPEC: spec has one of these as 23 rather than 123
-        0, 0, 31, 62, 62, 93, 93, 93, 93, 123, 123, 123, 123, 152, 152,
+
+        // the first number is unused
+        // if it's ever used I want to throw an ArrayIndexOOBException
+        -1, 0, 31, 62, 62, 93, 93, 93, 93, 123, 123, 123, 123, 152, 152,
         152, 152, 152, 152, 152, 152, 180, 180, 180, 180, 180, 180, 180,
         180, 180, 180, 180, 180, 206, 206, 206, 206, 206, 206, 206, 206,
         206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206,
@@ -36,30 +41,6 @@ public class HFCoefficients {
     private int[][][] nonZeroes;
     private int[][][] coeffs;
     public final EntropyStream stream;
-
-    private int getLFIndex(IntPoint blockPos, int[] hshift, int[] vshift) {
-        int[][][] lfBuff = lfg.lfCoeff.lfQuant.getDecodedBuffer();
-
-        int[] c = new int[]{1, 0, 2};
-
-        int[] index = new int[3];
-
-        for (int i = 0; i < 3; i++) {
-            for (int t : hfctx.lfThresholds[i]) {
-                if (lfBuff[c[i]][blockPos.y >> vshift[i]][blockPos.x >> hshift[i]] > t) {
-                    index[i]++;
-                }
-            }
-        }
-
-        int lfIndex = index[0];
-        lfIndex *= hfctx.lfThresholds[2].length + 1;
-        lfIndex += index[2];
-        lfIndex *= hfctx.lfThresholds[1].length + 1;
-        lfIndex += index[1];
-
-        return lfIndex;
-    }
 
     private int getBlockContext(int c, IntPoint blockPos, int lfIndex) {
         int s = lfg.hfMetadata.dctSelect[blockPos.y][blockPos.x].orderID;
@@ -107,8 +88,7 @@ public class HFCoefficients {
         int offset = 495 * hfctx.numClusters * hfPreset;
         HFPass hfPass = frame.getHFPass(pass);
         IntPoint groupSize = frame.groupSize(group);
-        IntPoint groupBlockSize = new IntPoint(MathHelper.ceilDiv(groupSize.x, 8),
-            MathHelper.ceilDiv(groupSize.y, 8));
+        IntPoint groupBlockSize = groupSize.shift(-3);
         int groupBlockDim = frame.getFrameHeader().groupDim >> 3;
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
         coeffs = new int[3][groupSize.y][groupSize.x];
@@ -116,25 +96,24 @@ public class HFCoefficients {
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
             IntPoint blockPosBase = lfg.hfMetadata.blockList[i];
             IntPoint blockPosBaseGroup = blockPosBase.minus(frame.groupXY(group).times(groupBlockDim));
-            IntPoint blockPosInGroup = blockPosBaseGroup.times(8D);
+            IntPoint blockPosInGroup = blockPosBaseGroup.shift(3);
             if (blockPosBaseGroup.x >= groupBlockDim || blockPosBaseGroup.y >= groupBlockDim)
                 continue; // this block is not in this group
             if (blockPosBaseGroup.x < 0 || blockPosBaseGroup.y < 0)
                 continue; // this block is not in this group
             int[] hshift = Stream.of(frame.getFrameHeader().jpegUpsampling).mapToInt(p -> p.x).toArray();
             int[] vshift = Stream.of(frame.getFrameHeader().jpegUpsampling).mapToInt(p -> p.y).toArray();
-            for (int c : new int[]{1, 0, 2}) {
+            for (int c : Frame.cMap) {
                 IntPoint blockPos = new IntPoint(blockPosBase.x >> hshift[c], blockPosBase.y >> vshift[c]);
                 if ((blockPos.x << hshift[c]) != blockPosBase.x || (blockPos.y << vshift[c]) != blockPosBase.y)
                     continue; // subsampled block
-                IntPoint blockPosGroup = new IntPoint(blockPosBaseGroup.x >> hshift[c],
-                    blockPosBaseGroup.y >> vshift[c]);
+                IntPoint blockPosGroup = blockPosBaseGroup.shift(-hshift[c], -vshift[c]);
                 TransformType tt = lfg.hfMetadata.dctSelect[blockPos.y][blockPos.x];
                 int w = tt.blockWidth;
                 int h = tt.blockHeight;
                 int numBlocks = (w / 8) * (h / 8);
                 int predicted = getPredictedNonZeroes(c, blockPosGroup);
-                int lfIndex = getLFIndex(blockPosBase, hshift, vshift);
+                int lfIndex = lfg.lfIndex[blockPosBase.y][blockPosBase.x];
                 int blockCtx = getBlockContext(c, blockPos, lfIndex);
                 int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
                 int nonZero = stream.readSymbol(reader, nonZeroCtx);

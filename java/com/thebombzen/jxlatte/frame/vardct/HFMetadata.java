@@ -21,23 +21,21 @@ public class HFMetadata {
     public final int[][] hfMultiplier;
     public final ModularStream hfStream;
 
-    public HFMetadata(Bitreader reader, LFGroup parent, Frame frame, int streamIndex) throws IOException {
-        IntPoint size = frame.getLFGroupSize(parent.lfGroupID);
-        int width = size.x >> 3;
-        int height = size.y >> 3;
-        int n = MathHelper.ceilLog1p(width * height - 1);
+    public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
+        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shift(-3);
+        int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
-        int aFromYWidth = MathHelper.ceilDiv(size.x, 64);
-        int aFromYHeight = MathHelper.ceilDiv(size.y, 64);
+        int aFromYWidth = MathHelper.ceilDiv(size.x, 8);
+        int aFromYHeight = MathHelper.ceilDiv(size.y, 8);
         ModularChannelInfo xFromY = new ModularChannelInfo(aFromYWidth, aFromYHeight, 0, 0);
         ModularChannelInfo bFromY = new ModularChannelInfo(aFromYWidth, aFromYHeight, 0, 0);
         ModularChannelInfo blockInfo = new ModularChannelInfo(nbBlocks, 2, 0, 0);
-        ModularChannelInfo sharpness = new ModularChannelInfo(width, height, 0, 0);
-        hfStream = new ModularStream(reader, frame.getLFGlobal().gModular.globalTree, frame, streamIndex,
+        ModularChannelInfo sharpness = new ModularChannelInfo(size.x, size.y, 0, 0);
+        hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parent.lfGroupID,
             new ModularChannelInfo[]{xFromY, bFromY, blockInfo, sharpness});
-        hfStream.decodeChannels(reader, false);
-        dctSelect = new TransformType[height][width];
-        hfMultiplier = new int[height][width];
+        hfStream.decodeChannels(reader);
+        dctSelect = new TransformType[size.y][size.x];
+        hfMultiplier = new int[size.y][size.x];
         int[][] blockInfoBuffer = hfStream.getDecodedBuffer()[2];
         List<IntPoint> blocks = new ArrayList<>();
         IntPoint lastBlock = new IntPoint();

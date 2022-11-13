@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
-import com.thebombzen.jxlatte.frame.modular.GlobalModular;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
@@ -19,9 +18,8 @@ public class PassGroup {
             hfCoefficients = new HFCoefficients(reader, frame, pass, group);
         else
             hfCoefficients = null;
-        GlobalModular globalModular = frame.getLFGlobal().gModular;
-        stream = new ModularStream(reader, globalModular.globalTree, frame,
-            18 + 3 * frame.getNumLFGroups() + frame.getNumGroups() * pass + group, replacedChannels);
-        stream.decodeChannels(reader, false);
+        stream = new ModularStream(reader, frame,
+            18 + 3*frame.getNumLFGroups() + frame.getNumGroups()*pass + group, replacedChannels);
+        stream.decodeChannels(reader);
     }
 }

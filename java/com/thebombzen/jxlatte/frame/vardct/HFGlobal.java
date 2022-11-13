@@ -185,6 +185,23 @@ public class HFGlobal {
     public final double[][][][] weights;
     public final int numHfPresets;
 
+    public HFGlobal(Bitreader reader, Frame frame) throws IOException {
+        boolean quantAllDefault = reader.readBool();
+        if (quantAllDefault) {
+            params = defaultParams;
+        } else {
+            params = new DCTParams[17];
+            for (int i = 0; i < 17; i++) {
+                setupDCTParam(reader, frame, i);
+            }
+        }
+        weights = new double[17][3][][];
+        for (int i = 0; i < 17; i++) {
+            generateWeights(i);
+        }
+        numHfPresets = 1 + reader.readBits(MathHelper.ceilLog1p(frame.getNumGroups() - 1));
+    }
+
     private void setupDCTParam(Bitreader reader, Frame frame, int index) throws IOException {
         int encodingMode = reader.readBits(3);
         TransformType.validateIndex(index, encodingMode);
@@ -227,14 +244,13 @@ public class HFGlobal {
                 double den = reader.readF16();
                 // SPEC: do not zero pad to byte here
                 TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == index).findFirst().get();
+                    .filter(t -> t.parameterIndex == index && !t.isHorizontal()).findFirst().get();
                 ModularChannelInfo[] info = new ModularChannelInfo[3];
                 info[0] = new ModularChannel(tt.matrixWidth, tt.matrixHeight, 0, 0);
                 info[1] = new ModularChannel(tt.matrixWidth, tt.matrixHeight, 0, 0);
                 info[2] = new ModularChannel(tt.matrixWidth, tt.matrixHeight, 0, 0);
-                ModularStream stream = new ModularStream(reader, frame.getLFGlobal().gModular.globalTree,
-                    frame, 1 + 3 * frame.getNumLFGroups() + index, info);
-                stream.decodeChannels(reader, false);
+                ModularStream stream = new ModularStream(reader, frame, 1 + 3 * frame.getNumLFGroups() + index, info);
+                stream.decodeChannels(reader);
                 m = new double[3][tt.matrixWidth * tt.matrixHeight];
                 int[][][] b = stream.getDecodedBuffer();
                 for (int c = 0; c < 3; c++) {
@@ -398,22 +414,5 @@ public class HFGlobal {
                 }
             }
         }
-    }
-
-    public HFGlobal(Bitreader reader, Frame frame) throws IOException {
-        boolean quantAllDefault = reader.readBool();
-        if (quantAllDefault) {
-            params = defaultParams;
-        } else {
-            params = new DCTParams[17];
-            for (int i = 0; i < 17; i++) {
-                setupDCTParam(reader, frame, i);
-            }
-        }
-        weights = new double[17][3][][];
-        for (int i = 0; i < 17; i++) {
-            generateWeights(i);
-        }
-        numHfPresets = 1 + reader.readBits(MathHelper.ceilLog1p(frame.getNumGroups() - 1));
     }
 }

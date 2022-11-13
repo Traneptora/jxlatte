@@ -88,14 +88,6 @@ public class FrameHeader {
                 int x = reader.readBits(1);
                 jpegUpsampling[i] = new IntPoint(x ^ y, y);
             }
-            int maxX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
-            int maxY = Stream.of(jpegUpsampling).mapToInt(p -> p.y).reduce(Math::max).getAsInt();
-            width = MathHelper.ceilDiv(width, 1 << maxX) << maxX;
-            height = MathHelper.ceilDiv(height, 1 << maxY) << maxY;
-            for (int i = 0; i < 3; i++) {
-                jpegUpsampling[i].x = maxX - jpegUpsampling[i].x;
-                jpegUpsampling[i].y = maxY - jpegUpsampling[i].y;
-            }
         } else {
             Arrays.fill(jpegUpsampling, new IntPoint());
         }
@@ -171,5 +163,13 @@ public class FrameHeader {
         }
         restorationFilter = allDefault ? new RestorationFilter() : new RestorationFilter(reader, encoding);
         extensions = allDefault ? new Extensions() : new Extensions(reader);
+        int maxJPX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
+        int maxJPY = Stream.of(jpegUpsampling).mapToInt(p -> p.y).reduce(Math::max).getAsInt();
+        width = MathHelper.ceilDiv(width, 1 << maxJPX) << maxJPX;
+        height = MathHelper.ceilDiv(height, 1 << maxJPY) << maxJPY;
+        for (int i = 0; i < 3; i++) {
+            jpegUpsampling[i].x = maxJPX - jpegUpsampling[i].x;
+            jpegUpsampling[i].y = maxJPY - jpegUpsampling[i].y;
+        }
     }
 }

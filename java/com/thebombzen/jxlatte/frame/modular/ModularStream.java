@@ -50,17 +50,17 @@ public class ModularStream {
 
     private Map<Integer, SqueezeParam[]> spar = new HashMap<>();
 
-    public ModularStream(Bitreader reader, MATree globalTree, Frame frame,
+    public ModularStream(Bitreader reader, Frame frame,
             int streamIndex, int channelCount, int ecStart) throws IOException {
-        this(reader, globalTree, frame, streamIndex, channelCount, ecStart, null);
+        this(reader, frame, streamIndex, channelCount, ecStart, null);
     }
 
-    public ModularStream(Bitreader reader, MATree globalTree, Frame frame,
+    public ModularStream(Bitreader reader, Frame frame,
             int streamIndex, ModularChannelInfo[] channelArray) throws IOException {
-        this(reader, globalTree, frame, streamIndex, channelArray.length, 0, channelArray);
+        this(reader, frame, streamIndex, channelArray.length, 0, channelArray);
     }
 
-    private ModularStream(Bitreader reader, MATree globalTree, Frame frame, int streamIndex, int channelCount, int ecStart, ModularChannelInfo[] channelArray) throws IOException {
+    private ModularStream(Bitreader reader, Frame frame, int streamIndex, int channelCount, int ecStart, ModularChannelInfo[] channelArray) throws IOException {
         this.frame = frame;
         this.streamIndex = streamIndex;
         if (channelCount == 0) {
@@ -172,11 +172,15 @@ public class ModularStream {
         if (!useGlobalTree) {
             tree = new MATree(reader);
         } else {
-            this.tree = globalTree;
+            tree = frame.getGlobalTree();
         }
-        this.stream = new EntropyStream(tree.getStream());
+        stream = new EntropyStream(tree.getStream());
 
         distMultiplier = channels.stream().mapToInt(c -> c.width).reduce(0, Math::max);
+    }
+
+    public void decodeChannels(Bitreader reader) throws IOException {
+        decodeChannels(reader, false);
     }
 
     public void decodeChannels(Bitreader reader, boolean partial) throws IOException {

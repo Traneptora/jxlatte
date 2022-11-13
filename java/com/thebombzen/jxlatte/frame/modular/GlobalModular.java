@@ -32,7 +32,7 @@ public class GlobalModular {
                 ecStart = 3;
         }
         subModularChannelCount += ecStart;
-        stream = new ModularStream(reader, globalTree, parent, 0, subModularChannelCount, ecStart);
+        stream = new ModularStream(reader, parent, 0, subModularChannelCount, ecStart);
         stream.decodeChannels(reader, true);
     }
 }

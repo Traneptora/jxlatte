@@ -20,9 +20,9 @@ public class Patch {
 
     public Patch(EntropyStream stream, Bitreader reader, int extraChannelCount, int alphaChannelCount) throws IOException {
         this.ref = stream.readSymbol(reader, 1);
-        int x0 = stream.readSymbol(reader, 3);
-        int y0 = stream.readSymbol(reader, 3);
-        this.origin = new IntPoint(x0, y0);
+        this.origin = new IntPoint();
+        origin.x = stream.readSymbol(reader, 3);
+        origin.y = stream.readSymbol(reader, 3);
         this.width = 1 + stream.readSymbol(reader, 2);
         this.height = 1 + stream.readSymbol(reader, 2);
         int count = 1 + stream.readSymbol(reader, 7);
@@ -31,17 +31,17 @@ public class Patch {
         positions = new IntPoint[count];
         blendingInfos = new BlendingInfo[count][];
         for (int j = 0; j < count; j++) {
-            int x, y;
+            IntPoint xy = new IntPoint();
             if (j == 0) {
-                x = stream.readSymbol(reader, 4);
-                y = stream.readSymbol(reader, 4);
+                xy.x = stream.readSymbol(reader, 4);
+                xy.y = stream.readSymbol(reader, 4);
             } else {
-                x = stream.readSymbol(reader, 6);
-                y = stream.readSymbol(reader, 6);
-                x = MathHelper.unpackSigned(x) + positions[j - 1].x;
-                y = MathHelper.unpackSigned(y) + positions[j - 1].y;
+                xy.x = stream.readSymbol(reader, 6);
+                xy.y = stream.readSymbol(reader, 6);
+                xy.x = MathHelper.unpackSigned(xy.x) + positions[j - 1].x;
+                xy.y = MathHelper.unpackSigned(xy.y) + positions[j - 1].y;
             }
-            positions[j] = new IntPoint(x, y);
+            positions[j] = xy;
             blendingInfos[j] = new BlendingInfo[extraChannelCount + 1];
             for (int k = 0; k < extraChannelCount + 1; k++) {
                 int mode = stream.readSymbol(reader, 5);

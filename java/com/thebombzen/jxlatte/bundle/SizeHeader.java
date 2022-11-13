@@ -1,12 +1,14 @@
 package com.thebombzen.jxlatte.bundle;
 
-import java.awt.Dimension;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
 
-public class SizeHeader extends Dimension {
+public class SizeHeader {
+
+    public int width;
+    public int height;
 
     public SizeHeader(Bitreader reader, int level) throws IOException {
         boolean div8 = reader.readBool();

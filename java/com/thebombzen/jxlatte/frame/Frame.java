@@ -18,6 +18,7 @@ import com.thebombzen.jxlatte.frame.features.Spline;
 import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.group.Pass;
 import com.thebombzen.jxlatte.frame.group.PassGroup;
+import com.thebombzen.jxlatte.frame.modular.MATree;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
@@ -30,6 +31,8 @@ import com.thebombzen.jxlatte.util.TaskList;
 import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
+
+    public static final int[] cMap = new int[]{1, 0, 2};
 
     private static double[][] laplacian = null;
 
@@ -563,10 +566,7 @@ public class Frame {
     }
 
     public LFGroup getLFGroupForGroup(int group) {
-        IntPoint groupXY = groupXY(group);
-        int lfGroupX = groupXY.x >> 3;
-        int lfGroupY = groupXY.y >> 3;
-        return lfGroups[lfGroupY * lfGroupRowStride + lfGroupX];
+        return lfGroups[groupXY(group).shift(-3).unwrapCoord(lfGroupRowStride)];
     }
 
     public int getNumLFGroups() {
@@ -594,11 +594,11 @@ public class Frame {
     }
 
     public IntPoint groupXY(int group) {
-        return new IntPoint(group % groupRowStride, group / groupRowStride);
+        return IntPoint.coordinates(group, groupRowStride);
     }
 
     public IntPoint getLFGroupXY(int lfGroup) {
-        return new IntPoint(lfGroup % lfGroupRowStride, lfGroup / lfGroupRowStride);
+        return IntPoint.coordinates(lfGroup, lfGroupRowStride);
     }
 
     public IntPoint groupSize(int group) {
@@ -617,6 +617,10 @@ public class Frame {
 
     public IntPoint getPaddedFrameSize() {
         return new IntPoint(MathHelper.ceilDiv(header.width, 8), MathHelper.ceilDiv(header.height, 8)).times(8);
+    }
+
+    public MATree getGlobalTree() {
+        return lfGlobal.gModular.globalTree;
     }
 
     public boolean isVisible() {
