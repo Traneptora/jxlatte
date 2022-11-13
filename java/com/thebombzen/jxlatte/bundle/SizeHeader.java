@@ -7,8 +7,8 @@ import com.thebombzen.jxlatte.io.Bitreader;
 
 public class SizeHeader {
 
-    public int width;
-    public int height;
+    public final int width;
+    public final int height;
 
     public SizeHeader(Bitreader reader, int level) throws IOException {
         boolean div8 = reader.readBool();
@@ -25,22 +25,16 @@ public class SizeHeader {
             else
                 this.width = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
         }
-        
-        long maxDim;
-        long maxTimes;
 
-        if (level <= 5) {
-            maxDim = 1L << 18;
-            maxTimes = 1L << 30;
-        } else {
-            maxDim = 1L << 28;
-            maxTimes = 1L << 40;
-        }
+        long maxDim = level <=5 ? 1L << 18 : 1L << 28;
+        long maxTimes = level <= 5 ? 1L << 30 : 1L << 40;
 
         if (this.width > maxDim || this.height > maxDim)
-            throw new InvalidBitstreamException(String.format("Width or height too large: %d, %d", this.width, this.height));
+            throw new InvalidBitstreamException(String.format("Width or height too large: %d, %d",
+                this.width, this.height));
         if ((long)this.width * (long)this.height > maxTimes)
-            throw new InvalidBitstreamException(String.format("Width times height too large: %d, %d", this.width, this.height));
+            throw new InvalidBitstreamException(String.format("Width times height too large: %d, %d",
+                this.width, this.height));
     }
 
     public static int getWidthFromRatio(int ratio, int height) {
@@ -48,7 +42,7 @@ public class SizeHeader {
             case 1:
                 return height;
             case 2:
-                return (int)(height * 12L / 10L);
+                return (int)(height * 6L / 5L);
             case 3:
                 return (int)(height * 4L / 3L);
             case 4:

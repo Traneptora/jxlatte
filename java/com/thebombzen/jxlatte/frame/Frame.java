@@ -55,6 +55,7 @@ public class Frame {
     private LFGroup[] lfGroups;
     private int groupRowStride;
     private int lfGroupRowStride;
+    private MATree globalTree;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
@@ -99,6 +100,7 @@ public class Frame {
     }
 
     public void readHeader() throws IOException {
+        globalReader.zeroPadToByte();
         this.header = new FrameHeader(globalReader, this.globalMetadata);
         int width = header.width;
         int height = header.height;
@@ -274,15 +276,13 @@ public class Frame {
 
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
-        int lfRowStride = MathHelper.ceilDiv(header.width, header.groupDim << 3);
         for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
                 if (chan.hshift >= 3 && chan.vshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
-                    int width = header.groupDim >> (chan.hshift - 3);
-                    int height = header.groupDim >> (chan.vshift - 3);
-                    lfReplacementChannels.add(new ModularChannelInfo(width, height, chan.hshift, chan.vshift));
+                    IntPoint size = new IntPoint(header.lfGroupDim).shift(-chan.hshift, -chan.vshift);
+                    lfReplacementChannels.add(new ModularChannelInfo(size.x, size.y, chan.hshift, chan.vshift));
                 }
             }
         }
@@ -292,21 +292,19 @@ public class Frame {
         for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
             final int lfGroupID = lfGroupID0;
             lfGroupTasks.submit(getBitreader(1 + lfGroupID), (reader) -> {
-                int row = lfGroupID / lfRowStride;
-                int column = lfGroupID % lfRowStride;
+                IntPoint lfGroupPos = IntPoint.coordinates(lfGroupID, lfGroupRowStride);
                 ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
                     .toArray(ModularChannelInfo[]::new);
+                IntPoint frameSize = getPaddedFrameSize();
                 for (ModularChannelInfo info : replaced) {
-                    int lfWidth = MathHelper.ceilDiv(header.width, 1 << info.hshift);
-                    int lfHeight = MathHelper.ceilDiv(header.height, 1 << info.vshift);
-                    int x0 = column * info.width;
-                    int y0 = row * info.height;
-                    if (x0 + info.width > lfWidth)
-                        info.width = lfWidth - x0;
-                    if (y0 + info.height > lfHeight)
-                        info.height = lfHeight - y0;
-                    info.x0 = x0;
-                    info.y0 = y0;
+                    IntPoint shift = new IntPoint(info.hshift, info.vshift);
+                    IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shift(shift));
+                    IntPoint chanSize = new IntPoint(info.width, info.height);
+                    IntPoint pos = lfGroupPos.times(chanSize);
+                    info.width = Math.min(chanSize.x, lfSize.x - pos.x);
+                    info.height = Math.min(chanSize.y, lfSize.y - pos.y);
+                    info.x0 = pos.x;
+                    info.y0 = pos.y;
                 }
                 return new LFGroup(reader, this, lfGroupID, replaced);
             });
@@ -352,13 +350,14 @@ public class Frame {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
                         .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
-                        int passGroupWidth = header.groupDim >> info.hshift;
-                        int passGroupHeight = header.groupDim >> info.vshift;
-                        int rowStride = MathHelper.ceilDiv(info.width, passGroupWidth);
-                        info.x0 = (group % rowStride) * passGroupWidth;
-                        info.y0 = (group / rowStride) * passGroupHeight;
-                        info.width = Math.min(passGroupWidth, info.width - info.x0);
-                        info.height = Math.min(passGroupHeight, info.height - info.y0);
+                        IntPoint shift = new IntPoint(info.hshift, info.vshift);
+                        IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
+                        int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
+                        IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
+                        info.x0 = pos.x;
+                        info.y0 = pos.y;
+                        info.width = Math.min(passGroupSize.x, info.width - info.x0);
+                        info.height = Math.min(passGroupSize.y, info.height - info.y0);
                     }
                     return new PassGroup(reader, Frame.this, pass, group, replaced);
                 });
@@ -620,7 +619,11 @@ public class Frame {
     }
 
     public MATree getGlobalTree() {
-        return lfGlobal.gModular.globalTree;
+        return globalTree;
+    }
+
+    public void setGlobalTree(MATree tree) {
+        this.globalTree = tree;
     }
 
     public boolean isVisible() {

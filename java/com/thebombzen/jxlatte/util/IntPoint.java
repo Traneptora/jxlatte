@@ -9,6 +9,9 @@ public class IntPoint {
     public int x;
     public int y;
 
+    public static final IntPoint ZERO = new IntPoint();
+    public static final IntPoint ONE = new IntPoint(1, 1);
+
     public static IntPoint coordinates(int index, int rowStride) {
         return new IntPoint(index % rowStride, index / rowStride);
     }
@@ -16,6 +19,10 @@ public class IntPoint {
     public IntPoint(int x, int y) {
         this.x = x;
         this.y = y;
+    }
+
+    public IntPoint(int dim) {
+        this(dim, dim);
     }
 
     public IntPoint(IntPoint p) {
@@ -47,6 +54,10 @@ public class IntPoint {
         return new IntPoint((int)(x * factor), (int)(y * factor));
     }
 
+    public IntPoint times(IntPoint p) {
+        return new IntPoint(x * p.x, y * p.y);
+    }
+
     public IntPoint times(int factor) {
         return new IntPoint(x * factor, y * factor);
     }
@@ -58,6 +69,14 @@ public class IntPoint {
 
     public IntPoint divide(int factor) {
         return new IntPoint(x / factor, y / factor);
+    }
+
+    public IntPoint ceilDiv(int factor) {
+        return new IntPoint(MathHelper.ceilDiv(x, factor), MathHelper.ceilDiv(y, factor));
+    }
+
+    public IntPoint ceilDiv(IntPoint p) {
+        return new IntPoint(MathHelper.ceilDiv(x, p.x), MathHelper.ceilDiv(y, p.y));
     }
 
     public void divideEquals(int factor) {
@@ -115,6 +134,18 @@ public class IntPoint {
 
     public void shiftEquals(IntPoint shift) {
         shiftEquals(shift.x, shift.y);
+    }
+
+    public IntPoint shiftRight(int hshift, int vshift) {
+        return shift(-hshift, -vshift);
+    }
+
+    public IntPoint shiftRight(int shift) {
+        return shift(-shift);
+    }
+
+    public IntPoint shiftRight(IntPoint shift) {
+        return shift(shift.negate());
     }
 
     public int unwrapCoord(int rowStride) {

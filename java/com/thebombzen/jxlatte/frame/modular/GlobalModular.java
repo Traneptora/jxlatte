@@ -21,6 +21,7 @@ public class GlobalModular {
         } else {
             globalTree = null;
         }
+        frame.setGlobalTree(globalTree);
         int subModularChannelCount = frame.globalMetadata.getExtraChannelCount();
         FrameHeader header = frame.getFrameHeader();
         int ecStart = 0;
