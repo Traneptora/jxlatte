@@ -24,7 +24,7 @@ public class LFCoefficients {
             throw new UnsupportedOperationException("LF Frames currently not implemented");
         }
         IntPoint size = frame.getLFGroupSize(parent.lfGroupID);
-        IntPoint lfSize = size.shift(-3);
+        IntPoint lfSize = size.shiftLeft(-3);
         this.extraPrecision = reader.readBits(2);
         FrameHeader header = frame.getFrameHeader();
         ModularChannelInfo[] info = new ModularChannelInfo[3];

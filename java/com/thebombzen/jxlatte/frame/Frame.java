@@ -298,7 +298,7 @@ public class Frame {
                 IntPoint frameSize = getPaddedFrameSize();
                 for (ModularChannelInfo info : replaced) {
                     IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                    IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shift(shift));
+                    IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
                     IntPoint chanSize = new IntPoint(info.width, info.height);
                     IntPoint pos = lfGroupPos.times(chanSize);
                     info.width = Math.min(chanSize.x, lfSize.x - pos.x);
@@ -565,7 +565,7 @@ public class Frame {
     }
 
     public LFGroup getLFGroupForGroup(int group) {
-        return lfGroups[groupXY(group).shift(-3).unwrapCoord(lfGroupRowStride)];
+        return lfGroups[groupXY(group).shiftLeft(-3).unwrapCoord(lfGroupRowStride)];
     }
 
     public int getNumLFGroups() {

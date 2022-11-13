@@ -3,7 +3,9 @@ package com.thebombzen.jxlatte.frame.vardct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.frame.Frame;
@@ -18,11 +20,12 @@ public class HFMetadata {
     public final int nbBlocks;
     public final TransformType[][] dctSelect;
     public final IntPoint[] blockList;
+    public final Map<IntPoint, IntPoint> blockMap = new HashMap<>();
     public final int[][] hfMultiplier;
     public final ModularStream hfStream;
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
-        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shift(-3);
+        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftLeft(-3);
         int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
         int aFromYWidth = MathHelper.ceilDiv(size.x, 8);
@@ -105,10 +108,15 @@ public class HFMetadata {
                             continue outer;
                     }
                 }
-                for (int iy = 0; iy < block.dctSelectHeight; iy++)
+                IntPoint pos = new IntPoint(x, y);
+                for (int iy = 0; iy < block.dctSelectHeight; iy++) {
                     Arrays.fill(dctSelect[y + iy], x, x + block.dctSelectWidth, block);
-                hfMultiplier[y][x] = mul;
-                return new IntPoint(x, y);
+                    Arrays.fill(hfMultiplier[y + iy], x, x + block.dctSelectWidth, mul);
+                    for (int ix = 0; ix < block.dctSelectWidth; ix++) {
+                        blockMap.put(pos.plus(new IntPoint(ix, iy)), pos);
+                    }
+                }
+                return pos;
             }
         }
         throw new InvalidBitstreamException("Could not find place for block: " + block.type);

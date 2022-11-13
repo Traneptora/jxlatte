@@ -27,7 +27,7 @@ public class OpsinInverseMatrix {
     private double[][] matrix;
     private double[] opsinBias;
     private double[] cbrtOpsinBias;
-    private double[] quantBias;
+    public final double[] quantBias;
     public final double quantBiasNumerator;
     public final CIEPrimaries primaries;
     public final CIEXY whitePoint;

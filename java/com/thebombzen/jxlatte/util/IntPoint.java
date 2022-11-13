@@ -1,7 +1,5 @@
 package com.thebombzen.jxlatte.util;
 
-import java.util.Objects;
-
 /**
  * A mutable pair of coordinates
  */
@@ -115,11 +113,11 @@ public class IntPoint {
         return new IntPoint(x, y);
     }
 
-    public IntPoint shift(int shift) {
+    public IntPoint shiftLeft(int shift) {
         return shift(shift, shift);
     }
 
-    public IntPoint shift(IntPoint shift) {
+    public IntPoint shiftLeft(IntPoint shift) {
         return shift(shift.x, shift.y);
     }
 
@@ -141,11 +139,11 @@ public class IntPoint {
     }
 
     public IntPoint shiftRight(int shift) {
-        return shift(-shift);
+        return shiftLeft(-shift);
     }
 
     public IntPoint shiftRight(IntPoint shift) {
-        return shift(shift.negate());
+        return shiftLeft(shift.negate());
     }
 
     public int unwrapCoord(int rowStride) {
@@ -154,7 +152,7 @@ public class IntPoint {
 
     @Override
     public int hashCode() {
-        return Objects.hash(x, y);
+        return (x << 16) | (x >>> 16) | y;
     }
 
     @Override

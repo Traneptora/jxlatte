@@ -24,7 +24,7 @@ public class LFGroup {
     public LFGroup(Bitreader reader, Frame parent, int index, ModularChannelInfo[] replaced) throws IOException {
         this.lfGroupID = index;
         this.frame = parent;
-        this.size = frame.getLFGroupSize(index).shift(-3);
+        this.size = frame.getLFGroupSize(index).shiftRight(3);
 
         modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
         modularLFGroup.decodeChannels(reader);
@@ -52,7 +52,7 @@ public class LFGroup {
         int[] index = new int[3];
 
         for (int i = 0; i < 3; i++) {
-            IntPoint shifted = blockPos.shift(upsampling[i].negate());
+            IntPoint shifted = blockPos.shiftLeft(upsampling[i].negate());
             for (int t : hfctx.lfThresholds[i]) {
                 if (lfBuff[c[i]][shifted.y][shifted.x] > t) {
                     index[i]++;

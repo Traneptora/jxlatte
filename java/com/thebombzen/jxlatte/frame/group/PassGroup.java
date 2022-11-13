@@ -14,10 +14,11 @@ public class PassGroup {
     public final ModularStream stream;
     public PassGroup(Bitreader reader, Frame frame, int pass, int group,
             ModularChannelInfo[] replacedChannels) throws IOException {
-        if (frame.getFrameHeader().encoding == FrameFlags.VARDCT)
+        if (frame.getFrameHeader().encoding == FrameFlags.VARDCT) {
             hfCoefficients = new HFCoefficients(reader, frame, pass, group);
-        else
+        } else {
             hfCoefficients = null;
+        }
         stream = new ModularStream(reader, frame,
             18 + 3*frame.getNumLFGroups() + frame.getNumGroups()*pass + group, replacedChannels);
         stream.decodeChannels(reader);
