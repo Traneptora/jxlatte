@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.features;
+package com.thebombzen.jxlatte.frame.features.spline;
 
 import java.io.IOException;
 

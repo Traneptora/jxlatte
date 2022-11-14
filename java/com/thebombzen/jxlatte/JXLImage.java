@@ -8,8 +8,8 @@ import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.ColorManagement;
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
-import com.thebombzen.jxlatte.util.TaskList;
 
 public class JXLImage {
     private double[][][] buffer;
@@ -75,22 +75,16 @@ public class JXLImage {
         if (this.primaries1931.matches(primaries) && this.white1931.matches(whitePoint))
             return this;
         double[][] conversionMatrix = ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
-        TaskList<?> tasks = new TaskList<>();
         int width = getWidth();
         int height = getHeight();
         JXLImage image = new JXLImage(this);
-        for (int y_ = 0; y_ < height; y_++) {
-            tasks.submit(y_, (y) -> {
-                for (int x = 0; x < width; x++) {
-                    double[] rgb = new double[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
-                    double[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
-                    image.buffer[0][y][x] = rgb2[0];
-                    image.buffer[1][y][x] = rgb2[1];
-                    image.buffer[2][y][x] = rgb2[2];
-                }
-            });
-        }
-        tasks.collect();
+        IntPoint.parallelIterate(new IntPoint(width, height), (x, y) -> {
+            double[] rgb = new double[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
+            double[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
+            image.buffer[0][y][x] = rgb2[0];
+            image.buffer[1][y][x] = rgb2[1];
+            image.buffer[2][y][x] = rgb2[2];
+        });
         image.primaries1931 = primaries;
         image.white1931 = whitePoint;
         image.primaries = ColorFlags.getPrimaries(primaries);
@@ -184,19 +178,12 @@ public class JXLImage {
         DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(image.transfer);
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
         DoubleUnaryOperator composed = inverse.andThen(forward);
-        TaskList<?> tasks = new TaskList<>();
         int width = getWidth();
         int height = getHeight();
         double[][][] imBuffer = image.buffer;
-        for (int c_ = 0; c_ < buffer.length; c_++) {
-            for (int y_ = 0; y_ < height; y_++) {
-                tasks.submit(c_, y_, (c, y) -> {
-                    for (int x = 0; x < width; x++)
-                        imBuffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
-                });
-            }
-        }
-        tasks.collect();
+        IntPoint.parallelIterate(buffer.length, new IntPoint(width, height), (c, x, y) -> {
+            imBuffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
+        });
         image.transfer = transfer;
         return image;
     }

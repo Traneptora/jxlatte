@@ -25,13 +25,12 @@ public class HFMetadata {
     public final ModularStream hfStream;
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
-        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftLeft(-3);
+        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
         int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
-        int aFromYWidth = MathHelper.ceilDiv(size.x, 8);
-        int aFromYHeight = MathHelper.ceilDiv(size.y, 8);
-        ModularChannelInfo xFromY = new ModularChannelInfo(aFromYWidth, aFromYHeight, 0, 0);
-        ModularChannelInfo bFromY = new ModularChannelInfo(aFromYWidth, aFromYHeight, 0, 0);
+        IntPoint aFromYSize = size.ceilDiv(8);
+        ModularChannelInfo xFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
+        ModularChannelInfo bFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo blockInfo = new ModularChannelInfo(nbBlocks, 2, 0, 0);
         ModularChannelInfo sharpness = new ModularChannelInfo(size.x, size.y, 0, 0);
         hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parent.lfGroupID,

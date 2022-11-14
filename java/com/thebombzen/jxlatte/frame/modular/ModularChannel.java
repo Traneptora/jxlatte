@@ -5,8 +5,8 @@ import java.util.Arrays;
 
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
-import com.thebombzen.jxlatte.util.TaskList;
 
 public class ModularChannel extends ModularChannelInfo {
 
@@ -333,53 +333,55 @@ public class ModularChannel extends ModularChannelInfo {
         return decoded;
     }
 
-    public static ModularChannel inverseHorizontalSqueeze(ModularChannelInfo info, ModularChannel orig, ModularChannel res) {
-        if (info.width != orig.width + res.width || (orig.width != res.width && orig.width != 1 + res.width) || info.height != orig.height || res.height != orig.height)
+    public static ModularChannel inverseHorizontalSqueeze(ModularChannelInfo info, ModularChannel orig,
+            ModularChannel res) {
+        if (info.width != orig.width + res.width
+                || (orig.width != res.width && orig.width != 1 + res.width)
+                || info.height != orig.height || res.height != orig.height)
             throw new IllegalArgumentException("Corrupted squeeze transform");
-        TaskList<Void> tasks = new TaskList<>();
         ModularChannel channel = new ModularChannel(info);
-        for (int y_ = 0; y_ < channel.height; y_++) {
-            tasks.submit(y_, y -> {
-                for (int x = 0; x < res.width; x++) {
-                    int avg = orig.get(x, y);
-                    int residu = res.get(x, y);
-                    int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
-                    int left = x > 0 ? channel.get((x << 1) - 1, y) : avg;
-                    int diff = residu + tendency(left, avg, nextAvg);
-                    int first = avg + diff / 2;
-                    channel.set(2 * x, y, first);
-                    channel.set(2 * x + 1, y, first - diff);
-                }
-                if (orig.width > res.width)
-                    channel.set(2 * res.width, y, orig.get(res.width, y));
-            });
+        IntPoint.parallelIterate(new IntPoint(res.width, channel.height), (x, y) -> {
+            int avg = orig.get(x, y);
+            int residu = res.get(x, y);
+            int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
+            int left = x > 0 ? channel.get((x << 1) - 1, y) : avg;
+            int diff = residu + tendency(left, avg, nextAvg);
+            int first = avg + diff / 2;
+            channel.set(2 * x, y, first);
+            channel.set(2 * x + 1, y, first - diff);
+        });
+        if (orig.width > res.width) {
+            for (int y = 0; y < channel.height; y++)
+                channel.set(2 * res.width, y, orig.get(res.width, y));
         }
-        tasks.collect();
+
         return channel;
     }
 
-    public static ModularChannel inverseVerticalSqueeze(ModularChannelInfo info, ModularChannel orig, ModularChannel res) {
-        if (info.height != orig.height + res.height || (orig.height != res.height && orig.height != 1 + res.height) || info.width != orig.width || res.width != orig.width)
+    public static ModularChannel inverseVerticalSqueeze(ModularChannelInfo info, ModularChannel orig,
+            ModularChannel res) {
+        if (info.height != orig.height + res.height
+                || (orig.height != res.height && orig.height != 1 + res.height)
+                || info.width != orig.width || res.width != orig.width)
             throw new IllegalStateException("Corrupted squeeze transform");
-        TaskList<Void> tasks = new TaskList<>();
+
         ModularChannel channel = new ModularChannel(info);
-        for (int x_ = 0; x_ < channel.width; x_++) {
-            tasks.submit(x_, x -> {
-                for (int y = 0; y < res.height; y++) {
-                    int avg = orig.get(x, y);
-                    int residu = res.get(x, y);
-                    int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;
-                    int top = y > 0 ? channel.get(x, (y << 1) - 1) : avg;
-                    int diff = residu + tendency(top, avg, nextAvg);
-                    int first = avg + diff / 2;
-                    channel.set(x, 2 * y, first);
-                    channel.set(x, 2 * y + 1, first - diff);
-                }
-                if (orig.height > res.height)
-                    channel.set(x, 2 * res.height, orig.get(x, res.height));
-            });
+        IntPoint.parallelIterate(new IntPoint(channel.width, res.height), (x, y) -> {
+            int avg = orig.get(x, y);
+            int residu = res.get(x, y);
+            int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;
+            int top = y > 0 ? channel.get(x, (y << 1) - 1) : avg;
+            int diff = residu + tendency(top, avg, nextAvg);
+            int first = avg + diff / 2;
+            channel.set(x, 2 * y, first);
+            channel.set(x, 2 * y + 1, first - diff);
+        });
+
+        if (orig.height > res.height) {
+            for (int x = 0; x < channel.width; x++)
+                channel.set(x, 2 * res.height, orig.get(x, res.height));
         }
-        tasks.collect();
+
         return channel;
     }
 }

@@ -35,7 +35,7 @@ public class LFCoefficients {
             int vshift = header.jpegUpsampling[i].y;
             if (adaptiveSmoothing && (hshift > 0 || vshift > 0))
                 throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
-            IntPoint channelSize = lfSize.shift(-hshift, -vshift);
+            IntPoint channelSize = lfSize.shiftLeft(-hshift, -vshift);
             info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, hshift, vshift);
             dequantLFCoeff[Frame.cMap[i]] = new double[channelSize.y][channelSize.x];
         }

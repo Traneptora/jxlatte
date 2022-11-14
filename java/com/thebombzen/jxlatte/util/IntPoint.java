@@ -1,5 +1,10 @@
 package com.thebombzen.jxlatte.util;
 
+import java.util.stream.Stream;
+
+import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
+import com.thebombzen.jxlatte.util.functional.ExceptionalIntTriConsumer;
+
 /**
  * A mutable pair of coordinates
  */
@@ -12,6 +17,123 @@ public class IntPoint {
 
     public static IntPoint coordinates(int index, int rowStride) {
         return new IntPoint(index % rowStride, index / rowStride);
+    }
+
+    public static IntPoint min(IntPoint p1, IntPoint p2) {
+        return new IntPoint(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y));
+    }
+
+    public static IntPoint max(IntPoint p1, IntPoint p2) {
+        return new IntPoint(Math.max(p1.x, p2.x), Math.max(p1.y, p2.y));
+    }
+
+    public static double get(double[][] array, IntPoint pos) {
+        return array[pos.y][pos.x];
+    }
+
+    public static int get(int[][] array, IntPoint pos) {
+        return array[pos.y][pos.x];
+    }
+
+    public static <T> T get(T[][] array, IntPoint pos) {
+        return array[pos.y][pos.x];
+    }
+
+    public static void set(double[][] array, IntPoint pos, double value) {
+        array[pos.y][pos.x] = value;
+    }
+
+    public static void set(int[][] array, IntPoint pos, int value) {
+        array[pos.y][pos.x] = value;
+    }
+
+    public static <T> void set(T[][] array, IntPoint pos, T value) {
+        array[pos.y][pos.x] = value;
+    }
+
+    public static IntPoint sizeOf(double[][] array) {
+        return array.length == 0 ? new IntPoint() : new IntPoint(array[0].length, array.length);
+    }
+
+    public static IntPoint sizeOf(int[][] array) {
+        return array.length == 0 ? new IntPoint() : new IntPoint(array[0].length, array.length);
+    }
+
+    public static <T> IntPoint sizeOf(T[][] array) {
+        return array.length == 0 ? new IntPoint() : new IntPoint(array[0].length, array.length);
+    }
+
+    public static IntPoint[] sizeOf(double[][][] array) {
+        return Stream.of(array).map(IntPoint::sizeOf).toArray(IntPoint[]::new);
+    }
+
+    public static IntPoint[] sizeOf(int[][][] array) {
+        return Stream.of(array).map(IntPoint::sizeOf).toArray(IntPoint[]::new);
+    }
+
+    public static <T> IntPoint[] sizeOf(T[][][] array) {
+        return Stream.of(array).map(IntPoint::sizeOf).toArray(IntPoint[]::new);
+    }
+
+    public static void iterate(int c, IntPoint[] size, ExceptionalIntTriConsumer func) {
+        for (int i = 0; i < c; i++) {
+            final int j = i;
+            iterate(size[i], (x, y) -> func.consume(j, x, y));
+        }
+    }
+
+    public static void iterate(int c, IntPoint size, ExceptionalIntTriConsumer func) {
+        for (int i = 0; i < c; i++) {
+            final int j = i;
+            iterate(size, (x, y) -> func.consume(j, x, y));
+        }
+    }
+
+    public static void iterate(IntPoint size, ExceptionalIntBiConsumer func) {
+        iterate(size.x, size.y, func);
+    }
+
+    public static void iterate(int width, int height, ExceptionalIntBiConsumer func) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                func.consume(x, y);
+            }
+        }
+    }
+
+    public static void parallelIterate(int c, IntPoint[] size, ExceptionalIntTriConsumer func) {
+        TaskList<Void> tasks = new TaskList<>();
+        for (int i = 0; i < c; i++) {
+            final int j = i;
+            parallelIterate(tasks, size[i], (x, y) -> func.consume(j, x, y));
+        }
+        tasks.collect();
+    }
+
+    public static void parallelIterate(int c, IntPoint size, ExceptionalIntTriConsumer func) {
+        TaskList<Void> tasks = new TaskList<>();
+        for (int i = 0; i < c; i++) {
+            final int j = i;
+            parallelIterate(tasks, size, (x, y) -> func.consume(j, x, y));
+        }
+        tasks.collect();
+    }
+
+    public static void parallelIterate(IntPoint size, ExceptionalIntBiConsumer func) {
+        TaskList<Void> tasks = new TaskList<>();
+        parallelIterate(tasks, size, func);
+        tasks.collect();
+    }
+
+    private static void parallelIterate(TaskList<?> tasks, IntPoint size, ExceptionalIntBiConsumer func) {
+        for (int y0 = 0; y0 < size.y; y0++) {
+            final int y = y0;
+            tasks.submit(() -> {
+                for (int x = 0; x < size.x; x++) {
+                    func.consume(x, y);
+                }
+            });
+        }
     }
 
     public IntPoint(int x, int y) {
@@ -35,11 +157,6 @@ public class IntPoint {
         return new IntPoint(-x, -y);
     }
 
-    public void negateEquals() {
-        x = -x;
-        y = -y;
-    }
-
     public IntPoint plus(IntPoint p) {
         return new IntPoint(x + p.x, y + p.y);
     }
@@ -60,11 +177,6 @@ public class IntPoint {
         return new IntPoint(x * factor, y * factor);
     }
 
-    public void timesEquals(int factor) {
-        this.x *= factor;
-        this.y *= factor;
-    }
-
     public IntPoint divide(int factor) {
         return new IntPoint(x / factor, y / factor);
     }
@@ -77,65 +189,26 @@ public class IntPoint {
         return new IntPoint(MathHelper.ceilDiv(x, p.x), MathHelper.ceilDiv(y, p.y));
     }
 
-    public void divideEquals(int factor) {
-        this.x /= factor;
-        this.y /= factor;
-    }
-
-    public void plusEquals(IntPoint p) {
-        this.x += p.x;
-        this.y += p.y;
-    }
-
-    public void minusEquals(IntPoint p) {
-        this.x -= p.x;
-        this.y -= p.y;
-    }
-
-    public void timesEquals(double factor) {
-        this.x = (int)(this.x * factor);
-        this.y = (int)(this.y * factor);
-    }
-
     public IntPoint transpose() {
-        return new IntPoint(this.y, this.x);
+        return new IntPoint(y, x);
     }
 
-    public void transposeEquals() {
-        int tmp = this.y;
-        this.y = this.x;
-        this.x = tmp;
-    }
-
-    public IntPoint shift(int hshift, int vshift) {
+    public IntPoint shiftLeft(int hshift, int vshift) {
         int x = hshift < 0 ? this.x >> -hshift : this.x << hshift;
         int y = vshift < 0 ? this.y >> -vshift : this.y << vshift;
         return new IntPoint(x, y);
     }
 
     public IntPoint shiftLeft(int shift) {
-        return shift(shift, shift);
+        return shiftLeft(shift, shift);
     }
 
     public IntPoint shiftLeft(IntPoint shift) {
-        return shift(shift.x, shift.y);
-    }
-
-    public void shiftEquals(int hshift, int vshift) {
-        this.x = hshift < 0 ? this.x >> -hshift : this.x << hshift;
-        this.y = vshift < 0 ? this.y >> -vshift : this.y << vshift;
-    }
-
-    public void shiftEquals(int shift) {
-        shiftEquals(shift, shift);
-    }
-
-    public void shiftEquals(IntPoint shift) {
-        shiftEquals(shift.x, shift.y);
+        return shiftLeft(shift.x, shift.y);
     }
 
     public IntPoint shiftRight(int hshift, int vshift) {
-        return shift(-hshift, -vshift);
+        return shiftLeft(-hshift, -vshift);
     }
 
     public IntPoint shiftRight(int shift) {
@@ -152,7 +225,7 @@ public class IntPoint {
 
     @Override
     public int hashCode() {
-        return (x << 16) | (x >>> 16) | y;
+        return ((x << 16) | (x >>> 16)) ^ y;
     }
 
     @Override

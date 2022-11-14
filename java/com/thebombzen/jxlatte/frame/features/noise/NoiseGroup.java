@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.features;
+package com.thebombzen.jxlatte.frame.features.noise;
 
 import com.thebombzen.jxlatte.frame.FrameHeader;
 

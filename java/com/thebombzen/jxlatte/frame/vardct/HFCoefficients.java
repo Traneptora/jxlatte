@@ -79,12 +79,11 @@ public class HFCoefficients {
                 int lfIndex = lfg.lfIndex[blockPosBase.y][blockPosBase.x];
                 int blockCtx = getBlockContext(c, blockPos, lfIndex);
                 int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
-                int nonZero = stream.readSymbol(reader, nonZeroCtx);
-                for (int y = 0; y < h / 8; y++) {
-                    for (int x = 0; x < w / 8; x++) {
-                        nonZeroes[c][y + blockPosGroup.y][x + blockPosGroup.x] = (nonZero + numBlocks - 1) / numBlocks;
-                    }
-                }
+                int nonZeroRead = stream.readSymbol(reader, nonZeroCtx);
+                IntPoint.iterate(w / 8, h / 8, (x, y) -> {
+                    nonZeroes[c][y + blockPosGroup.y][x + blockPosGroup.x] = (nonZeroRead + numBlocks - 1) / numBlocks;
+                });
+                int nonZero = nonZeroRead;
                 // SPEC: spec doesn't say you abort here if nonZero == 0
                 if (nonZero <= 0)
                     continue;

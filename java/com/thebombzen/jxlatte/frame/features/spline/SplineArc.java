@@ -1,6 +1,4 @@
-package com.thebombzen.jxlatte.frame.features;
-
-import com.thebombzen.jxlatte.util.DoublePoint;
+package com.thebombzen.jxlatte.frame.features.spline;
 
 public class SplineArc {
     public final DoublePoint location;

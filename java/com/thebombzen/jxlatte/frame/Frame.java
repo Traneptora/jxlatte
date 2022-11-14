@@ -13,8 +13,8 @@ import java.util.function.IntUnaryOperator;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.features.NoiseGroup;
-import com.thebombzen.jxlatte.frame.features.Spline;
+import com.thebombzen.jxlatte.frame.features.noise.NoiseGroup;
+import com.thebombzen.jxlatte.frame.features.spline.Spline;
 import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.group.Pass;
 import com.thebombzen.jxlatte.frame.group.PassGroup;
@@ -281,7 +281,7 @@ public class Frame {
             if (!chan.isDecoded()) {
                 if (chan.hshift >= 3 && chan.vshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
-                    IntPoint size = new IntPoint(header.lfGroupDim).shift(-chan.hshift, -chan.vshift);
+                    IntPoint size = new IntPoint(header.lfGroupDim).shiftRight(chan.hshift, chan.vshift);
                     lfReplacementChannels.add(new ModularChannelInfo(size.x, size.y, chan.hshift, chan.vshift));
                 }
             }
@@ -301,10 +301,10 @@ public class Frame {
                     IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
                     IntPoint chanSize = new IntPoint(info.width, info.height);
                     IntPoint pos = lfGroupPos.times(chanSize);
-                    info.width = Math.min(chanSize.x, lfSize.x - pos.x);
-                    info.height = Math.min(chanSize.y, lfSize.y - pos.y);
-                    info.x0 = pos.x;
-                    info.y0 = pos.y;
+                    IntPoint size = IntPoint.min(chanSize, lfSize.minus(pos));
+                    info.width = size.x;
+                    info.height = size.y;
+                    info.origin = pos;
                 }
                 return new LFGroup(reader, this, lfGroupID, replaced);
             });
@@ -318,13 +318,9 @@ public class Frame {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 ModularChannel newChannel = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
-                for (int y_ = 0; y_ < newChannel.height; y_++) {
-                    tasks.submit(y_, (y) -> {
-                        for (int x = 0; x < newChannel.width; x++) {
-                            channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
-                        }
-                    });
-                }
+                IntPoint.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
+                    channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
+                });
             }
         }
     }
@@ -354,10 +350,11 @@ public class Frame {
                         IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
                         int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
                         IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
-                        info.x0 = pos.x;
-                        info.y0 = pos.y;
-                        info.width = Math.min(passGroupSize.x, info.width - info.x0);
-                        info.height = Math.min(passGroupSize.y, info.height - info.y0);
+                        IntPoint chanSize = new IntPoint(info.width, info.height);
+                        info.origin = pos;
+                        IntPoint size = IntPoint.min(passGroupSize, chanSize.minus(info.origin));
+                        info.width = size.x;
+                        info.height = size.y;
                     }
                     return new PassGroup(reader, Frame.this, pass, group, replaced);
                 });
@@ -372,18 +369,12 @@ public class Frame {
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    for (int y_ = 0; y_ < newChannel.height; y_++) {
-                        tasks.submit(y_, (y) -> {
-                            for (int x = 0; x < newChannel.width; x++) {
-                                channel.set(x + newChannel.x0, y + newChannel.y0, newChannel.get(x, y));
-                            }
-                        });
-                    }
+                    IntPoint.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
+                        channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
+                    });
                 }
             }
         }
-
-        tasks.collect();
     }
 
     public void decodeFrame() throws IOException {
@@ -419,26 +410,22 @@ public class Frame {
                 double scaleFactor;
                 boolean xyb = globalMetadata.isXYBEncoded();
                 // X, Y, B is encoded as Y, X, (B - Y)
-                int cOut = xyb && c < 2 ? 1 - c : c;
+                int cOut = xyb ? cMap[c] : c;
+                int cIn = c;
                 if (xyb)
                     scaleFactor = lfGlobal.lfDequant[cOut];
                 else if (globalMetadata.getBitDepthHeader().expBits != 0)
                     scaleFactor = 1.0D;
                 else
                     scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-                for (int y_ = 0; y_ < header.height; y_++) {
-                    tasks.submit(y_, c, (y, c2) -> {
-                        for (int x = 0; x < header.width; x++) {
-                            // X, Y, B is encoded as Y, X, (B - Y)
-                            if (xyb && c2 == 2)
-                                buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
-                            else
-                                buffer[cOut][y][x] = scaleFactor * modularBuffer[c2][y][x];
-                        }
-                    });
-                }
+                IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+                    // X, Y, B is encoded as Y, X, (B - Y)
+                    if (xyb && cIn == 2)
+                        buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
+                    else
+                        buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
+                });
             }
-            tasks.collect();
         }
     }
 
@@ -447,7 +434,7 @@ public class Frame {
             buffer[c] = performUpsampling(buffer[c], c);
         header.width *= header.upsampling;
         header.height *= header.upsampling;
-        header.origin.timesEquals(header.upsampling);
+        header.origin = header.origin.times(header.upsampling);
     }
 
     public void renderSplines() {
@@ -469,13 +456,12 @@ public class Frame {
         int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
         TaskList<Void> tasks = new TaskList<>();
         for (int group = 0; group < numGroups; group++) {
-            int groupX = group % rowStride;
-            int groupY = group / rowStride;
+            IntPoint groupXYUp = IntPoint.coordinates(group, rowStride).times(header.upsampling);
             // SPEC: spec doesn't mention how noise groups interact with upsampling
             for (int iy = 0; iy < header.upsampling; iy++) {
                 for (int ix = 0; ix < header.upsampling; ix++) {
-                    int x0 = (groupX * header.upsampling + ix) * header.groupDim;
-                    int y0 = (groupY * header.upsampling + iy) * header.groupDim;
+                    int x0 = (groupXYUp.x + ix) * header.groupDim;
+                    int y0 = (groupXYUp.y + iy) * header.groupDim;
                     tasks.submit(() -> new NoiseGroup(header, seed0, noiseBuffer, x0, y0));
                 }
             }
@@ -492,21 +478,16 @@ public class Frame {
 
         this.noiseBuffer = new double[3][height][width];
         tasks.collect();
-        for (int c_ = 0; c_ < 3; c_++) {
-            for (int y_ = 0; y_ < height; y_++) {
-                tasks.submit(c_, y_, (c, y) -> {
-                    for (int x = 0; x < width; x++) {
-                        for (int iy = 0; iy < 5; iy++) {
-                            for (int ix = 0; ix < 5; ix++) {
-                                int cy = mirrorCoordinate(y + iy - 2, height);
-                                int cx = mirrorCoordinate(x + ix - 2, width);
-                                this.noiseBuffer[c][y][x] += noiseBuffer[c][cy][cx] * laplacian[iy][ix];
-                            }
-                        }
-                    }
-                });
+
+        IntPoint.parallelIterate(3, new IntPoint(width, height), (c, x, y) -> {
+            for (int iy = 0; iy < 5; iy++) {
+                for (int ix = 0; ix < 5; ix++) {
+                    int cy = mirrorCoordinate(y + iy - 2, height);
+                    int cx = mirrorCoordinate(x + ix - 2, width);
+                    this.noiseBuffer[c][y][x] += noiseBuffer[c][cy][cx] * laplacian[iy][ix];
+                }
             }
-        }
+        });
         tasks.collect();
     }
 
@@ -514,42 +495,40 @@ public class Frame {
         if (lfGlobal.noiseParameters == null)
             return;
         double[] lut = lfGlobal.noiseParameters.lut;
-        for (int y = 0; y < header.height; y++) {
-            for (int x = 0; x < header.width; x++) {
-                // SPEC: spec doesn't mention the *0.5 here, it says *6
-                // SPEC: spec doesn't mention clamping to 0 here
-                double inScaledR = 3D * Math.max(0D, buffer[1][y][x] + buffer[0][y][x]);
-                double inScaledG = 3D * Math.max(0D, buffer[1][y][x] - buffer[0][y][x]);
-                int intInR;
-                double fracInR;
-                // LIBJXL: libjxl bug makes this >= 6D and 5, making lut[7] unused
-                // SPEC: spec bug makes this >= 8D and 7, making lut[8] overflow
-                if (inScaledR >= 7D) {
-                    intInR = 6;
-                    fracInR = 1D;
-                } else {
-                    intInR = (int)inScaledR;
-                    fracInR = inScaledR - intInR;
-                }
-                int intInG;
-                double fracInG;
-                if (inScaledG >= 7D) {
-                    intInG = 6;
-                    fracInG = 1D;
-                } else {
-                    intInG = (int)inScaledG;
-                    fracInG = inScaledG - intInG;
-                }
-                double sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
-                double sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
-                double nr = 0.22D * sr * (0.0078125D * noiseBuffer[0][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
-                double ng = 0.22D * sg * (0.0078125D * noiseBuffer[1][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
-                double nrg = nr + ng;
-                buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
-                buffer[1][y][x] += nrg;
-                buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
+        IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+            // SPEC: spec doesn't mention the *0.5 here, it says *6
+            // SPEC: spec doesn't mention clamping to 0 here
+            double inScaledR = 3D * Math.max(0D, buffer[1][y][x] + buffer[0][y][x]);
+            double inScaledG = 3D * Math.max(0D, buffer[1][y][x] - buffer[0][y][x]);
+            int intInR;
+            double fracInR;
+            // LIBJXL: libjxl bug makes this >= 6D and 5, making lut[7] unused
+            // SPEC: spec bug makes this >= 8D and 7, making lut[8] overflow
+            if (inScaledR >= 7D) {
+                intInR = 6;
+                fracInR = 1D;
+            } else {
+                intInR = (int)inScaledR;
+                fracInR = inScaledR - intInR;
             }
-        }
+            int intInG;
+            double fracInG;
+            if (inScaledG >= 7D) {
+                intInG = 6;
+                fracInG = 1D;
+            } else {
+                intInG = (int)inScaledG;
+                fracInG = inScaledG - intInG;
+            }
+            double sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
+            double sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
+            double nr = 0.22D * sr * (0.0078125D * noiseBuffer[0][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
+            double ng = 0.22D * sg * (0.0078125D * noiseBuffer[1][y][x] + 0.9921875D * noiseBuffer[2][y][x]);
+            double nrg = nr + ng;
+            buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
+            buffer[1][y][x] += nrg;
+            buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
+        });
     }
 
     public LFGlobal getLFGlobal() {
@@ -565,7 +544,7 @@ public class Frame {
     }
 
     public LFGroup getLFGroupForGroup(int group) {
-        return lfGroups[groupXY(group).shiftLeft(-3).unwrapCoord(lfGroupRowStride)];
+        return lfGroups[groupXY(group).shiftRight(3).unwrapCoord(lfGroupRowStride)];
     }
 
     public int getNumLFGroups() {

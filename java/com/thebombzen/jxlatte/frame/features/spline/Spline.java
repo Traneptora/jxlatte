@@ -1,11 +1,10 @@
-package com.thebombzen.jxlatte.frame.features;
+package com.thebombzen.jxlatte.frame.features.spline;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.LFGlobal;
-import com.thebombzen.jxlatte.util.DoublePoint;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;

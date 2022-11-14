@@ -4,9 +4,9 @@ import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.features.NoiseParameters;
 import com.thebombzen.jxlatte.frame.features.Patch;
-import com.thebombzen.jxlatte.frame.features.SplinesBundle;
+import com.thebombzen.jxlatte.frame.features.noise.NoiseParameters;
+import com.thebombzen.jxlatte.frame.features.spline.SplinesBundle;
 import com.thebombzen.jxlatte.frame.modular.GlobalModular;
 import com.thebombzen.jxlatte.frame.vardct.HFBlockContext;
 import com.thebombzen.jxlatte.frame.vardct.LFChannelCorrelation;

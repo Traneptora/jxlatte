@@ -1,4 +1,6 @@
-package com.thebombzen.jxlatte.util;
+package com.thebombzen.jxlatte.frame.features.spline;
+
+import com.thebombzen.jxlatte.util.IntPoint;
 
 public class DoublePoint {
     public double x;
@@ -31,21 +33,6 @@ public class DoublePoint {
 
     public DoublePoint times(double factor) {
         return new DoublePoint(x * factor, y * factor);
-    }
-
-    public void plusEquals(DoublePoint p) {
-        this.x += p.x;
-        this.y += p.y;
-    }
-
-    public void minusEquals(DoublePoint p) {
-        this.x -= p.x;
-        this.y -= p.y;
-    }
-
-    public void timesEquals(double factor) {
-        this.x *= factor;
-        this.y *= factor;
     }
 
     public double normSquared() {
