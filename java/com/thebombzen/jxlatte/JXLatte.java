@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.thebombzen.jxlatte.io.PFMWriter;
 import com.thebombzen.jxlatte.io.PNGWriter;
 
 public class JXLatte {
@@ -18,15 +19,23 @@ public class JXLatte {
         }
     }
 
+    private static void writePFM(String outputFilename, JXLImage image) throws IOException {
+        PFMWriter writer = new PFMWriter(image);
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outputFilename))) {
+            writer.write(out);
+        }
+    }
+
     private static void usage(boolean success) {
         String[] lines = new String[]{
             "jxlatte, version: " + JXLATTE_VERSION,
-            "Usage: java -jar jxlatte.jar [options...] [--] <input.jxl> [output.png]",
+            "Usage: java -jar jxlatte.jar [options...] [--] <input.jxl> [output]",
             "",
             "Options: ",
-            "    --help              print this message",
-            "    --output-depth=N    use N-bit output for PNG,",
-            "                            N must be 8 or 16",
+            "    --help                       print this message",
+            "    --output-png-depth=N         use N-bit output for PNG,",
+            "                                     N must be 8 or 16",
+            "    --output-format=<png|pfm>    write image in this output format",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };
@@ -42,6 +51,7 @@ public class JXLatte {
         String outputFilename = null;
         boolean foundMM = false;
         int outputDepth = -1;
+        int outputFormat = -1;
         for (String arg : args) {
             if (foundMM || !arg.startsWith("--")) {
                 if (inputFilename == null) {
@@ -65,7 +75,7 @@ public class JXLatte {
             switch (key) {
                 case "help":
                     usage(true);
-                case "output-depth":
+                case "output-png-depth":
                     try {
                         outputDepth = Integer.parseInt(value);
                     } catch (NumberFormatException ex) {
@@ -75,6 +85,19 @@ public class JXLatte {
                     if (outputDepth != 8 && outputDepth != 16) {
                         System.err.println("jxlatte: only 8-bit and 16-bit outputs supported in PNG");
                         System.exit(2);
+                    }
+                    break;
+                case "output-format":
+                    switch (value.toLowerCase()) {
+                        case "png":
+                            outputFormat = 0;
+                            break;
+                        case "pfm":
+                            outputFormat = 1;
+                            break;
+                        default:
+                            System.err.format("jxlatte: unknown output format: %s%n", value);
+                            System.exit(2);
                     }
                     break;
                 default:
@@ -89,8 +112,23 @@ public class JXLatte {
             : new JXLDecoder(inputFilename);
         JXLImage image = decoder.decode();
         if (outputFilename != null) {
-            System.err.println("Decoded to pixels, writing PNG output.");
-            writePNG(outputFilename, image, outputDepth);
+            if (outputFormat < 0) {
+                int idx = outputFilename.lastIndexOf('.');
+                if (idx >= 0) {
+                    String ext = outputFilename.substring(idx + 1).toLowerCase();
+                    if (ext.equals("pfm")) {
+                        outputFormat = 1;
+                    }
+                }
+            }
+            if (outputFormat == 1) {
+                System.err.println("Decoded to pixels, writing PFM output.");
+                writePFM(outputFilename, image);
+            } else {
+                System.err.println("Decoded to pixels, writing PNG output.");
+                writePNG(outputFilename, image, outputDepth);
+            }
+
         } else {
             System.err.println("Decoded to pixels, discarding output.");
         }
