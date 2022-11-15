@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte;
 
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,16 +14,20 @@ public class JXLatte {
 
     public static final String JXLATTE_VERSION = "0.0.2";
 
+    private static final int OUTPUT_DEFAULT = -1;
+    private static final int OUTPUT_PNG = 0;
+    private static final int OUTPUT_PFM = 1;
+
     private static void writePNG(String outputFilename, JXLImage image, int depth) throws IOException {
         PNGWriter writer = depth > 0 ? new PNGWriter(image, depth) : new PNGWriter(image);
-        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outputFilename))) {
+        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-") ? System.out : new FileOutputStream(outputFilename))) {
             writer.write(out);
         }
     }
 
     private static void writePFM(String outputFilename, JXLImage image) throws IOException {
         PFMWriter writer = new PFMWriter(image);
-        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outputFilename))) {
+        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-") ? System.out : new FileOutputStream(outputFilename))) {
             writer.write(out);
         }
     }
@@ -33,6 +39,7 @@ public class JXLatte {
             "",
             "Options: ",
             "    --help                       print this message",
+            "    --debug                      turn on debugging output",
             "    --output-png-depth=N         use N-bit output for PNG,",
             "                                     N must be 8 or 16",
             "    --output-format=<png|pfm>    write image in this output format",
@@ -43,7 +50,7 @@ public class JXLatte {
         System.exit(success ? 0 : 1);
     }
 
-    public static void main(String[] args) throws Throwable {
+    public static void main(String[] args) {
         if (args.length == 0) {
             usage(false);
         }
@@ -51,7 +58,8 @@ public class JXLatte {
         String outputFilename = null;
         boolean foundMM = false;
         int outputDepth = -1;
-        int outputFormat = -1;
+        int outputFormat = OUTPUT_DEFAULT;
+        boolean debug = false;
         for (String arg : args) {
             if (foundMM || !arg.startsWith("--")) {
                 if (inputFilename == null) {
@@ -63,7 +71,7 @@ public class JXLatte {
                     continue;
                 }
                 System.err.format("jxlatte: invalid trailing argument: %s%n", arg);
-                System.exit(2);
+                System.exit(1);
             }
             if (arg.equals("--")) {
                 foundMM = true;
@@ -80,55 +88,119 @@ public class JXLatte {
                         outputDepth = Integer.parseInt(value);
                     } catch (NumberFormatException ex) {
                         System.err.format("jxlatte: not a number: %s%n", value);
-                        System.exit(2);
+                        System.exit(1);
                     }
                     if (outputDepth != 8 && outputDepth != 16) {
                         System.err.println("jxlatte: only 8-bit and 16-bit outputs supported in PNG");
-                        System.exit(2);
+                        System.exit(1);
                     }
                     break;
                 case "output-format":
                     switch (value.toLowerCase()) {
                         case "png":
-                            outputFormat = 0;
+                            outputFormat = OUTPUT_PNG;
                             break;
                         case "pfm":
-                            outputFormat = 1;
+                            outputFormat = OUTPUT_PFM;
                             break;
                         default:
                             System.err.format("jxlatte: unknown output format: %s%n", value);
-                            System.exit(2);
+                            System.exit(1);
+                    }
+                    break;
+                case "debug":
+                    switch (value.toLowerCase()) {
+                        case "":
+                        case "yes":
+                            debug = true;
+                            break;
+                        case "no":
+                            debug = false;
+                            break;
+                        default:
+                            System.err.format("jxlatte: unknown debug flag: %s%n", value);
+                            System.exit(1);
                     }
                     break;
                 default:
                     System.err.format("jxlatte: unknown arg: %s%n", arg);
-                    System.exit(2);
+                    System.exit(1);
             }
         }
+
         if (inputFilename == null)
             usage(false);
-        JXLDecoder decoder = inputFilename.equals("-")
-            ? new JXLDecoder(System.in)
-            : new JXLDecoder(inputFilename);
-        JXLImage image = decoder.decode();
-        if (outputFilename != null) {
-            if (outputFormat < 0) {
-                int idx = outputFilename.lastIndexOf('.');
-                if (idx >= 0) {
-                    String ext = outputFilename.substring(idx + 1).toLowerCase();
-                    if (ext.equals("pfm")) {
-                        outputFormat = 1;
-                    }
+
+        if (outputFilename != null && outputFormat == OUTPUT_DEFAULT) {
+            int idx = outputFilename.lastIndexOf('.');
+            if (idx >= 0) {
+                String ext = outputFilename.substring(idx + 1).toLowerCase();
+                if (ext.equals("pfm")) {
+                    outputFormat = OUTPUT_PFM;
+                } else if (ext.equals("png")) {
+                    outputFormat = OUTPUT_PNG;
                 }
             }
-            if (outputFormat == 1) {
-                System.err.println("Decoded to pixels, writing PFM output.");
-                writePFM(outputFilename, image);
-            } else {
-                System.err.println("Decoded to pixels, writing PNG output.");
-                writePNG(outputFilename, image, outputDepth);
-            }
+        }
+        if (outputFilename != null && outputFormat == OUTPUT_DEFAULT) {
+            System.err.println("jxlatte: Unable to determine output format from file extension.");
+            System.exit(1);
+        }
 
+        JXLDecoder decoder = null;
+        try {
+            decoder = inputFilename.equals("-")
+                ? new JXLDecoder(System.in)
+                : new JXLDecoder(inputFilename);
+        } catch (FileNotFoundException ex) {
+            System.err.format("jxlatte: Unable to open file: %s%n", inputFilename);
+            System.exit(2);
+        }
+
+        JXLImage image = null;
+        try {
+            image = decoder.decode();
+        } catch (EOFException | InvalidBitstreamException ex) {
+            System.err.println("jxlatte: Invalid input bitstream");
+            if (debug)
+                ex.printStackTrace();
+            System.exit(3);
+        } catch (IOException ioe) {
+            System.err.println("jxlatte: I/O error occurred");
+            if (debug)
+                ioe.printStackTrace();
+            System.exit(2);
+        } catch (UnsupportedOperationException uoe) {
+            System.err.format("jxlatte: %s%n", uoe.getMessage());
+            if (debug)
+                uoe.printStackTrace();
+            System.exit(4);
+        } catch (Exception re) {
+            System.err.println("jxlatte: BUG: " + re.getMessage());
+            re.printStackTrace();
+            System.exit(4);
+        }
+
+        if (outputFilename != null) {
+            try {
+                if (outputFormat == OUTPUT_PFM) {
+                    System.err.println("Decoded to pixels, writing PFM output.");
+                    writePFM(outputFilename, image);
+                } else if (outputFormat == OUTPUT_PNG) {
+                    System.err.println("Decoded to pixels, writing PNG output.");
+                    writePNG(outputFilename, image, outputDepth);
+                }
+            } catch (FileNotFoundException fnfe) {
+                System.err.println("jxlatte: could not open output file for writing");
+                if (debug)
+                    fnfe.printStackTrace();
+                System.exit(2);
+            } catch (IOException ioe) {
+                System.err.println("jxlatte: error writing output file");
+                if (debug)
+                    ioe.printStackTrace();
+                System.exit(2);
+            }
         } else {
             System.err.println("Decoded to pixels, discarding output.");
         }
