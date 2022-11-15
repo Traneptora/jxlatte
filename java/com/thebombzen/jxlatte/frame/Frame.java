@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -637,5 +638,19 @@ public class Frame {
             || x - header.origin.x >= header.width
             || y - header.origin.y >= header.height
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
+    }
+
+    public void printDebugInfo(long info, PrintStream err) {
+        err.println("Frame Info:");
+        err.format("    Encoding: %s%n", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
+        String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
+                    : header.type == FrameFlags.LF_FRAME ? "LF Frame"
+                    : header.type == FrameFlags.REFERENCE_ONLY ? "Reference Only"
+                    : header.type == FrameFlags.SKIP_PROGRESSIVE ? "Skip Progressive"
+                    : "????";
+        err.format("    Type: %s%n", type);
+        err.format("    Size: %dx%d%n", header.width * header.upsampling, header.height * header.upsampling);
+        err.format("    Origin: (%d, %d)%n", header.origin.x, header.origin.y);
+        err.format("    YCbCr: %b%n", header.doYCbCr);
     }
 }

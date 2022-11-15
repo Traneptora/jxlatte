@@ -44,7 +44,31 @@ public class ColorFlags {
             || whitePoint == WP_DCI;
     }
 
+    public static String primariesToString(int primaries) {
+        switch (primaries) {
+            case PRI_SRGB:
+                return "sRGB / BT.709";
+            case PRI_BT2100:
+                return "BT Rec.2100 / BT Rec.2020";
+            case PRI_P3:
+                return "P3";
+            default:
+                return "Unknown";
+        }
+    }
 
+    public static String whitePointToString(int whitePoint) {
+        switch (whitePoint) {
+            case WP_D65:
+                return "D65";
+            case WP_E:
+                return "Standard Illuminant E";
+            case WP_DCI:
+                return "DCI";
+            default:
+                return "Unknown";
+        }
+    }
 
     public static boolean validateColorEncoding(int colorEncoding) {
         return colorEncoding >= 0 && colorEncoding <= 3;
@@ -69,6 +93,28 @@ public class ColorFlags {
                 || transfer == TF_PQ
                 || transfer == TF_DCI
                 || transfer == TF_HLG;
+    }
+
+    public static String transferToString(int transfer) {
+        if (transfer < (1 << 24)) {
+            return String.format("Gamma: %f", transfer * 1e-7D);
+        }
+        switch (transfer) {
+            case TF_BT709:
+                return "BT.709";
+            case TF_LINEAR:
+                return "Linear Light";
+            case TF_SRGB:
+                return "sRGB / ISO-IEC 61966-2-1";
+            case TF_PQ:
+                return "Perceptual Quantizer / SMPTE 2084";
+            case TF_DCI:
+                return "DCI";
+            case TF_HLG:
+                return "Hybrid Log Gamma / ARIB B-67";
+            default:
+                return "Unknown";
+        }
     }
 
     public static CIEXY getWhitePoint(int whitePoint) {

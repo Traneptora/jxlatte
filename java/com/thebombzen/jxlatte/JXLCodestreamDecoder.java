@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -9,6 +10,8 @@ import com.thebombzen.jxlatte.bundle.ExtraChannelType;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.color.CIEPrimaries;
 import com.thebombzen.jxlatte.color.CIEXY;
+import com.thebombzen.jxlatte.color.ColorEncodingBundle;
+import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.BlendingInfo;
@@ -23,9 +26,11 @@ import com.thebombzen.jxlatte.util.MathHelper;
 public class JXLCodestreamDecoder {
     private Bitreader bitreader;
     private ImageHeader imageHeader;
+    private long flags;
 
-    public JXLCodestreamDecoder(Bitreader in) {
+    public JXLCodestreamDecoder(Bitreader in, long flags) {
         this.bitreader = in;
+        this.flags = flags;
     }
 
     private static int getICCContext(byte[] buffer, int index) {
@@ -275,9 +280,42 @@ public class JXLCodestreamDecoder {
     }
 
     public JXLImage decode(int level) throws IOException {
+        return decode(level, System.err);
+    }
+
+    public JXLImage decode(int level, PrintStream err) throws IOException {
+        long info = (flags & 0b110) >> 1;
         this.imageHeader = ImageHeader.parse(bitreader, level);
+        if (info >= 1) {
+            err.println("Image:");
+            err.format("    Level: %d%n", level);
+            err.format("    Size: %dx%d%n", imageHeader.getSize().width, imageHeader.getSize().height);
+            boolean gray = imageHeader.getColorChannelCount() < 3;
+            boolean alpha = imageHeader.hasAlpha();
+            err.format("    Pixel Format: %s%n",
+                gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
+            if (info >= 2) {
+                err.format("    Extra Channels: %d%n", imageHeader.getExtraChannelCount());
+                err.format("    XYB Encoded: %b%n", imageHeader.isXYBEncoded());
+                ColorEncodingBundle ce = imageHeader.getColorEncoding();
+                if (!gray)
+                    err.format("    Primaries: %s%n", ColorFlags.primariesToString(ce.primaries));
+                err.format("    White Point: %s%n", ColorFlags.whitePointToString(ce.whitePoint));
+                err.format("    Transfer Function: %s%n", ColorFlags.transferToString(ce.tf));
+            }
+            if (imageHeader.getAnimationHeader() != null)
+                err.format("    Animated: true%n");
+        }
         if (imageHeader.getColorEncoding().useIccProfile) {
-            int encodedSize = Math.toIntExact(bitreader.readU64());
+            int encodedSize;
+            try {
+                encodedSize = Math.toIntExact(bitreader.readU64());
+            } catch (ArithmeticException ex) {
+                throw new InvalidBitstreamException(ex);
+            }
+            if (info >= 1) {
+                err.format("    ICC Profile, Size: %d%n", encodedSize);
+            }
             byte[] encodedIcc = new byte[encodedSize];
             EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
             for (int i = 0; i < encodedSize; i++)
@@ -300,9 +338,13 @@ public class JXLCodestreamDecoder {
         do {
             Frame frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
+            header = frame.getFrameHeader();
+            if (info >= 1 && frames.size() == 0)
+                err.format("    Lossless: %s%n", header.encoding == FrameFlags.VARDCT ? "No" : "Possibly");
+            if (info >= 2)
+                frame.printDebugInfo(info, err);
             frame.decodeFrame();
             frames.add(frame);
-            header = frame.getFrameHeader();
         } while (!header.isLast);
 
         OpsinInverseMatrix matrix = null;

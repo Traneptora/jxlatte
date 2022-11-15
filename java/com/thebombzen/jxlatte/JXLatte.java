@@ -59,7 +59,7 @@ public class JXLatte {
         boolean foundMM = false;
         int outputDepth = -1;
         int outputFormat = OUTPUT_DEFAULT;
-        boolean debug = false;
+        long flags = 0;
         for (String arg : args) {
             if (foundMM || !arg.startsWith("--")) {
                 if (inputFilename == null) {
@@ -109,19 +109,39 @@ public class JXLatte {
                     }
                     break;
                 case "debug":
+                    flags = ~(~flags | 0b1L);
                     switch (value.toLowerCase()) {
                         case "":
                         case "yes":
-                            debug = true;
+                            flags |= 0b1L;
                             break;
                         case "no":
-                            debug = false;
                             break;
                         default:
                             System.err.format("jxlatte: unknown debug flag: %s%n", value);
                             System.exit(1);
                     }
                     break;
+                case "info":
+                    flags = ~(~flags | 0b110L);
+                    switch (value.toLowerCase()) {
+                        case "":
+                        case "yes":
+                            flags |= 0b010L;
+                            break;
+                        case "no":
+                            break;
+                        case "verbose":
+                            flags |= 0b100L;
+                            break;
+                        case "trace":
+                            flags |= 0b110L;
+                            break;
+                        default:
+                            System.err.format("jxlatte: unknown debug flag: %s%n", value);
+                            System.exit(1);
+                    }
+                break;
                 default:
                     System.err.format("jxlatte: unknown arg: %s%n", arg);
                     System.exit(1);
@@ -150,12 +170,14 @@ public class JXLatte {
         JXLDecoder decoder = null;
         try {
             decoder = inputFilename.equals("-")
-                ? new JXLDecoder(System.in)
-                : new JXLDecoder(inputFilename);
+                ? new JXLDecoder(System.in, flags)
+                : new JXLDecoder(inputFilename, flags);
         } catch (FileNotFoundException ex) {
             System.err.format("jxlatte: Unable to open file: %s%n", inputFilename);
             System.exit(2);
         }
+
+        boolean debug = (flags & 0b1L) > 0;
 
         JXLImage image = null;
         try {

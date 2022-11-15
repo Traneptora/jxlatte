@@ -15,14 +15,22 @@ public class JXLDecoder {
     private JXLCodestreamDecoder decoder;
 
     public JXLDecoder(InputStream in) {
-        demuxer = new Demuxer(in);
-        new Thread(demuxer).start();
-        decoder = new JXLCodestreamDecoder(
-            new InputStreamBitreader(new ByteArrayQueueInputStream(demuxer.getQueue())));
+        this(in, 0L);
     }
 
     public JXLDecoder(String filename) throws FileNotFoundException {
-        this(new BufferedInputStream(new FileInputStream(filename)));
+        this(filename, 0L);
+    }
+
+    public JXLDecoder(InputStream in, long flags) {
+        demuxer = new Demuxer(in);
+        new Thread(demuxer).start();
+        decoder = new JXLCodestreamDecoder(
+            new InputStreamBitreader(new ByteArrayQueueInputStream(demuxer.getQueue())), flags);
+    }
+
+    public JXLDecoder(String filename, long flags) throws FileNotFoundException {
+        this(new BufferedInputStream(new FileInputStream(filename)), flags);
     }
 
     public JXLImage decode() throws IOException {
