@@ -28,6 +28,7 @@ import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
+import com.thebombzen.jxlatte.util.functional.ExceptionalFunction;
 import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
@@ -301,7 +302,7 @@ public class Frame {
                     IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
                     IntPoint chanSize = new IntPoint(info.width, info.height);
                     IntPoint pos = lfGroupPos.times(chanSize);
-                    IntPoint size = IntPoint.min(chanSize, lfSize.minus(pos));
+                    IntPoint size = chanSize.min(lfSize.minus(pos));
                     info.width = size.x;
                     info.height = size.y;
                     info.origin = pos;
@@ -352,7 +353,7 @@ public class Frame {
                         IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
                         IntPoint chanSize = new IntPoint(info.width, info.height);
                         info.origin = pos;
-                        IntPoint size = IntPoint.min(passGroupSize, chanSize.minus(info.origin));
+                        IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
                         info.width = size.x;
                         info.height = size.y;
                     }
@@ -375,15 +376,27 @@ public class Frame {
                 }
             }
         }
+
+        if (header.encoding == FrameFlags.VARDCT) {
+            for (int pass = 0; pass < numPasses; pass++) {
+                for (int group = 0; group < numGroups; group++) {
+                    PassGroup passGroup = passGroups[pass][group];
+                    PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
+                    tasks.submit(() -> passGroup.invertVarDCT(buffer, prev));
+                }
+            }
+        }
+        tasks.collect();
     }
 
     public void decodeFrame() throws IOException {
         if (this.decoded)
             return;
         this.decoded = true;
-        lfGlobal = FunctionalHelper.join(getBitreader(0).thenApplyAsync(
-            FunctionalHelper.uncheck((reader) -> new LFGlobal(reader, this))));
-        buffer = new double[globalMetadata.getTotalChannelCount()][header.height][header.width];
+        lfGlobal = FunctionalHelper.join(getBitreader(0)
+            .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
+        IntPoint paddedSize = getPaddedFrameSize();
+        buffer = new double[globalMetadata.getTotalChannelCount()][paddedSize.y][paddedSize.x];
         TaskList<Void> tasks = new TaskList<>();
 
         decodeLFGroups(tasks);
@@ -401,31 +414,25 @@ public class Frame {
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
-        if (header.encoding == FrameFlags.VARDCT) {
-            throw new UnsupportedOperationException("VarDCT not yet supported");
-        }
-
-        if (header.encoding == FrameFlags.MODULAR) {
-            for (int c = 0; c < buffer.length; c++) {
-                double scaleFactor;
-                boolean xyb = globalMetadata.isXYBEncoded();
+        for (int c = 0; c < modularBuffer.length; c++) {
+            int cIn = c + buffer.length - modularBuffer.length;
+            double scaleFactor;
+            boolean xybM = globalMetadata.isXYBEncoded() && header.encoding == FrameFlags.MODULAR;
+            // X, Y, B is encoded as Y, X, (B - Y)
+            int cOut = (xybM ? cMap[c] : c) + buffer.length - modularBuffer.length;
+            if (xybM)
+                scaleFactor = lfGlobal.lfDequant[cOut];
+            else if (globalMetadata.getBitDepthHeader().expBits != 0 || header.encoding == FrameFlags.VARDCT)
+                scaleFactor = 1.0D;
+            else
+                scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
+            IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
-                int cOut = xyb ? cMap[c] : c;
-                int cIn = c;
-                if (xyb)
-                    scaleFactor = lfGlobal.lfDequant[cOut];
-                else if (globalMetadata.getBitDepthHeader().expBits != 0)
-                    scaleFactor = 1.0D;
+                if (xybM && cIn == 2)
+                    buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
                 else
-                    scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-                IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
-                    // X, Y, B is encoded as Y, X, (B - Y)
-                    if (xyb && cIn == 2)
-                        buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
-                    else
-                        buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
-                });
-            }
+                    buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
+            });
         }
     }
 
@@ -579,6 +586,13 @@ public class Frame {
         return IntPoint.coordinates(lfGroup, lfGroupRowStride);
     }
 
+    /*
+     * @return The position of this group within this LF Group, 1-incrementing
+     */
+    public IntPoint groupPosInLFGroup(int lfGroupID, int groupID) {
+        return groupXY(groupID).minus(getLFGroupXY(lfGroupID).shiftLeft(3));
+    }
+
     public IntPoint groupSize(int group) {
         IntPoint groupxy = groupXY(group);
         IntPoint paddedSize = getPaddedFrameSize();
@@ -594,7 +608,10 @@ public class Frame {
     }
 
     public IntPoint getPaddedFrameSize() {
-        return new IntPoint(MathHelper.ceilDiv(header.width, 8), MathHelper.ceilDiv(header.height, 8)).times(8);
+        if (header.encoding == FrameFlags.VARDCT)
+            return new IntPoint(header.width, header.height).ceilDiv(8).times(8);
+        else
+            return new IntPoint(header.width, header.height);
     }
 
     public MATree getGlobalTree() {
@@ -603,6 +620,10 @@ public class Frame {
 
     public void setGlobalTree(MATree tree) {
         this.globalTree = tree;
+    }
+
+    public int getGroupBlockDim() {
+        return header.groupDim >> 3;
     }
 
     public boolean isVisible() {

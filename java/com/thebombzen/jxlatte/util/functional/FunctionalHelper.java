@@ -32,18 +32,6 @@ public final class FunctionalHelper {
         return null;
     }
 
-    public static <U> Supplier<U> uncheck(ExceptionalSupplier<U> supplier) {
-        return supplier.uncheck();
-    }
-
-    public static Runnable uncheck(ExceptionalRunnable r) {
-        return r.uncheck();
-    }
-
-    public static <C, U> Function<C, U> uncheck(ExceptionalFunction<C, U> f) {
-        return f.uncheck();
-    }
-
     public static <T, U> Supplier<U> constant(Function<T, U> func, T input) {
         return () -> func.apply(input);
     }

@@ -103,11 +103,16 @@ public class FrameHeader {
         groupSizeShift = encoding == FrameFlags.MODULAR ? reader.readBits(2) : 1;
         groupDim = 128 << groupSizeShift;
         lfGroupDim = groupDim << 3;
-        if (!allDefault && parent.isXYBEncoded() && encoding == FrameFlags.VARDCT) {
-            xqmScale = reader.readBits(3);
-            bqmScale = reader.readBits(3);
+        if (parent.isXYBEncoded() && encoding == FrameFlags.VARDCT) {
+            if (!allDefault) {
+                xqmScale = reader.readBits(3);
+                bqmScale = reader.readBits(3);
+            } else {
+                xqmScale = 3;
+                bqmScale = 2;
+            }
         } else {
-            xqmScale = 3;
+            xqmScale = 2;
             bqmScale = 2;
         }
         passes = (!allDefault && type != FrameFlags.REFERENCE_ONLY) ? new PassesInfo(reader) : new PassesInfo();

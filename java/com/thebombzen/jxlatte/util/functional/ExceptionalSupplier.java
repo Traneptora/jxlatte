@@ -3,17 +3,15 @@ package com.thebombzen.jxlatte.util.functional;
 import java.util.function.Supplier;
 
 @FunctionalInterface
-public interface ExceptionalSupplier<U> {
+public interface ExceptionalSupplier<U> extends Supplier<U> {
     
-    public U supply() throws Throwable;
+    public U supplyExceptionally() throws Throwable;
 
-    public default Supplier<U> uncheck() {
-        return () -> {
-            try {
-                return supply();
-            } catch (Throwable t) {
-                return FunctionalHelper.sneakyThrow(t);
-            }
-        };
+    public default U get() {
+        try {
+            return supplyExceptionally();
+        } catch (Throwable ex) {
+            return FunctionalHelper.sneakyThrow(ex);
+        }
     }
 }

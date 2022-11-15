@@ -39,7 +39,7 @@ public class TaskList<T> {
     }
 
     public void submit(int bin, ExceptionalSupplier<? extends T> s) {
-        tasks.get(bin).add(CompletableFuture.supplyAsync(s.uncheck()));
+        tasks.get(bin).add(CompletableFuture.supplyAsync(s));
     }
 
     public <U> void submit(CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
@@ -47,11 +47,11 @@ public class TaskList<T> {
     }
 
     public <U> void submit(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        tasks.get(bin).add(supplier.thenApplyAsync(f.uncheck()));
+        tasks.get(bin).add(supplier.thenApplyAsync(f));
     }
 
     public <U> void submitNow(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        CompletableFuture<T> fut = supplier.thenApplyAsync(f.uncheck());
+        CompletableFuture<T> fut = supplier.thenApplyAsync(f);
         tasks.get(bin).add(fut);
         FunctionalHelper.join(fut);
     }

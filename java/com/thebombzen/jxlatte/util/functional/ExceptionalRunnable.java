@@ -1,17 +1,16 @@
 package com.thebombzen.jxlatte.util.functional;
 
 @FunctionalInterface
-public interface ExceptionalRunnable {
-    public void run() throws Throwable;
+public interface ExceptionalRunnable extends Runnable {
+    public void runExceptionally() throws Throwable;
 
-    public default Runnable uncheck() {
-        return () -> {
-            try {
-                run();
-            } catch (Throwable ex) {
-                FunctionalHelper.sneakyThrow(ex);
-            }
-        };
+    @Override
+    public default void run() {
+        try {
+            runExceptionally();
+        } catch (Throwable ex) {
+            FunctionalHelper.sneakyThrow(ex);
+        }
     }
 
     public default <T> ExceptionalSupplier<T> supply() {

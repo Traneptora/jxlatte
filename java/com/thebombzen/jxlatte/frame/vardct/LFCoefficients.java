@@ -17,8 +17,10 @@ public class LFCoefficients {
     public final int extraPrecision;
     public final ModularStream lfQuant;
     public final double[][][] dequantLFCoeff;
+    public final Frame frame;
 
     public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
+        this.frame = frame;
         if ((frame.getFrameHeader().flags & FrameFlags.USE_LF_FRAME) != 0) {
             System.err.println("TODO: Implement LF Frames");
             throw new UnsupportedOperationException("LF Frames currently not implemented");
@@ -37,7 +39,7 @@ public class LFCoefficients {
                 throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
             IntPoint channelSize = lfSize.shiftLeft(-hshift, -vshift);
             info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, hshift, vshift);
-            dequantLFCoeff[Frame.cMap[i]] = new double[channelSize.y][channelSize.x];
+            dequantLFCoeff[i] = new double[channelSize.y][channelSize.x];
         }
         this.lfQuant = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
         lfQuant.decodeChannels(reader);
@@ -46,7 +48,7 @@ public class LFCoefficients {
         for (int i = 0; i < 3; i++) {
             for (int y = 0; y < quant[i].length; y++) {
                 for (int x = 0; x < quant[i][y].length; x++) {
-                    dequantLFCoeff[i][y][x] = quant[i][y][x] * scaledDequant[Frame.cMap[i]] / (1 << extraPrecision);
+                    dequantLFCoeff[Frame.cMap[i]][y][x] = quant[i][y][x] * scaledDequant[Frame.cMap[i]] / (1 << extraPrecision);
                 }
             }
         }
@@ -108,6 +110,15 @@ public class LFCoefficients {
                         + weighted[i][y][x];
                 }
             }
+        }
+        if (IntPoint.sizeOf(coeff[0]).equals(IntPoint.sizeOf(coeff[1]))) {
+            LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
+            double kX = lfc.baseCorrelationX + (lfc.xFactorLF - 127D) / (double)lfc.colorFactor;
+            double kB = lfc.baseCorrelationB + (lfc.bFactorLF - 127D) / (double)lfc.colorFactor;
+            IntPoint.iterate(IntPoint.sizeOf(dequantLFCoeff[1]), (x, y) -> {
+                dequantLFCoeff[0][y][x] += kX * dequantLFCoeff[1][y][x];
+                dequantLFCoeff[2][y][x] += kB * dequantLFCoeff[1][y][x];
+            });
         }
         return dequantLFCoeff;
     }

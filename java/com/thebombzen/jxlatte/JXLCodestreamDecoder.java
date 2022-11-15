@@ -17,6 +17,7 @@ import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
@@ -165,8 +166,20 @@ public class JXLCodestreamDecoder {
     }
 
     public void performColorTransforms(OpsinInverseMatrix matrix, Frame frame) {
+        double[][][] frameBuffer = frame.getBuffer();
         if (matrix != null) {
-            matrix.invertXYB(frame.getBuffer(), imageHeader.getToneMapping().intensityTarget);
+            matrix.invertXYB(frameBuffer, imageHeader.getToneMapping().intensityTarget);
+        }
+
+        if (frame.getFrameHeader().doYCbCr) {
+            IntPoint.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
+                double yh = frameBuffer[1][y][x] + 0.5D;
+                double cb = frameBuffer[0][y][x];
+                double cr = frameBuffer[2][y][x];
+                frameBuffer[0][y][x] = yh + 1.402D * cr;
+                frameBuffer[1][y][x] = yh - 0.344136D * cb - 0.714136D * cr;
+                frameBuffer[2][y][x] = yh + 1.772 * cb;
+            });
         }
     }
 

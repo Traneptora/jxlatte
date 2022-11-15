@@ -2,6 +2,7 @@ package com.thebombzen.jxlatte.util;
 
 import java.util.stream.Stream;
 
+import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntTriConsumer;
 
@@ -17,38 +18,6 @@ public class IntPoint {
 
     public static IntPoint coordinates(int index, int rowStride) {
         return new IntPoint(index % rowStride, index / rowStride);
-    }
-
-    public static IntPoint min(IntPoint p1, IntPoint p2) {
-        return new IntPoint(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y));
-    }
-
-    public static IntPoint max(IntPoint p1, IntPoint p2) {
-        return new IntPoint(Math.max(p1.x, p2.x), Math.max(p1.y, p2.y));
-    }
-
-    public static double get(double[][] array, IntPoint pos) {
-        return array[pos.y][pos.x];
-    }
-
-    public static int get(int[][] array, IntPoint pos) {
-        return array[pos.y][pos.x];
-    }
-
-    public static <T> T get(T[][] array, IntPoint pos) {
-        return array[pos.y][pos.x];
-    }
-
-    public static void set(double[][] array, IntPoint pos, double value) {
-        array[pos.y][pos.x] = value;
-    }
-
-    public static void set(int[][] array, IntPoint pos, int value) {
-        array[pos.y][pos.x] = value;
-    }
-
-    public static <T> void set(T[][] array, IntPoint pos, T value) {
-        array[pos.y][pos.x] = value;
     }
 
     public static IntPoint sizeOf(double[][] array) {
@@ -97,6 +66,18 @@ public class IntPoint {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 func.consume(x, y);
+            }
+        }
+    }
+
+    public static void iterate(IntPoint size, ExceptionalConsumer<? super IntPoint> func) {
+        iterate(size.x, size.y, func);
+    }
+
+    public static void iterate(int width, int height, ExceptionalConsumer<? super IntPoint> func) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                func.accept(new IntPoint(x, y));
             }
         }
     }
@@ -221,6 +202,41 @@ public class IntPoint {
 
     public int unwrapCoord(int rowStride) {
         return y * rowStride + x;
+    }
+
+    public int get(int[][] array) {
+        return array[y][x];
+    }
+
+    public double get(double[][] array) {
+        return array[y][x];
+    }
+
+    public <T> T get(T[][] array) {
+        return array[y][x];
+    }
+
+    public IntPoint set(int[][] array, int value) {
+        array[y][x] = value;
+        return this;
+    }
+
+    public IntPoint set(double[][] array, double value) {
+        array[y][x] = value;
+        return this;
+    }
+
+    public <T> IntPoint set(T[][] array, T value) {
+        array[y][x] = value;
+        return this;
+    }
+
+    public IntPoint min(IntPoint p) {
+        return new IntPoint(Math.min(x, p.x), Math.min(y, p.y));
+    }
+
+    public IntPoint max(IntPoint p) {
+        return new IntPoint(Math.max(x, p.x), Math.max(y, p.y));
     }
 
     @Override

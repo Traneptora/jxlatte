@@ -55,7 +55,7 @@ public class HFGlobal {
     private static double[][] getDCTQuantWeights(int width, int height, double[] params) {
         double[] bands = new double[params.length];
         bands[0] = params[0];
-        for (int i = 1; i < params.length; i++) {
+        for (int i = 1; i < bands.length; i++) {
             bands[i] = bands[i - 1] * quantMult(params[i]);
         }
         double[][] weights = new double[height][width];
@@ -316,7 +316,7 @@ public class HFGlobal {
 
     private void generateWeights(int index) throws InvalidBitstreamException {
         TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == index).findFirst().get();
+                    .filter(t -> t.parameterIndex == index && !t.isHorizontal()).findFirst().get();
         for (int i = 0; i < 3; i++) {
             final int c = i;
             double[][] w;
@@ -372,12 +372,13 @@ public class HFGlobal {
                 case TransformType.MODE_RAW:
                     weights[index][c] = new double[tt.matrixHeight][tt.matrixWidth];
                     IntPoint.iterate(tt.matrixWidth, tt.matrixHeight, (x, y) -> {
-                        weights[index][c][y][x] = params[index].param[c][y * tt.matrixWidth + x]
-                            / params[index].denominator;
+                        // SPEC: spec has the wrong params here
+                        weights[index][c][y][x] = 1D / (params[index].param[c][y * tt.matrixWidth + x]
+                            * params[index].denominator);
                     });
                     break;
                 default:
-                    throw new UnsupportedOperationException("Challenge complete how did we get here");
+                    throw new IllegalStateException("Challenge complete how did we get here");
             }
             IntPoint.iterate(tt.matrixWidth, tt.matrixHeight, (x, y) -> {
                 if (weights[index][c][y][x] <= 0D || !Double.isFinite(weights[index][c][y][x]))

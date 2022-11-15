@@ -9,6 +9,21 @@ public final class MathHelper {
     public static final double SQRT_H = StrictMath.sqrt(0.5D);
     public static final double SQRT_F = StrictMath.sqrt(0.125D);
 
+    // s, n, k
+    private static double[][][] cosineLut = new double[9][][];
+
+    static {
+        for (int l = 0; l < cosineLut.length; l++) {
+            int s = 1 << l;
+            cosineLut[l] = new double[s - 1][s];
+            for (int n = 0; n < cosineLut[l].length; n++) {
+                for (int k = 0; k < cosineLut[l][n].length; k++) {
+                    cosineLut[l][n][k] = SQRT_2 * StrictMath.cos(Math.PI * (n + 1) * (k + 0.5D) / s);
+                }
+            }
+        }
+    }
+
     private MathHelper() {
 
     }
@@ -49,6 +64,99 @@ public final class MathHelper {
         if (z < 0)
             return -absErf;
         return absErf;
+    }
+
+    public static void inverseDCTHorizontal(double[][] src, int yIn, int xStartIn,
+            double[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
+        for (int x = 0; x < xLength; x++) {
+            dest[yOut][xStartOut + x] = src[yIn][xStartIn];
+        }
+        for (int k = 0; k < xLength; k++) {
+            for (int n = 1; n < xLength; n++) {
+                dest[yOut][xStartOut + k] += src[yIn][xStartIn + n] * cosineLut[xLogLength][n - 1][k];
+            }
+        }
+    }
+
+    public static void forwardDCTHorizontal(double[][] src, int yIn, int xStartIn,
+            double[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
+        double invLength = 1D / xLength;
+        for (int x = 0; x < xLength; x++) {
+            dest[yOut][xStartOut] += src[yIn][xStartIn + x];
+        }
+        dest[yOut][xStartOut] *= invLength;
+        for (int k = 1; k < xLength; k++) {
+            for (int n = 0; n < xLength; n++) {
+                dest[yOut][xStartOut + k] += src[yIn][xStartIn + n] * cosineLut[xLogLength][k - 1][n];
+            }
+            dest[yOut][xStartOut + k] *= invLength;
+        }
+    }
+
+    public static void inverseDCTVertical(double[][] src, int xIn, int yStartIn,
+            double[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
+        for (int y = 0; y < yLength; y++) {
+            dest[yStartOut + y][xOut] = src[yStartIn][xIn];
+        }
+        for (int k = 0; k < yLength; k++) {
+            for (int n = 1; n < yLength; n++) {
+                dest[yStartOut + k][xOut] += src[yStartIn + n][xIn] * cosineLut[yLogLength][n - 1][k];
+            }
+        }
+    }
+
+    public static void forwardDCTVertical(double[][] src, int xIn, int yStartIn,
+        double[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
+        double invLength = 1D / yLength;
+        for (int y = 0; y < yLength; y++) {
+            dest[yStartOut][xOut] += src[yStartIn + y][xIn];
+        }
+        dest[yStartOut][xOut] *= invLength;
+        for (int k = 1; k < yLength; k++) {
+            for (int n = 0; n < yLength; n++) {
+                dest[yStartOut + k][xOut] += src[yStartIn + n][xIn] * cosineLut[yLogLength][k - 1][n];
+            }
+            dest[yStartOut + k][xOut] *= invLength;
+        }
+    }
+
+    public static void inverseDCT2D(double[][] src, double[][] dest, int xStartIn, int xStartOut, int xLength, int yStartIn, int yStartOut, int yLength) {
+        int xLogLength = ceilLog2(xLength);
+        int yLogLength = ceilLog2(yLength);
+        double[][] temp = new double[yLength][xLength];
+        for (int x = 0; x < xLength; x++) {
+            inverseDCTVertical(src, xStartIn + x, yStartIn, temp, x, 0, yLogLength, yLength);
+        }
+        for (int y = 0; y < yLength; y++) {
+            inverseDCTHorizontal(temp, y, 0, dest, yStartOut + y, xStartOut, xLogLength, xLength);
+        }
+    }
+
+    public static void forwardDCT2D(double[][] src, double[][] dest, int xStartIn, int xStartOut, int xLength, int yStartIn, int yStartOut, int yLength) {
+        int xLogLength = ceilLog2(xLength);
+        int yLogLength = ceilLog2(yLength);
+        double[][] temp = new double[yLength][xLength];
+        for (int x = 0; x < xLength; x++) {
+            forwardDCTVertical(src, xStartIn + x, yStartIn, temp, x, 0, yLogLength, yLength);
+        }
+        for (int y = 0; y < yLength; y++) {
+            forwardDCTHorizontal(temp, y, 0, dest, yStartOut + y, xStartOut, xLogLength, xLength);
+        }
+    }
+
+    public static void transposeMatrixInto(double[][] matrix, double[][] result) {
+        IntPoint.iterate(IntPoint.sizeOf(result), (x, y) -> {
+            result[y][x] = matrix[x][y];
+        });
+    }
+
+    public static double[][] transposeMatrix(double[][] matrix) {
+        IntPoint newSize = IntPoint.sizeOf(matrix).transpose();
+        double[][] newMatrix = new double[newSize.y][newSize.x];
+        IntPoint.iterate(newSize, (x, y) -> {
+            newMatrix[y][x] = matrix[x][y];
+        });
+        return newMatrix;
     }
 
     /**
