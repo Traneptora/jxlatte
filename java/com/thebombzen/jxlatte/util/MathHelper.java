@@ -120,27 +120,27 @@ public final class MathHelper {
         }
     }
 
-    public static void inverseDCT2D(double[][] src, double[][] dest, int xStartIn, int xStartOut, int xLength, int yStartIn, int yStartOut, int yLength) {
-        int xLogLength = ceilLog2(xLength);
-        int yLogLength = ceilLog2(yLength);
-        double[][] temp = new double[yLength][xLength];
-        for (int x = 0; x < xLength; x++) {
-            inverseDCTVertical(src, xStartIn + x, yStartIn, temp, x, 0, yLogLength, yLength);
+    public static void inverseDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length) {
+        int xLogLength = ceilLog2(length.x);
+        int yLogLength = ceilLog2(length.y);
+        double[][] temp = new double[length.y][length.x];
+        for (int x = 0; x < length.x; x++) {
+            inverseDCTVertical(src, startIn.x + x, startIn.y, temp, x, 0, yLogLength, length.y);
         }
-        for (int y = 0; y < yLength; y++) {
-            inverseDCTHorizontal(temp, y, 0, dest, yStartOut + y, xStartOut, xLogLength, xLength);
+        for (int y = 0; y < length.y; y++) {
+            inverseDCTHorizontal(temp, y, 0, dest, startOut.y + y, startOut.x, xLogLength, length.x);
         }
     }
 
-    public static void forwardDCT2D(double[][] src, double[][] dest, int xStartIn, int xStartOut, int xLength, int yStartIn, int yStartOut, int yLength) {
-        int xLogLength = ceilLog2(xLength);
-        int yLogLength = ceilLog2(yLength);
-        double[][] temp = new double[yLength][xLength];
-        for (int x = 0; x < xLength; x++) {
-            forwardDCTVertical(src, xStartIn + x, yStartIn, temp, x, 0, yLogLength, yLength);
+    public static void forwardDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length) {
+        int xLogLength = ceilLog2(length.x);
+        int yLogLength = ceilLog2(length.y);
+        double[][] temp = new double[length.y][length.x];
+        for (int x = 0; x < length.x; x++) {
+            forwardDCTVertical(src, startIn.x + x, startIn.y, temp, x, 0, yLogLength, length.y);
         }
-        for (int y = 0; y < yLength; y++) {
-            forwardDCTHorizontal(temp, y, 0, dest, yStartOut + y, xStartOut, xLogLength, xLength);
+        for (int y = 0; y < length.y; y++) {
+            forwardDCTHorizontal(temp, y, 0, dest, startOut.y + y, startOut.x, xLogLength, length.x);
         }
     }
 

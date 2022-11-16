@@ -8,6 +8,7 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
 import com.thebombzen.jxlatte.frame.vardct.TransformType;
+import com.thebombzen.jxlatte.frame.vardct.Varblock;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -41,36 +42,22 @@ public class PassGroup {
                 coeffs[c][y][x] += prev.hfCoefficients.dequantHFCoeff[c][y][x];
             });
         }
-        int groupBlockDim = frame.getFrameHeader().groupDim >> 3;
-        LFGroup lfg = frame.getLFGroupForGroup(groupID);
-        IntPoint groupFrameBlockOrigin = frame.groupXY(groupID).times(groupBlockDim);
-        IntPoint groupFrameOrigin = groupFrameBlockOrigin.shiftLeft(3);
-        IntPoint groupLFBlockOrigin = frame.groupPosInLFGroup(lfg.lfGroupID, groupID).times(groupBlockDim);
-        for (IntPoint blockPosBase : lfg.hfMetadata.blockList) {
-            IntPoint blockPosBaseGroup = blockPosBase.minus(groupLFBlockOrigin);
-            IntPoint blockPosBaseInGroup = blockPosBaseGroup.shiftLeft(3);
-            if (blockPosBaseGroup.x >= groupBlockDim || blockPosBaseGroup.y >= groupBlockDim)
-                continue; // this block is not in this group
-            if (blockPosBaseGroup.x < 0 || blockPosBaseGroup.y < 0)
-                continue; // this block is not in this group
-            IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        for (Varblock varblock : hfCoefficients.varblocks) {
             for (int c : Frame.cMap) {
-                IntPoint blockPos = blockPosBase.shiftRight(shift[c]);
-                if (!blockPos.shiftLeft(shift[c]).equals(blockPosBase))
-                    continue; // subsampled block
-                IntPoint blockPosInGroup = blockPosBaseInGroup.shiftRight(shift[c]);
-                IntPoint blockPosInFrame = blockPosInGroup.plus(groupFrameOrigin.shiftRight(shift[c]));
-                TransformType tt = blockPos.get(lfg.hfMetadata.dctSelect);
+                if (!varblock.isCorner(shift[c]))
+                    continue;
+                TransformType tt = varblock.transformType();
+                IntPoint pixelPosInFrame = varblock.pixelPosInFrame.shiftRight(shift[c]);
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:
-                        MathHelper.inverseDCT2D(coeffs[c], frameBuffer[c], blockPosInGroup.x, blockPosInFrame.x,
-                            tt.blockWidth, blockPosInGroup.y, blockPosInFrame.y, tt.blockHeight);
+                        MathHelper.inverseDCT2D(coeffs[c], frameBuffer[c], varblock.pixelPosInGroup, pixelPosInFrame, varblock.sizeInPixels());
                         if (!tt.isHorizontal()) {
                             IntPoint.iterate(tt.getBlockSize(), (p) -> {
                                 if (p.x <= p.y)
                                     return;
-                                IntPoint pos = blockPosInFrame.plus(p);
-                                IntPoint transPos = blockPosInFrame.plus(p.transpose());
+                                IntPoint pos = pixelPosInFrame.plus(p);
+                                IntPoint transPos = pixelPosInFrame.plus(p.transpose());
                                 double tmp = pos.get(frameBuffer[c]);
                                 pos.set(frameBuffer[c], transPos.get(frameBuffer[c]));
                                 transPos.set(frameBuffer[c], tmp);

@@ -1,6 +1,8 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
@@ -42,6 +44,7 @@ public class HFCoefficients {
     public final double[][][] dequantHFCoeff;
     public final EntropyStream stream;
     public final Frame frame;
+    public final Varblock[] varblocks;
 
     public HFCoefficients(Bitreader reader, Frame frame, int pass, int group) throws IOException {
         hfPreset = reader.readBits(MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1));
@@ -53,41 +56,37 @@ public class HFCoefficients {
         HFPass hfPass = frame.getHFPass(pass);
         IntPoint groupSize = frame.groupSize(group);
         IntPoint groupBlockSize = groupSize.shiftRight(3);
-        int groupBlockDim = frame.getFrameHeader().groupDim >> 3;
+        int groupBlockDim = frame.getGroupBlockDim();
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
         int[][][] coeffs = new int[3][groupSize.y][groupSize.x];
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         stream = new EntropyStream(hfPass.contextStream);
+        List<Varblock> varBlockList = new ArrayList<>();
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
-            IntPoint blockPosBase = lfg.hfMetadata.blockList[i];
-            IntPoint blockPosBaseGroup = blockPosBase.minus(frame.groupPosInLFGroup(lfg.lfGroupID, groupID).times(groupBlockDim));
-            IntPoint blockPosInGroup = blockPosBaseGroup.shiftLeft(3);
-            if (blockPosBaseGroup.x >= groupBlockDim || blockPosBaseGroup.y >= groupBlockDim)
-                continue; // this block is not in this group
-            if (blockPosBaseGroup.x < 0 || blockPosBaseGroup.y < 0)
-                continue; // this block is not in this group
+            Varblock varblock = new Varblock(lfg, lfg.hfMetadata.blockList[i]);
+            if (!varblock.groupPosInLFGroup.equals(frame.groupPosInLFGroup(lfg.lfGroupID, groupID)))
+                continue; // block is not in this group
+            varBlockList.add(varblock);
             for (int c : Frame.cMap) {
-                IntPoint blockPos = blockPosBase.shiftRight(shift[c]);
-                if (!blockPos.shiftLeft(shift[c]).equals(blockPosBase))
+                if (!varblock.isCorner(shift[c]))
                     continue; // subsampled block
-                IntPoint blockPosGroup = blockPosBaseGroup.shiftRight(shift[c]);
-                TransformType tt = lfg.hfMetadata.dctSelect[blockPos.y][blockPos.x];
-                int w = tt.blockWidth;
-                int h = tt.blockHeight;
-                int numBlocks = (w / 8) * (h / 8);
-                int predicted = getPredictedNonZeroes(c, blockPosGroup);
-                int lfIndex = lfg.lfIndex[blockPosBase.y][blockPosBase.x];
-                int blockCtx = getBlockContext(c, blockPos, lfIndex);
+                IntPoint sizeInBlocks = varblock.sizeInBlocks();
+                int numBlocks = sizeInBlocks.x * sizeInBlocks.y;
+                int predicted = getPredictedNonZeroes(c, varblock.blockPosInGroup.shiftRight(shift[c]));
+                int lfIndex = varblock.blockPosInLFGroup.get(lfg.lfIndex);
+                int blockCtx = getBlockContext(c, varblock, lfIndex);
                 int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
                 int nonZeroRead = stream.readSymbol(reader, nonZeroCtx);
-                IntPoint.iterate(w / 8, h / 8, (x, y) -> {
-                    nonZeroes[c][y + blockPosGroup.y][x + blockPosGroup.x] = (nonZeroRead + numBlocks - 1) / numBlocks;
+                IntPoint.iterate(sizeInBlocks, (p) -> {
+                    varblock.blockPosInGroup.shiftRight(shift[c]).plus(p).set(nonZeroes[c],
+                        (nonZeroRead + numBlocks - 1) / numBlocks);
                 });
                 int nonZero = nonZeroRead;
                 // SPEC: spec doesn't say you abort here if nonZero == 0
                 if (nonZero <= 0) {
                     continue;
                 }
+                TransformType tt = varblock.transformType();
                 int size = hfPass.order[tt.orderID][c].length;
                 int[] ucoeff = new int[size - numBlocks];
                 int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
@@ -98,7 +97,7 @@ public class HFCoefficients {
                     ucoeff[k] = stream.readSymbol(reader, ctx);
                     IntPoint orderPos = hfPass.order[tt.orderID][c][k + numBlocks];
                     // SPEC: spec doesn't mention the transpose requirement
-                    IntPoint pos = blockPosInGroup.plus(tt.isHorizontal() ? orderPos.transpose() : orderPos);
+                    IntPoint pos = varblock.pixelPosInGroup.plus(tt.isHorizontal() ? orderPos.transpose() : orderPos);
                     coeffs[c][pos.y][pos.x] = MathHelper.unpackSigned(ucoeff[k]);
                     if (ucoeff[k] != 0)
                         nonZero--;
@@ -112,6 +111,7 @@ public class HFCoefficients {
         }
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
+        this.varblocks = varBlockList.stream().toArray(Varblock[]::new);
 
         this.dequantHFCoeff = dequantizeHFCoefficients(coeffs);
 
@@ -120,18 +120,12 @@ public class HFCoefficients {
             LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
             int[][] xFactorHF = lfg.hfMetadata.hfStream.getDecodedBuffer()[0];
             int[][] bFactorHF = lfg.hfMetadata.hfStream.getDecodedBuffer()[1];
-            for (IntPoint blockPos : lfg.hfMetadata.blockList) {
-                IntPoint varblockPosInGroup = getVarblockPosInGroup(blockPos);
-                if (varblockPosInGroup.x >= frame.getFrameHeader().groupDim
-                        || varblockPosInGroup.y >= frame.getFrameHeader().groupDim)
-                    continue; // this block is not in this group
-                if (varblockPosInGroup.x < 0 || varblockPosInGroup.y < 0)
-                    continue; // this block is not in this group
-                IntPoint.iterate(blockPos.get(lfg.hfMetadata.dctSelect).getBlockSize(), (pos) -> {
-                    IntPoint factorPos = frame.groupPosInLFGroup(lfg.lfGroupID, groupID)
-                        .times(frame.getFrameHeader().groupDim).plus(pos).divide(64);
+            for (Varblock varblock : varblocks) {
+                IntPoint.iterate(varblock.sizeInPixels(), (pixelPosInVarblock) -> {
+                    IntPoint factorPos = varblock.pixelPosInLFGroup.plus(pixelPosInVarblock).divide(64);
                     double kX = lfc.baseCorrelationX + factorPos.get(xFactorHF) / (double)lfc.colorFactor;
                     double kB = lfc.baseCorrelationB + factorPos.get(bFactorHF) / (double)lfc.colorFactor;
+                    IntPoint pos = varblock.pixelPosInGroup.plus(pixelPosInVarblock);
                     double dequantY = pos.get(dequantHFCoeff[1]);
                     double dequantX = pos.get(dequantHFCoeff[0]);
                     double dequantB = pos.get(dequantHFCoeff[2]);
@@ -142,35 +136,26 @@ public class HFCoefficients {
         }
 
         // put the LF coefficients into the HF coefficent array
-        for (IntPoint blockPosBase : lfg.hfMetadata.blockList) {
-            IntPoint varblockPosInGroup = getVarblockPosInGroup(blockPosBase);
-            if (varblockPosInGroup.x >= frame.getFrameHeader().groupDim
-                    || varblockPosInGroup.y >= frame.getFrameHeader().groupDim)
-                continue; // this block is not in this group
-            if (varblockPosInGroup.x < 0 || varblockPosInGroup.y < 0)
-                continue; // this block is not in this group
-            for (int c = 0; c < 3; c++) {
-                IntPoint blockPos = blockPosBase.shiftRight(shift[c]);
-                overlayLFCoeffs(c, blockPos, varblockPosInGroup.shiftRight(shift[c]));
+        for (Varblock varblock : varblocks) {
+            for (int c : Frame.cMap) {
+                if (!varblock.isCorner(shift[c]))
+                    continue;
+                MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], dequantHFCoeff[c],
+                    varblock.blockPosInLFGroup.shiftRight(shift[c]),
+                    varblock.pixelPosInGroup, varblock.sizeInBlocks());
+                IntPoint.iterate(varblock.sizeInBlocks(), (p) -> {
+                    IntPoint pos = varblock.pixelPosInGroup.plus(p);
+                    dequantHFCoeff[c][pos.y][pos.x] *= varblock.transformType().llfScale;
+                });
             }
         }
     }
 
-    public void overlayLFCoeffs(int c, IntPoint blockPos, IntPoint blockPosInGroup) {
-        TransformType tt = blockPos.get(lfg.hfMetadata.dctSelect);
-        MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], dequantHFCoeff[c], blockPos.x,
-            blockPosInGroup.x, tt.blockWidth / 8, blockPos.y, blockPosInGroup.y, tt.blockHeight / 8);
-        IntPoint.iterate(tt.getBlockSize(), (p) -> {
-            IntPoint pos = blockPosInGroup.plus(p);
-            dequantHFCoeff[c][pos.y][pos.x] *= tt.llfScale;
-        });
-    }
-
-    private int getBlockContext(int c, IntPoint blockPos, int lfIndex) {
-        int s = lfg.hfMetadata.dctSelect[blockPos.y][blockPos.x].orderID;
+    private int getBlockContext(int c, Varblock varblock, int lfIndex) {
+        int s = varblock.transformType().orderID;
         int idx = (c < 2 ? 1 - c : c) * 13 + s;
         idx *= hfctx.qfThresholds.length + 1;
-        int qf = lfg.hfMetadata.hfMultiplier[blockPos.y][blockPos.x];
+        int qf = varblock.hfMult();
         for (int t : hfctx.qfThresholds) {
             if (qf > t)
                 idx++;
@@ -204,11 +189,6 @@ public class HFCoefficients {
         return (nonZeroes[c][pos.y - 1][pos.x] + nonZeroes[c][pos.y][pos.x - 1] + 1) >> 1;
     }
 
-    private IntPoint getVarblockPosInGroup(IntPoint varblockCorner) {
-        return varblockCorner.shiftLeft(3)
-            .minus(frame.groupPosInLFGroup(lfg.lfGroupID, groupID).times(frame.getFrameHeader().groupDim));
-    }
-
     private double[][][] dequantizeHFCoefficients(int[][][] coeffs) {
         OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
         double[][][] dequant = new double[3][coeffs[0].length][coeffs[0][0].length];
@@ -219,31 +199,22 @@ public class HFCoefficients {
         };
         double[][][][] weights = frame.getHFGlobal().weights;
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
-        for (IntPoint varblockPosBase : lfg.hfMetadata.blockList) {
-            IntPoint varblockPosInGroup = getVarblockPosInGroup(varblockPosBase);
-            if (varblockPosInGroup.x >= frame.getFrameHeader().groupDim
-                    || varblockPosInGroup.y >= frame.getFrameHeader().groupDim)
-                continue; // this block is not in this group
-            if (varblockPosInGroup.x < 0 || varblockPosInGroup.y < 0)
-                continue; // this block is not in this group
+        for (Varblock varblock : varblocks) {
             for (int c : Frame.cMap) {
-                IntPoint varblockPos = varblockPosBase.shiftRight(shift[c]);
-                if (!varblockPos.shiftLeft(shift[c]).equals(varblockPos))
-                    continue; // subsampled block
-                TransformType tt = varblockPos.get(lfg.hfMetadata.dctSelect);
-                int hfMultiplier = varblockPos.get(lfg.hfMetadata.hfMultiplier);
-                IntPoint.iterate(tt.getBlockSize(), (posInVarblock) -> {
-                    IntPoint posInGroup = varblockPosInGroup.plus(posInVarblock);
-                    int coeff = posInGroup.get(coeffs[c]);
+                if (!varblock.isCorner(shift[c]))
+                    continue;
+                IntPoint.iterate(varblock.sizeInPixels(), (pixelPosInVarblock) -> {
+                    IntPoint pixelPosInGroup = varblock.pixelPosInGroup.plus(pixelPosInVarblock);
+                    int coeff = pixelPosInGroup.get(coeffs[c]);
                     double quant;
                     if (Math.abs(coeff) <= 1)
                         quant = coeff * matrix.quantBias[Frame.cMap[c]];
                     else
                         quant = coeff - matrix.quantBiasNumerator / coeff;
-                    quant *= hfMultiplier * scaleFactor[c];
-                    IntPoint weightPos = tt.isHorizontal() ? posInVarblock.transpose() : posInVarblock;
-                    quant *= weightPos.get(weights[tt.parameterIndex][c]);
-                    posInGroup.set(dequant[c], quant);
+                    quant *= varblock.hfMult() * scaleFactor[c];
+                    IntPoint weightPos = varblock.isHorizontal() ? pixelPosInVarblock.transpose() : pixelPosInVarblock;
+                    quant *= weightPos.get(weights[varblock.transformType().parameterIndex][c]);
+                    pixelPosInGroup.set(dequant[c], quant);
                 });
             }
         }
