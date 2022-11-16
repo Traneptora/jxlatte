@@ -89,11 +89,9 @@ public class HFMetadata {
     }
 
     private IntPoint placeBlock(IntPoint lastBlock, TransformType block, int mul) throws InvalidBitstreamException {
-        for (; lastBlock.y < dctSelect.length; lastBlock.y++, lastBlock.x = 0) {
-            int y = lastBlock.y;
+        for (int y = lastBlock.y; y < dctSelect.length; y++) {
             outer:
-            for (; lastBlock.x < dctSelect[y].length; lastBlock.x++) {
-                int x = lastBlock.x;
+            for (int x = lastBlock.x; x < dctSelect[y].length; x++) {
                 // block too big, horizontally, to put here
                 if (block.dctSelectWidth + x > dctSelect[y].length)
                     continue;
@@ -115,6 +113,7 @@ public class HFMetadata {
                         blockMap.put(pos.plus(new IntPoint(ix, iy)), pos);
                     }
                 }
+                lastBlock = pos;
                 return pos;
             }
         }

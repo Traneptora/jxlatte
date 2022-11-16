@@ -40,19 +40,17 @@ public class SplinesBundle {
             controlCount[i] = 1 + stream.readSymbol(reader, 3);
             controlPoints[i] = new IntPoint[controlCount[i]];
             controlPoints[i][0] = new IntPoint(splinePos[i]);
-            int[] deltaX = new int[controlCount[i] - 1];
-            int[] deltaY = new int[controlCount[i] - 1];
+            IntPoint[] delta = new IntPoint[controlCount[i] - 1];
             for (int j = 0; j < controlCount[i] - 1; j++) {
-                deltaX[j] = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
-                deltaY[j] = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
+                int x = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
+                int y = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
+                delta[j] = new IntPoint(x, y);
             }
             IntPoint current = new IntPoint(controlPoints[i][0]);
-            IntPoint delta = new IntPoint();
+            IntPoint deltaPoint = new IntPoint();
             for (int j = 1; j < controlCount[i]; j++) {
-                delta.x += deltaX[j - 1];
-                delta.y += deltaY[j - 1];
-                current.x += delta.x;
-                current.y += delta.y;
+                deltaPoint = deltaPoint.plus(delta[j - 1]);
+                current = current.plus(deltaPoint);
                 controlPoints[i][j] = new IntPoint(current);
             }
         }

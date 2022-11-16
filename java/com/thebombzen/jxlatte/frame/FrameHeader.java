@@ -173,8 +173,7 @@ public class FrameHeader {
         width = MathHelper.ceilDiv(width, 1 << maxJPX) << maxJPX;
         height = MathHelper.ceilDiv(height, 1 << maxJPY) << maxJPY;
         for (int i = 0; i < 3; i++) {
-            jpegUpsampling[i].x = maxJPX - jpegUpsampling[i].x;
-            jpegUpsampling[i].y = maxJPY - jpegUpsampling[i].y;
+            jpegUpsampling[i] = new IntPoint(maxJPX, maxJPY).minus(jpegUpsampling[i]);
         }
     }
 }

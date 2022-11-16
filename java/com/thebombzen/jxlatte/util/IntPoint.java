@@ -10,8 +10,8 @@ import com.thebombzen.jxlatte.util.functional.ExceptionalIntTriConsumer;
  * A mutable pair of coordinates
  */
 public class IntPoint {
-    public int x;
-    public int y;
+    public final int x;
+    public final int y;
 
     public static final IntPoint ZERO = new IntPoint();
     public static final IntPoint ONE = new IntPoint(1, 1);

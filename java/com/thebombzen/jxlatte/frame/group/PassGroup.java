@@ -43,10 +43,11 @@ public class PassGroup {
         }
         int groupBlockDim = frame.getFrameHeader().groupDim >> 3;
         LFGroup lfg = frame.getLFGroupForGroup(groupID);
-        IntPoint groupBlockOrigin = frame.groupXY(groupID).times(groupBlockDim);
-        IntPoint groupOrigin = groupBlockOrigin.shiftLeft(3);
+        IntPoint groupFrameBlockOrigin = frame.groupXY(groupID).times(groupBlockDim);
+        IntPoint groupFrameOrigin = groupFrameBlockOrigin.shiftLeft(3);
+        IntPoint groupLFBlockOrigin = frame.groupPosInLFGroup(lfg.lfGroupID, groupID).times(groupBlockDim);
         for (IntPoint blockPosBase : lfg.hfMetadata.blockList) {
-            IntPoint blockPosBaseGroup = blockPosBase.minus(groupBlockOrigin);
+            IntPoint blockPosBaseGroup = blockPosBase.minus(groupLFBlockOrigin);
             IntPoint blockPosBaseInGroup = blockPosBaseGroup.shiftLeft(3);
             if (blockPosBaseGroup.x >= groupBlockDim || blockPosBaseGroup.y >= groupBlockDim)
                 continue; // this block is not in this group
@@ -58,7 +59,7 @@ public class PassGroup {
                 if (!blockPos.shiftLeft(shift[c]).equals(blockPosBase))
                     continue; // subsampled block
                 IntPoint blockPosInGroup = blockPosBaseInGroup.shiftRight(shift[c]);
-                IntPoint blockPosInFrame = blockPosInGroup.plus(groupOrigin.shiftRight(shift[c]));
+                IntPoint blockPosInFrame = blockPosInGroup.plus(groupFrameOrigin.shiftRight(shift[c]));
                 TransformType tt = blockPos.get(lfg.hfMetadata.dctSelect);
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:

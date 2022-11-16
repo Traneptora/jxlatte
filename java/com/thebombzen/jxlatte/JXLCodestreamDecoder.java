@@ -382,7 +382,6 @@ public class JXLCodestreamDecoder {
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = new Frame(storage);
         }
-
         return new JXLImage(storage.getBuffer(), imageHeader);
     }
 }

@@ -438,6 +438,34 @@ public class Frame {
     }
 
     public void upsample() {
+        for (int c = 0; c < 3; c++) {
+            int xShift = header.jpegUpsampling[c].x;
+            int yShift = header.jpegUpsampling[c].y;
+            while (xShift-- > 0) {
+                double[][] newBuffer = new double[buffer[c].length][];
+                for (int y = 0; y < buffer[c].length; y++) {
+                    newBuffer[y] = new double[2 * buffer[c][y].length];
+                    for (int x = 0; x < buffer[c][y].length; x++) {
+                        double b75 = 0.75D * buffer[c][y][x];
+                        newBuffer[y][2*x] = b75 + 0.25D * buffer[c][y][Math.max(0, x - 1)];
+                        newBuffer[y][2*x + 1] = b75 + 0.25D * buffer[c][y][Math.min(buffer[c][y].length - 1, x + 1)];
+                    }
+                }
+                buffer[c] = newBuffer;
+            }
+            while (yShift-- > 0) {
+                double[][] newBuffer = new double[2 * buffer[c].length][];
+                for (int y = 0; y < buffer[c].length; y++) {
+                    newBuffer[y] = new double[buffer[c][y].length];
+                    for (int x = 0; x < buffer[c][y].length; x++) {
+                        double b75 = 0.75D * buffer[c][y][x];
+                        newBuffer[2*y][x] = b75 + 0.25D * buffer[c][Math.max(0, y - 1)][x];
+                        newBuffer[2*y + 1][x] = b75 + 0.25D * buffer[c][Math.min(buffer[c].length - 1, y + 1)][x];
+                    }
+                }
+                buffer[c] = newBuffer;
+            }
+        }
         for (int c = 0; c < buffer.length; c++)
             buffer[c] = performUpsampling(buffer[c], c);
         header.width *= header.upsampling;
