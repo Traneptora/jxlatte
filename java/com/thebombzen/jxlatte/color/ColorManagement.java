@@ -100,7 +100,7 @@ public final class ColorManagement {
         }
 
         if (transfer < (1 << 24)) {
-            double gamma = 1e7D / transfer;
+            double gamma = transfer * 1e-7D;
             return f -> Math.pow(f, gamma);
         }
 
@@ -136,7 +136,7 @@ public final class ColorManagement {
         }
     
         if (transfer < (1 << 24)) {
-            double gamma = transfer * 1e-7D;
+            double gamma = 1e7D / transfer;
             return f -> MathHelper.signedPow(f, gamma);
         }
     
