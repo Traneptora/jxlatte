@@ -20,7 +20,7 @@ public class HFPass {
         for (int i = 0; i < 13; i++) {
             final int index = i;
             TransformType tt = Stream.of(TransformType.values())
-                .filter(t -> t.orderID == index && !t.isHorizontal()).findAny().get();
+                .filter(t -> t.orderID == index && !t.isVertical()).findAny().get();
             int ch = tt.blockHeight / 8;
             int cw = tt.blockWidth / 8;
 

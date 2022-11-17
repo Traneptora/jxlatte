@@ -33,10 +33,6 @@ public class Varblock {
         pixelPosInLFGroup = groupPosInLFGroup.times(lfGroup.frame.getFrameHeader().groupDim).plus(pixelPosInGroup);
     }
 
-    public boolean isHorizontal() {
-        return transformType().isHorizontal();
-    }
-
     public TransformType transformType() {
         return blockPosInLFGroup.get(lfGroup.hfMetadata.dctSelect);
     }
@@ -51,7 +47,7 @@ public class Varblock {
     }
 
     public IntPoint sizeInPixels() {
-        return transformType().getBlockSize();
+        return transformType().getPixelSize();
     }
 
     public boolean isCorner(IntPoint shift) {

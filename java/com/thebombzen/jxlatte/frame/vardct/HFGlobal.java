@@ -245,7 +245,7 @@ public class HFGlobal {
                 double den = reader.readF16();
                 // SPEC: do not zero pad to byte here
                 TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == index && !t.isHorizontal()).findFirst().get();
+                    .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
                 ModularChannelInfo[] info = new ModularChannelInfo[3];
                 info[0] = new ModularChannel(tt.matrixWidth, tt.matrixHeight, 0, 0);
                 info[1] = new ModularChannel(tt.matrixWidth, tt.matrixHeight, 0, 0);
@@ -316,7 +316,7 @@ public class HFGlobal {
 
     private void generateWeights(int index) throws InvalidBitstreamException {
         TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == index && !t.isHorizontal()).findFirst().get();
+                    .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
         for (int i = 0; i < 3; i++) {
             final int c = i;
             double[][] w;

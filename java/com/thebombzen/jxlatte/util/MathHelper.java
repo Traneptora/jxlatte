@@ -120,15 +120,14 @@ public final class MathHelper {
         }
     }
 
-    public static void inverseDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length) {
+    public static void inverseDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length, double[][] scratchSpace) {
         int xLogLength = ceilLog2(length.x);
         int yLogLength = ceilLog2(length.y);
-        double[][] temp = new double[length.y][length.x];
         for (int x = 0; x < length.x; x++) {
-            inverseDCTVertical(src, startIn.x + x, startIn.y, temp, x, 0, yLogLength, length.y);
+            inverseDCTVertical(src, startIn.x + x, startIn.y, scratchSpace, x, 0, yLogLength, length.y);
         }
         for (int y = 0; y < length.y; y++) {
-            inverseDCTHorizontal(temp, y, 0, dest, startOut.y + y, startOut.x, xLogLength, length.x);
+            inverseDCTHorizontal(scratchSpace, y, 0, dest, startOut.y + y, startOut.x, xLogLength, length.x);
         }
     }
 

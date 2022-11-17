@@ -74,27 +74,35 @@ public enum TransformType {
     public final int matrixHeight;
     public final int orderID;
     public final int transformMethod;
-    public final double llfScale;
+    public final double[][] llfScale;
 
-    public boolean isHorizontal() {
-        return this.blockWidth > this.blockHeight;
+    public boolean isVertical() {
+        return blockHeight > blockWidth;
     }
 
     public String toString() {
         return this.name;
     }
 
-    private double scaleF(int c, int b) {
-        double piSize = Math.PI * b;
-        return 1D / (Math.cos(piSize / (2 * c)) * Math.cos(piSize / c) * Math.cos(2D * piSize / c));
+    public boolean flip() {
+        return this.blockWidth == this.blockHeight;
     }
 
-    public IntPoint getBlockSize() {
+    private double scaleF(int c, int b) {
+        double piSize = Math.PI * c;
+        return 1D / (Math.cos(piSize / (2 * b)) * Math.cos(piSize / b) * Math.cos(2D * piSize / b));
+    }
+
+    public IntPoint getPixelSize() {
         return new IntPoint(blockWidth, blockHeight);
     }
 
+    public IntPoint getMatrixSize() {
+        return new IntPoint(matrixWidth, matrixHeight);
+    }
+
     private TransformType(String name, int type, int parameterIndex, int dctSelectHeight, int dctSelectWidth,
-            int blockHeight, int blockWidth, int matrixWidth, int matrixHeight, int orderID, int transformMethod) {
+            int blockHeight, int blockWidth, int matrixHeight, int matrixWidth, int orderID, int transformMethod) {
         this.name = name;
         this.type = type;
         this.parameterIndex = parameterIndex;
@@ -106,6 +114,9 @@ public enum TransformType {
         this.matrixHeight = matrixHeight;
         this.orderID = orderID;
         this.transformMethod = transformMethod;
-        this.llfScale = scaleF(blockHeight >> 3, blockHeight) * scaleF(blockWidth >> 3, blockWidth);
+        this.llfScale = new double[dctSelectHeight][dctSelectWidth];
+        IntPoint.iterate(dctSelectWidth, dctSelectHeight, (cx, cy) -> {
+            llfScale[cy][cx] = scaleF(cy, blockHeight) * scaleF(cx, blockWidth);
+        });
     }
 }
