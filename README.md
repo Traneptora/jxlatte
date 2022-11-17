@@ -34,6 +34,7 @@ TL;DR Supported features:
 - Anything in Modular Mode
   - All Lossless Images
   - All JXL Art
+  - All JPEG reconstructions
 
 Features currently implemented at this time:
 
@@ -58,19 +59,26 @@ Features currently implemented at this time:
     - RCT
     - Palette
     - Squeeze
-- VarDCT
+- VarDCT: DONE
   - HF Block Contexts
   - LF Channel Correlation
   - LF Coefficients
   - HF Metadata
   - HF Coefficients
+  - Transforms
+    - Inverse DCT
+    - Hornuss
+    - AFV
+    - Small DCTs
 - Image features: DONE
   - Upsampling
   - Patches
   - Splines
   - Noise Synthesis
-- Color transforms
+- Color transforms: DONE
   - XYB
+  - YCbCr
+  - JPEG Upsampling
 - Rendering: DONE
   - Frame Blending
   - Color Management
@@ -80,13 +88,7 @@ Features not yet supported at this time:
 
 - Image Header
   - ICC Profile decoding
-- VarDCT
-  - Inverse DCT
-  - AFV
-  - Hornuss
+  - Orientation
 - Restoration Filters
   - Gaborish
   - Edge Preserving Filter
-- Color transform
-  - JPEG Upsampling
-  - YCbCr
