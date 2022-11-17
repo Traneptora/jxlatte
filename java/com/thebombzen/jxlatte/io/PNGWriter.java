@@ -35,7 +35,7 @@ public class PNGWriter {
     }
 
     public PNGWriter(JXLImage image, int bitDepth) {
-        this(image, bitDepth, Deflater.BEST_SPEED);
+        this(image, bitDepth, Deflater.NO_COMPRESSION);
     }
 
     public PNGWriter(JXLImage image, int bitDepth, int deflateLevel) {

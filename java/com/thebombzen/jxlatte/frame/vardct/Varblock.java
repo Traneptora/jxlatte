@@ -50,6 +50,10 @@ public class Varblock {
         return transformType().getPixelSize();
     }
 
+    public boolean flip() {
+        return transformType().flip();
+    }
+
     public boolean isCorner(IntPoint shift) {
         return blockPosInLFGroup.shiftRight(shift).shiftLeft(shift).equals(blockPosInLFGroup);
     }

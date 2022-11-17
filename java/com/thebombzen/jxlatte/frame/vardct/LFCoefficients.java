@@ -11,6 +11,7 @@ import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFCoefficients {
@@ -53,13 +54,13 @@ public class LFCoefficients {
             }
         }
         if (adaptiveSmoothing) {
-            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant);
+            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant, header.jpegUpsampling);
         } else {
             this.dequantLFCoeff = dequantLFCoeff;
         }
     }
 
-    private double[][][] adaptiveSmooth(double[][][] coeff, double[] scaledDequant) {
+    private double[][][] adaptiveSmooth(double[][][] coeff, double[] scaledDequant, IntPoint[] shift) {
         double[][][] weighted = new double[3][][];
         double[][] gap = new double[coeff[0].length][];
         double[][][] dequantLFCoeff = new double[3][][];
@@ -111,14 +112,15 @@ public class LFCoefficients {
                 }
             }
         }
-        if (IntPoint.sizeOf(coeff[0]).equals(IntPoint.sizeOf(coeff[1]))) {
+        // chroma from luma
+        if (shift[0].plus(shift[1]).plus(shift[2]).equals(IntPoint.ZERO)) {
             LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
             double kX = lfc.baseCorrelationX + (lfc.xFactorLF - 127D) / (double)lfc.colorFactor;
             double kB = lfc.baseCorrelationB + (lfc.bFactorLF - 127D) / (double)lfc.colorFactor;
-            IntPoint.iterate(IntPoint.sizeOf(dequantLFCoeff[1]), (x, y) -> {
-                dequantLFCoeff[0][y][x] += kX * dequantLFCoeff[1][y][x];
-                dequantLFCoeff[2][y][x] += kB * dequantLFCoeff[1][y][x];
-            });
+            for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(dequantLFCoeff[1]))) {
+                dequantLFCoeff[0][p.y][p.x] += kX * dequantLFCoeff[1][p.y][p.x];
+                dequantLFCoeff[2][p.y][p.x] += kB * dequantLFCoeff[1][p.y][p.x];
+            }
         }
         return dequantLFCoeff;
     }

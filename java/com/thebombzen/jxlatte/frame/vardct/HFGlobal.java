@@ -11,6 +11,7 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -254,18 +255,20 @@ public class HFGlobal {
                 stream.decodeChannels(reader);
                 m = new double[3][tt.matrixWidth * tt.matrixHeight];
                 int[][][] b = stream.getDecodedBuffer();
-                IntPoint.iterate(3, IntPoint.sizeOf(b), (c, x, y) -> {
-                    m[c][y * tt.matrixWidth + x] = b[c][y][x];
-                });
+                for (int c = 0; c < 3; c++) {
+                    for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(b[c]))) {
+                        m[c][p.y * tt.matrixWidth + p.x] = b[c][p.y][p.x];
+                    }
+                }
                 params[index] = new DCTParams(new double[][]{}, m, encodingMode, den);
                 break;
             case TransformType.MODE_AFV:
                 m = new double[3][9];
-                IntPoint.iterate(9, 3, (x, y) -> {
-                    m[y][x] = reader.readF16();
-                    if (x < 6)
-                        m[y][x] *= 64D;
-                });
+                for (IntPoint p : FlowHelper.range2D(9, 3)) {
+                    m[p.y][p.x] = reader.readF16();
+                    if (p.x < 6)
+                        m[p.y][p.x] *= 64D;
+                }
                 double[][] d = readDCTParams(reader);
                 double[][] f = readDCTParams(reader);
                 params[index] = new DCTParams(d, m, f, encodingMode);
@@ -296,29 +299,29 @@ public class HFGlobal {
         weight[2][0] = params[index].param[c][2];
         weight[0][2] = params[index].param[c][3];
         weight[2][2] = params[index].param[c][4];
-        IntPoint.iterate(new IntPoint(4), (x, y) -> {
-            if (x < 2 && y < 2)
-                return;
-            weight[2 * y][2 * x] = interpolate(afvFreqs[y * 4 + x] - low, high - low + 1e-6D, bands);
-        });
-        IntPoint.iterate(new IntPoint(8, 4), (x, y) -> {
-            if (x == 0 && y == 0)
-                return;
-            weight[2 * y + 1][x] = weights4x8[y][x];
-        });
-        IntPoint.iterate(new IntPoint(4), (x, y) -> {
-            if (x == 0 && y == 0)
-                return;
-            weight[2 * y][2 * x + 1] = weights4x4[y][x];
-        });
+        for (IntPoint p : FlowHelper.range2D(4, 4)) {
+            if (p.x < 2 && p.y < 2)
+                continue;
+            weight[2 * p.y][2 * p.x] = interpolate(afvFreqs[p.y * 4 + p.x] - low, high - low + 1e-6D, bands);
+        }
+
+        for (IntPoint p : FlowHelper.range2D(8, 4)) {
+            if (p.x == 0 && p.y == 0)
+                continue;
+            weight[2 * p.y + 1][p.x] = weights4x8[p.y][p.x];
+        }
+        for (IntPoint p : FlowHelper.range2D(4, 4)) {
+            if (p.x == 0 && p.y == 0)
+                continue;
+            weight[2 * p.y][2 * p.x + 1] = weights4x4[p.y][p.x];
+        }
         return weight;
     }
 
     private void generateWeights(int index) throws InvalidBitstreamException {
         TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
-        for (int i = 0; i < 3; i++) {
-            final int c = i;
+        for (int c = 0; c < 3; c++) {
             double[][] w;
             switch (params[index].mode) {
                 case TransformType.MODE_DCT:
@@ -327,9 +330,9 @@ public class HFGlobal {
                 case TransformType.MODE_DCT4:
                     weights[index][c] = new double[8][8];
                     w = getDCTQuantWeights(4, 4, params[index].dctParam[c]);
-                    IntPoint.iterate(8, 8, (x, y) -> {
-                        weights[index][c][y][x] = w[y/2][x/2];
-                    });
+                    for (IntPoint p : FlowHelper.range2D(8, 8)) {
+                        weights[index][c][p.y][p.x] = w[p.y/2][p.x/2];
+                    }
                     weights[index][c][1][0] /= params[index].param[c][0];
                     weights[index][c][0][1] /= params[index].param[c][0];
                     weights[index][c][1][1] /= params[index].param[c][1];
@@ -339,14 +342,14 @@ public class HFGlobal {
                     w[0][0] = 1D;
                     w[0][1] = w[1][0] = params[index].param[c][0];
                     w[1][1] = params[index].param[c][1];
-                    IntPoint.iterate(2, 2, (x, y) -> {
-                        w[y][x+2] = w[x+2][y] = params[index].param[c][2];
-                        w[y+2][x+2] = params[index].param[c][3];
-                    });
-                    IntPoint.iterate(4, 4, (x, y) -> {
-                        w[y][x+4] = w[x+4][y] = params[index].param[c][4];
-                        w[y+4][x+4] = params[index].param[c][5];
-                    });
+                    for (IntPoint p : FlowHelper.range2D(2, 2)) {
+                        w[p.y][p.x+2] = w[p.x+2][p.y] = params[index].param[c][2];
+                        w[p.y+2][p.x+2] = params[index].param[c][3];
+                    }
+                    for (IntPoint p : FlowHelper.range2D(4, 4)) {
+                        w[p.y][p.x+4] = w[p.x+4][p.y] = params[index].param[c][4];
+                        w[p.y+4][p.x+4] = params[index].param[c][5];
+                    }
                     weights[index][c] = w;
                     break;
                 case TransformType.MODE_HORNUSS:
@@ -361,9 +364,9 @@ public class HFGlobal {
                 case TransformType.MODE_DCT4_8:
                     weights[index][c] = new double[8][8];
                     w = getDCTQuantWeights(8, 4, params[index].dctParam[c]);
-                    IntPoint.iterate(8, 8, (x, y) -> {
-                        weights[index][c][y][x] = w[y/2][x];
-                    });
+                    for (IntPoint p : FlowHelper.range2D(8, 8)) {
+                        weights[index][c][p.y][p.x] = w[p.y/2][p.x];
+                    }
                     weights[index][c][1][0] /= params[index].param[c][0];
                     break;
                 case TransformType.MODE_AFV:
@@ -371,20 +374,20 @@ public class HFGlobal {
                     break;
                 case TransformType.MODE_RAW:
                     weights[index][c] = new double[tt.matrixHeight][tt.matrixWidth];
-                    IntPoint.iterate(tt.matrixWidth, tt.matrixHeight, (x, y) -> {
+                    for (IntPoint p : FlowHelper.range2D(tt.matrixWidth, tt.matrixHeight)) {
                         // SPEC: spec has the wrong params here
-                        weights[index][c][y][x] = 1D / (params[index].param[c][y * tt.matrixWidth + x]
+                        weights[index][c][p.y][p.x] = 1D / (params[index].param[c][p.y * tt.matrixWidth + p.x]
                             * params[index].denominator);
-                    });
+                    }
                     break;
                 default:
                     throw new IllegalStateException("Challenge complete how did we get here");
             }
-            IntPoint.iterate(tt.matrixWidth, tt.matrixHeight, (x, y) -> {
-                if (weights[index][c][y][x] <= 0D || !Double.isFinite(weights[index][c][y][x]))
+            for (IntPoint p : FlowHelper.range2D(tt.matrixWidth, tt.matrixHeight)) {
+                if (weights[index][c][p.y][p.x] <= 0D || !Double.isFinite(weights[index][c][p.y][p.x]))
                     throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
-                weights[index][c][y][x] = 1D / weights[index][c][y][x];
-            });
+                weights[index][c][p.y][p.x] = 1D / weights[index][c][p.y][p.x];
+            }
         }
     }
 }

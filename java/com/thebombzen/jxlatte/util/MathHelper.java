@@ -24,14 +24,10 @@ public final class MathHelper {
         }
     }
 
-    private MathHelper() {
-
-    }
-
     public static int unpackSigned(int value) {
         // prevent overflow and extra casework
         long v = (long)value & 0xFF_FF_FF_FFL;
-        return (int)((v & 1L) == 0 ? v / 2L : -(v + 1L) / 2L);
+        return (int)((v & 1L) == 0L ? v / 2L : -(v + 1L) / 2L);
     }
 
     public static int round(double d) {
@@ -143,19 +139,16 @@ public final class MathHelper {
         }
     }
 
-    public static void transposeMatrixInto(double[][] matrix, double[][] result) {
-        IntPoint.iterate(IntPoint.sizeOf(result), (x, y) -> {
-            result[y][x] = matrix[x][y];
-        });
+    public static void transposeMatrixInto(double[][] src, double[][] dest, IntPoint inSize) {
+        for (IntPoint p : FlowHelper.range2D(inSize)) {
+            dest[p.x][p.y] = src[p.y][p.x];
+        }
     }
 
-    public static double[][] transposeMatrix(double[][] matrix) {
-        IntPoint newSize = IntPoint.sizeOf(matrix).transpose();
-        double[][] newMatrix = new double[newSize.y][newSize.x];
-        IntPoint.iterate(newSize, (x, y) -> {
-            newMatrix[y][x] = matrix[x][y];
-        });
-        return newMatrix;
+    public static double[][] transposeMatrix(double[][] matrix, IntPoint inSize) {
+        double[][] dest = new double[inSize.x][inSize.y];
+        transposeMatrixInto(matrix, dest, inSize);
+        return dest;
     }
 
     /**
@@ -281,4 +274,6 @@ public final class MathHelper {
         }
         return inverse;
     }
+
+    private MathHelper() {}
 }

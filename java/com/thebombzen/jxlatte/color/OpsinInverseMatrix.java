@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.color;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -89,7 +90,7 @@ public class OpsinInverseMatrix {
     public void invertXYB(double[][][] buffer, double intensityTarget) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
-        IntPoint.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
+        FlowHelper.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
             double gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
             double gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
             double gammaS = buffer[2][y][x] - cbrtOpsinBias[2];

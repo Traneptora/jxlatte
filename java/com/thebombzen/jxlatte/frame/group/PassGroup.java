@@ -2,6 +2,8 @@ package com.thebombzen.jxlatte.frame.group;
 
 import java.io.IOException;
 
+import javax.xml.crypto.dsig.Transform;
+
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
@@ -10,8 +12,8 @@ import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
 import com.thebombzen.jxlatte.frame.vardct.TransformType;
 import com.thebombzen.jxlatte.frame.vardct.Varblock;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.IteratorIterable;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PassGroup {
@@ -78,25 +80,19 @@ public class PassGroup {
     }
 
     private void layBlock(double[][] block, double[][] buffer, IntPoint inPos, IntPoint outPos, IntPoint inSize, boolean transpose) {
-        IntPoint.iterate(inSize, (p) -> {
+        for (IntPoint p : FlowHelper.range2D(inSize)) {
             IntPoint pt = transpose ? p.transpose() : p;
             outPos.plus(pt).set(buffer, inPos.plus(p).get(block));
-        });
+        }
     }
 
-    private void invertAFV(double[][] coeffs, double[][] buffer, Varblock varblock, IntPoint pixelPosInFrame, double[][] scratchBlock) {
+    private void invertAFV(double[][] coeffs, double[][] buffer, Varblock varblock, IntPoint pixelPosInFrame, double[][][] scratchBlock) {
         IntPoint p = IntPoint.ZERO;
         IntPoint ps = pixelPosInFrame;
-        double[][] coeffs4x8 = new double[4][8];
-        double[][] samples4x8 = new double[4][8];
-        double[][] coeffs4x4 = new double[4][4];
-        double[][] coeffsAFV = new double[4][4];
-        double[][] samplesAFV = new double[4][4];
-        double[][] samples4x4 = new double[4][4];
-        coeffsAFV[0][0] = (coeffs[p.y][p.x] + coeffs[p.y + 1][p.x] + coeffs[p.y][p.x + 1]) * 4D;
+        scratchBlock[0][0][0] = (coeffs[p.y][p.x] + coeffs[p.y + 1][p.x] + coeffs[p.y][p.x + 1]) * 4D;
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
-                coeffsAFV[iy][ix] = coeffs[p.y + iy * 2][p.x + ix * 2];
+                scratchBlock[0][iy][ix] = coeffs[p.y + iy * 2][p.x + ix * 2];
             }
         }
         TransformType tt = varblock.transformType();
@@ -106,41 +102,41 @@ public class PassGroup {
             for (int ix = 0; ix < 4; ix++) {
                 double sample = 0D;
                 for (int j = 0; j < 16; j++) {
-                    sample += IntPoint.coordinates(j, 4).get(coeffsAFV) * AFV_BASIS[j][iy * 4 + ix];
+                    sample += IntPoint.coordinates(j, 4).get(scratchBlock[0]) * AFV_BASIS[j][iy * 4 + ix];
                 }
-                samplesAFV[iy][ix] = sample;
+                scratchBlock[1][iy][ix] = sample;
             }
         }
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = 0; ix < 4; ix++) {
-                buffer[ps.y + flipY * 4 + iy][ps.x + flipX * 4 + ix] = samplesAFV[flipY == 1 ? 3 - iy : iy][flipX == 1 ? 3 - ix : ix];
+                buffer[ps.y + flipY * 4 + iy][ps.x + flipX * 4 + ix] = scratchBlock[1][flipY == 1 ? 3 - iy : iy][flipX == 1 ? 3 - ix : ix];
             }
         }
         // SPEC: watch signs here
-        coeffs4x4[0][0] = coeffs[p.y][p.x] + coeffs[p.y + 1][p.x] - coeffs[p.y][p.x + 1];
+        scratchBlock[0][0][0] = coeffs[p.y][p.x] + coeffs[p.y + 1][p.x] - coeffs[p.y][p.x + 1];
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
-                coeffs4x4[iy][ix] = coeffs[p.y + iy * 2][p.x + ix * 2 + 1];
+                scratchBlock[0][iy][ix] = coeffs[p.y + iy * 2][p.x + ix * 2 + 1];
             }
         }
-        MathHelper.inverseDCT2D(coeffs4x4, samples4x4, IntPoint.ZERO, IntPoint.ZERO, new IntPoint(4), scratchBlock);
+        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(4), scratchBlock[2]);
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = 0; ix < 4; ix++) {
                  //transposed intentionally
-                buffer[ps.y + flipY * 4 + iy][ps.x + (flipX == 1 ? 0 : 4) + ix] = samples4x4[ix][iy];
+                buffer[ps.y + flipY * 4 + iy][ps.x + (flipX == 1 ? 0 : 4) + ix] = scratchBlock[1][ix][iy];
             }
         }
         // SPEC: wrong coefficient
-        coeffs4x8[0][0] = coeffs[p.y][p.x] - coeffs[p.y][p.x + 1];
+        scratchBlock[0][0][0] = coeffs[p.y][p.x] - coeffs[p.y][p.x + 1];
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
-                coeffs4x8[iy][ix] = coeffs[p.y + 1 + iy * 2][p.x + ix];
+                scratchBlock[0][iy][ix] = coeffs[p.y + 1 + iy * 2][p.x + ix];
             }
         }
-        MathHelper.inverseDCT2D(coeffs4x8, samples4x8, IntPoint.ZERO, IntPoint.ZERO, new IntPoint(8, 4), scratchBlock);
+        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(8, 4), scratchBlock[2]);
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = 0; ix < 8; ix++) {
-                buffer[ps.y + (flipY == 1 ? 0 : 4) + iy][ps.x + ix] = samples4x8[iy][ix];
+                buffer[ps.y + (flipY == 1 ? 0 : 4) + iy][ps.x + ix] = scratchBlock[1][iy][ix];
             }
         }
     }
@@ -174,17 +170,18 @@ public class PassGroup {
 
     public void invertVarDCT(double[][][] frameBuffer, PassGroup prev) {
         double[][][][] coeffs = hfCoefficients.dequantHFCoeff;
-        IntPoint[] sizes = IntPoint.sizeOf(coeffs);
         if (prev != null) {
-            for (int i : IteratorIterable.range(0, hfCoefficients.varblocks.length)) {
-                IntPoint.iterate(3, sizes, (c, x, y) -> {
-                    coeffs[i][c][y][x] += prev.hfCoefficients.dequantHFCoeff[i][c][y][x];
-                });
+            for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
+                for (int c : Frame.cMap) {
+                    for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(coeffs[i][c]))) {
+                        coeffs[i][c][p.y][p.x] += prev.hfCoefficients.dequantHFCoeff[i][c][p.y][p.x];
+                    }
+                }
             }
         }
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
-        double[][][] scratchBlock = new double[2][256][256];
-        for (int i : IteratorIterable.range(0, hfCoefficients.varblocks.length)) {
+        double[][][] scratchBlock = new double[3][256][256];
+        for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
             for (int c : Frame.cMap) {
                 if (!varblock.isCorner(shift[c]))
@@ -192,46 +189,46 @@ public class PassGroup {
                 TransformType tt = varblock.transformType();
                 IntPoint pixelPosInFrame = varblock.pixelPosInFrame.shiftRight(shift[c]);
                 double coeff0, coeff1;
-                double[] lfs;
-                double[][] coeffs4x8 = new double[4][8];
+                double[] lfs = new double[2];
                 IntPoint size = varblock.sizeInPixels();
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:
-                        MathHelper.inverseDCT2D(coeffs[i][c], scratchBlock[0], IntPoint.ZERO, IntPoint.ZERO, size, scratchBlock[1]);
-                        layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, tt.flip());
+                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, scratchBlock[0]);
                         break;
                     case TransformType.METHOD_DCT8_4:
                         coeff0 = coeffs[i][c][0][0];
                         coeff1 = coeffs[i][c][1][0];
-                        lfs = new double[]{coeff0 + coeff1, coeff0 - coeff1};
+                        lfs[0] = coeff0 + coeff1;
+                        lfs[1] = coeff0 - coeff1;
                         for (int x = 0; x < 2; x++) {
-                            coeffs4x8[0][0] = lfs[x];
+                            scratchBlock[0][0][0] = lfs[x];
                             for (int iy = 0; iy < 4; iy++) {
                                 for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
-                                    coeffs4x8[iy][ix] = coeffs[i][c][x + iy * 2][ix];
+                                    scratchBlock[0][iy][ix] = coeffs[i][c][x + iy * 2][ix];
                                 }
                             }
-                            MathHelper.inverseDCT2D(coeffs4x8, scratchBlock[0], IntPoint.ZERO, new IntPoint(0, 4 * x), new IntPoint(8, 4), scratchBlock[1]);
+                            MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(0, 4 * x), new IntPoint(8, 4), scratchBlock[2]);
                         }
-                        layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, true);
+                        layBlock(scratchBlock[1], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, true);
                         break;
                     case TransformType.METHOD_DCT4_8:
                         coeff0 = coeffs[i][c][0][0];
                         coeff1 = coeffs[i][c][1][0];
-                        lfs = new double[]{coeff0 + coeff1, coeff0 - coeff1};
+                        lfs[0] = coeff0 + coeff1;
+                        lfs[1] = coeff0 - coeff1;
                         for (int y = 0; y < 2; y++) {
-                            coeffs4x8[0][0] = lfs[y];
+                            scratchBlock[0][0][0] = lfs[y];
                             for (int iy = 0; iy < 4; iy++) {
                                 for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
-                                    coeffs4x8[iy][ix] = coeffs[i][c][y + iy * 2][ix];
+                                    scratchBlock[0][iy][ix] = coeffs[i][c][y + iy * 2][ix];
                                 }
                             }
-                            MathHelper.inverseDCT2D(coeffs4x8, scratchBlock[0], IntPoint.ZERO, new IntPoint(0, 4 * y), new IntPoint(8, 4), scratchBlock[1]);
+                            MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(0, 4 * y), new IntPoint(8, 4), scratchBlock[2]);
                         }
-                        layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, false);
+                        layBlock(scratchBlock[1], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, false);
                         break;
                     case TransformType.METHOD_AFV:
-                        invertAFV(coeffs[i][c], frameBuffer[c], varblock, pixelPosInFrame, scratchBlock[0]);
+                        invertAFV(coeffs[i][c], frameBuffer[c], varblock, pixelPosInFrame, scratchBlock);
                         break;
                     case TransformType.METHOD_DCT2:
                         auxDCT2(coeffs[i][c], scratchBlock[0], IntPoint.ZERO, IntPoint.ZERO, 2);
@@ -264,6 +261,27 @@ public class PassGroup {
                             }
                         }
                         layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, false);
+                        break;
+                    case TransformType.METHOD_DCT4:
+                        auxDCT2(coeffs[i][c], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, 2);
+                        for (int y = 0; y < 2; y++) {
+                            for (int x = 0; x < 2; x++) {
+                                scratchBlock[0][0][0] = scratchBlock[1][y][x];
+                                for (int iy = 0; iy < 4; iy++) {
+                                    for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
+                                        scratchBlock[0][iy][ix] = coeffs[i][c][x + ix * 2][y + iy * 2];
+                                    }
+                                }
+                                // we're already using scratchblock[1] for the auxDCT2 coordiantes
+                                // but we're putting these far away at (8, 8) so there's no overlap
+                                MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(8, 8), new IntPoint(4, 4), scratchBlock[2]);
+                                for (int iy = 0; iy < 4; iy++) {
+                                    for (int ix = 0; ix < 4; ix++) {
+                                        frameBuffer[c][pixelPosInFrame.y + 4* y + iy][pixelPosInFrame.x + 4*x + ix] = scratchBlock[1][8 + iy][8 + ix];
+                                    }
+                                }
+                            }
+                        }
                         break;
                     default:
                         throw new UnsupportedOperationException("Transform not implemented: " + tt);

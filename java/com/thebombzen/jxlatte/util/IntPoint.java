@@ -2,10 +2,6 @@ package com.thebombzen.jxlatte.util;
 
 import java.util.stream.Stream;
 
-import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
-import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
-import com.thebombzen.jxlatte.util.functional.ExceptionalIntTriConsumer;
-
 /**
  * A mutable pair of coordinates
  */
@@ -42,79 +38,6 @@ public class IntPoint {
 
     public static <T> IntPoint[] sizeOf(T[][][] array) {
         return Stream.of(array).map(IntPoint::sizeOf).toArray(IntPoint[]::new);
-    }
-
-    public static void iterate(int c, IntPoint[] size, ExceptionalIntTriConsumer func) {
-        for (int i = 0; i < c; i++) {
-            final int j = i;
-            iterate(size[i], (x, y) -> func.consume(j, x, y));
-        }
-    }
-
-    public static void iterate(int c, IntPoint size, ExceptionalIntTriConsumer func) {
-        for (int i = 0; i < c; i++) {
-            final int j = i;
-            iterate(size, (x, y) -> func.consume(j, x, y));
-        }
-    }
-
-    public static void iterate(IntPoint size, ExceptionalIntBiConsumer func) {
-        iterate(size.x, size.y, func);
-    }
-
-    public static void iterate(int width, int height, ExceptionalIntBiConsumer func) {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                func.consume(x, y);
-            }
-        }
-    }
-
-    public static void iterate(IntPoint size, ExceptionalConsumer<? super IntPoint> func) {
-        iterate(size.x, size.y, func);
-    }
-
-    public static void iterate(int width, int height, ExceptionalConsumer<? super IntPoint> func) {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                func.accept(new IntPoint(x, y));
-            }
-        }
-    }
-
-    public static void parallelIterate(int c, IntPoint[] size, ExceptionalIntTriConsumer func) {
-        TaskList<Void> tasks = new TaskList<>();
-        for (int i = 0; i < c; i++) {
-            final int j = i;
-            parallelIterate(tasks, size[i], (x, y) -> func.consume(j, x, y));
-        }
-        tasks.collect();
-    }
-
-    public static void parallelIterate(int c, IntPoint size, ExceptionalIntTriConsumer func) {
-        TaskList<Void> tasks = new TaskList<>();
-        for (int i = 0; i < c; i++) {
-            final int j = i;
-            parallelIterate(tasks, size, (x, y) -> func.consume(j, x, y));
-        }
-        tasks.collect();
-    }
-
-    public static void parallelIterate(IntPoint size, ExceptionalIntBiConsumer func) {
-        TaskList<Void> tasks = new TaskList<>();
-        parallelIterate(tasks, size, func);
-        tasks.collect();
-    }
-
-    private static void parallelIterate(TaskList<?> tasks, IntPoint size, ExceptionalIntBiConsumer func) {
-        for (int y0 = 0; y0 < size.y; y0++) {
-            final int y = y0;
-            tasks.submit(() -> {
-                for (int x = 0; x < size.x; x++) {
-                    func.consume(x, y);
-                }
-            });
-        }
     }
 
     public IntPoint(int x, int y) {

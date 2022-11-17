@@ -26,6 +26,7 @@ import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.InputStreamBitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
@@ -320,7 +321,7 @@ public class Frame {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 ModularChannel newChannel = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
-                IntPoint.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
+                FlowHelper.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
                     channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
                 });
             }
@@ -371,7 +372,7 @@ public class Frame {
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    IntPoint.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
+                    FlowHelper.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
                         channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
                     });
                 }
@@ -427,7 +428,7 @@ public class Frame {
                 scaleFactor = 1.0D;
             else
                 scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-            IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+            FlowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
                 if (xybM && cIn == 2)
                     buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
@@ -515,7 +516,7 @@ public class Frame {
         this.noiseBuffer = new double[3][height][width];
         tasks.collect();
 
-        IntPoint.parallelIterate(3, new IntPoint(width, height), (c, x, y) -> {
+        FlowHelper.parallelIterate(3, new IntPoint(width, height), (c, x, y) -> {
             for (int iy = 0; iy < 5; iy++) {
                 for (int ix = 0; ix < 5; ix++) {
                     int cy = mirrorCoordinate(y + iy - 2, height);
@@ -531,7 +532,7 @@ public class Frame {
         if (lfGlobal.noiseParameters == null)
             return;
         double[] lut = lfGlobal.noiseParameters.lut;
-        IntPoint.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+        FlowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
             // SPEC: spec doesn't mention the *0.5 here, it says *6
             // SPEC: spec doesn't mention clamping to 0 here
             double inScaledR = 3D * Math.max(0D, buffer[1][y][x] + buffer[0][y][x]);

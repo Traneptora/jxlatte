@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 
 public enum TransformType {
@@ -85,7 +86,7 @@ public enum TransformType {
     }
 
     public boolean flip() {
-        return this.blockWidth == this.blockHeight;
+        return transformMethod == METHOD_DCT && this.blockWidth == this.blockHeight;
     }
 
     private double scaleF(int c, int b) {
@@ -115,8 +116,8 @@ public enum TransformType {
         this.orderID = orderID;
         this.transformMethod = transformMethod;
         this.llfScale = new double[dctSelectHeight][dctSelectWidth];
-        IntPoint.iterate(dctSelectWidth, dctSelectHeight, (cx, cy) -> {
-            llfScale[cy][cx] = scaleF(cy, blockHeight) * scaleF(cx, blockWidth);
-        });
+        for (IntPoint p : FlowHelper.range2D(dctSelectWidth, dctSelectHeight)) {
+            p.set(llfScale, scaleF(p.y, blockHeight) * scaleF(p.x, blockWidth));
+        }
     }
 }

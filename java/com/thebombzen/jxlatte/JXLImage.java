@@ -8,6 +8,7 @@ import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.ColorManagement;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -78,7 +79,7 @@ public class JXLImage {
         int width = getWidth();
         int height = getHeight();
         JXLImage image = new JXLImage(this);
-        IntPoint.parallelIterate(new IntPoint(width, height), (x, y) -> {
+        FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
             double[] rgb = new double[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
             double[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
             image.buffer[0][y][x] = rgb2[0];
@@ -181,7 +182,7 @@ public class JXLImage {
         int width = getWidth();
         int height = getHeight();
         double[][][] imBuffer = image.buffer;
-        IntPoint.parallelIterate(buffer.length, new IntPoint(width, height), (c, x, y) -> {
+        FlowHelper.parallelIterate(buffer.length, new IntPoint(width, height), (c, x, y) -> {
             imBuffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
         });
         image.transfer = transfer;

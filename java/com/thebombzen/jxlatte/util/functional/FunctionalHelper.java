@@ -1,13 +1,15 @@
 package com.thebombzen.jxlatte.util.functional;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+
+import com.thebombzen.jxlatte.util.IteratorIterable;
 
 public final class FunctionalHelper {
     private FunctionalHelper() {
@@ -66,6 +68,6 @@ public final class FunctionalHelper {
      * Joins all of the futures and preserves their order
      */
     public static <T> T[] join(IntFunction<T[]> generator, CompletableFuture<?>... futures) {
-        return join(generator, Arrays.asList(futures));
+        return join(generator, new IteratorIterable<>(Stream.of(futures).iterator()));
     }
 }

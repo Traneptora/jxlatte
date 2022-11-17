@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -340,7 +341,7 @@ public class ModularChannel extends ModularChannelInfo {
                 || info.height != orig.height || res.height != orig.height)
             throw new IllegalArgumentException("Corrupted squeeze transform");
         ModularChannel channel = new ModularChannel(info);
-        IntPoint.parallelIterate(new IntPoint(res.width, channel.height), (x, y) -> {
+        FlowHelper.parallelIterate(new IntPoint(res.width, channel.height), (x, y) -> {
             int avg = orig.get(x, y);
             int residu = res.get(x, y);
             int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
@@ -366,7 +367,7 @@ public class ModularChannel extends ModularChannelInfo {
             throw new IllegalStateException("Corrupted squeeze transform");
 
         ModularChannel channel = new ModularChannel(info);
-        IntPoint.parallelIterate(new IntPoint(channel.width, res.height), (x, y) -> {
+        FlowHelper.parallelIterate(new IntPoint(channel.width, res.height), (x, y) -> {
             int avg = orig.get(x, y);
             int residu = res.get(x, y);
             int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;

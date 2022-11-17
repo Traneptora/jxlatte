@@ -1,7 +1,6 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.Iterator;
-import java.util.stream.IntStream;
 
 public class IteratorIterable<T> implements Iterator<T>, Iterable<T> {
 
@@ -28,9 +27,5 @@ public class IteratorIterable<T> implements Iterator<T>, Iterable<T> {
     @Override
     public T next() {
         return iterator.next();
-    }
-
-    public static IteratorIterable<Integer> range(int startIndex, int endIndex) {
-        return new IteratorIterable<>(IntStream.range(startIndex, endIndex).iterator());
     }
 }

@@ -20,7 +20,7 @@ import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
@@ -177,7 +177,7 @@ public class JXLCodestreamDecoder {
         }
 
         if (frame.getFrameHeader().doYCbCr) {
-            IntPoint.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
+            FlowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
                 double yh = frameBuffer[1][y][x] + 0.5D;
                 double cb = frameBuffer[0][y][x];
                 double cr = frameBuffer[2][y][x];
