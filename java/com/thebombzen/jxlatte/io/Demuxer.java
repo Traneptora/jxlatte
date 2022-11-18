@@ -110,6 +110,7 @@ public class Demuxer implements Runnable {
                 if (l != 5 && l != 10)
                     throw new InvalidBitstreamException(String.format("Invalid level: %d", level));
                 level.complete(l);
+                continue;
             }
             boolean finalImageBox = tag == JXLC;
             if (tag == JXLP) {
