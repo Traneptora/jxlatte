@@ -276,4 +276,12 @@ public final class MathHelper {
     }
 
     private MathHelper() {}
+
+    public static int mirrorCoordinate(int coordinate, int size) {
+        if (coordinate < 0)
+            return mirrorCoordinate(-coordinate - 1, size);
+        if (coordinate >= size)
+            return mirrorCoordinate(2 * size - coordinate - 1, size);
+        return coordinate;
+    }
 }

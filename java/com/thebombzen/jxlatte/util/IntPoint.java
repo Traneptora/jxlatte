@@ -162,6 +162,10 @@ public class IntPoint {
         return new IntPoint(Math.max(x, p.x), Math.max(y, p.y));
     }
 
+    public IntPoint mirrorCoordinate(IntPoint size) {
+        return new IntPoint(MathHelper.mirrorCoordinate(x, size.x), MathHelper.mirrorCoordinate(y, size.y));
+    }
+
     @Override
     public int hashCode() {
         return ((x << 16) | (x >>> 16)) ^ y;

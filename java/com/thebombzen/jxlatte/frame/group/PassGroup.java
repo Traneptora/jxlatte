@@ -2,8 +2,6 @@ package com.thebombzen.jxlatte.frame.group;
 
 import java.io.IOException;
 
-import javax.xml.crypto.dsig.Transform;
-
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
@@ -183,7 +181,7 @@ public class PassGroup {
         double[][][] scratchBlock = new double[3][256][256];
         for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
-            for (int c : Frame.cMap) {
+            for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 TransformType tt = varblock.transformType();

@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.util;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntTriConsumer;
 
@@ -32,12 +33,29 @@ public final class FlowHelper {
         tasks.collect();
     }
 
+    public static void parallelIterate(IntPoint size, ExceptionalConsumer<? super IntPoint> func) {
+        TaskList<Void> tasks = new TaskList<>();
+        FlowHelper.parallelIterate(tasks, size, func);
+        tasks.collect();
+    }
+
     private static void parallelIterate(TaskList<?> tasks, IntPoint size, ExceptionalIntBiConsumer func) {
         for (int y0 = 0; y0 < size.y; y0++) {
             final int y = y0;
             tasks.submit(() -> {
                 for (int x = 0; x < size.x; x++) {
                     func.consume(x, y);
+                }
+            });
+        }
+    }
+
+    private static void parallelIterate(TaskList<?> tasks, IntPoint size, ExceptionalConsumer<? super IntPoint> func) {
+        for (int y0 = 0; y0 < size.y; y0++) {
+            final int y = y0;
+            tasks.submit(() -> {
+                for (int x = 0; x < size.x; x++) {
+                    func.accept(new IntPoint(x, y));
                 }
             });
         }

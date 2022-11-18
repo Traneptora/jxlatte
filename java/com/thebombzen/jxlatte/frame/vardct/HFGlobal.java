@@ -322,20 +322,21 @@ public class HFGlobal {
         TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
         for (int c = 0; c < 3; c++) {
+            int i = Frame.cMap[c];
             double[][] w;
             switch (params[index].mode) {
                 case TransformType.MODE_DCT:
-                    weights[index][c] = getDCTQuantWeights(tt.matrixWidth, tt.matrixHeight, params[index].dctParam[c]);
+                    weights[index][i] = getDCTQuantWeights(tt.matrixWidth, tt.matrixHeight, params[index].dctParam[c]);
                     break;
                 case TransformType.MODE_DCT4:
-                    weights[index][c] = new double[8][8];
+                    weights[index][i] = new double[8][8];
                     w = getDCTQuantWeights(4, 4, params[index].dctParam[c]);
                     for (IntPoint p : FlowHelper.range2D(8, 8)) {
-                        weights[index][c][p.y][p.x] = w[p.y/2][p.x/2];
+                        weights[index][i][p.y][p.x] = w[p.y/2][p.x/2];
                     }
-                    weights[index][c][1][0] /= params[index].param[c][0];
-                    weights[index][c][0][1] /= params[index].param[c][0];
-                    weights[index][c][1][1] /= params[index].param[c][1];
+                    weights[index][i][1][0] /= params[index].param[c][0];
+                    weights[index][i][0][1] /= params[index].param[c][0];
+                    weights[index][i][1][1] /= params[index].param[c][1];
                     break;
                 case TransformType.MODE_DCT2:
                     w = new double[8][8];
@@ -350,7 +351,7 @@ public class HFGlobal {
                         w[p.y][p.x+4] = w[p.x+4][p.y] = params[index].param[c][4];
                         w[p.y+4][p.x+4] = params[index].param[c][5];
                     }
-                    weights[index][c] = w;
+                    weights[index][i] = w;
                     break;
                 case TransformType.MODE_HORNUSS:
                     w = new double[8][8];
@@ -359,18 +360,18 @@ public class HFGlobal {
                     w[1][1] = params[index].param[c][2];
                     w[0][1] = w[1][0] = params[index].param[c][1];
                     w[0][0] = 1D;
-                    weights[index][c] = w;
+                    weights[index][i] = w;
                     break;
                 case TransformType.MODE_DCT4_8:
-                    weights[index][c] = new double[8][8];
+                    weights[index][i] = new double[8][8];
                     w = getDCTQuantWeights(8, 4, params[index].dctParam[c]);
                     for (IntPoint p : FlowHelper.range2D(8, 8)) {
-                        weights[index][c][p.y][p.x] = w[p.y/2][p.x];
+                        weights[index][i][p.y][p.x] = w[p.y/2][p.x];
                     }
-                    weights[index][c][1][0] /= params[index].param[c][0];
+                    weights[index][i][1][0] /= params[index].param[c][0];
                     break;
                 case TransformType.MODE_AFV:
-                    weights[index][c] = getAFVTransformWeights(index, c);
+                    weights[index][i] = getAFVTransformWeights(index, c);
                     break;
                 case TransformType.MODE_RAW:
                     weights[index][c] = new double[tt.matrixHeight][tt.matrixWidth];
@@ -383,7 +384,9 @@ public class HFGlobal {
                 default:
                     throw new IllegalStateException("Challenge complete how did we get here");
             }
-            for (IntPoint p : FlowHelper.range2D(tt.matrixWidth, tt.matrixHeight)) {
+        }
+        for (int c = 0; c < 3; c++) {
+            for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(weights[index][c]))) {
                 if (weights[index][c][p.y][p.x] <= 0D || !Double.isFinite(weights[index][c][p.y][p.x]))
                     throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
                 weights[index][c][p.y][p.x] = 1D / weights[index][c][p.y][p.x];

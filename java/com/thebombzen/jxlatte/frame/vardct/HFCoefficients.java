@@ -139,7 +139,7 @@ public class HFCoefficients {
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
             Varblock varblock = varblocks[i];
-            for (int c : Frame.cMap) {
+            for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 IntPoint size = varblock.sizeInBlocks();

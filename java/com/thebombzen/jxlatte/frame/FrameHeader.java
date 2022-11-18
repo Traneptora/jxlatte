@@ -25,6 +25,8 @@ public class FrameHeader {
     public final int groupSizeShift;
     public final int groupDim;
     public final int lfGroupDim;
+    public final int logGroupDim;
+    public final int logLFGroupDim;
     public final int xqmScale;
     public final int bqmScale;
     public final PassesInfo passes;
@@ -55,6 +57,8 @@ public class FrameHeader {
         this.groupSizeShift = header.groupSizeShift;
         this.groupDim = header.groupDim;
         this.lfGroupDim = header.lfGroupDim;
+        this.logGroupDim = header.logGroupDim;
+        this.logLFGroupDim = header.logLFGroupDim;
         this.xqmScale = header.xqmScale;
         this.bqmScale = header.bqmScale;
         this.passes = header.passes;
@@ -103,6 +107,8 @@ public class FrameHeader {
         groupSizeShift = encoding == FrameFlags.MODULAR ? reader.readBits(2) : 1;
         groupDim = 128 << groupSizeShift;
         lfGroupDim = groupDim << 3;
+        logGroupDim = MathHelper.ceilLog2(groupDim);
+        logLFGroupDim = MathHelper.ceilLog2(lfGroupDim);
         if (parent.isXYBEncoded() && encoding == FrameFlags.VARDCT) {
             if (!allDefault) {
                 xqmScale = reader.readBits(3);
