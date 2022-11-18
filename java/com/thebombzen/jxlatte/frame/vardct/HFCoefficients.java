@@ -139,11 +139,11 @@ public class HFCoefficients {
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
             Varblock varblock = varblocks[i];
+            IntPoint size = varblock.sizeInBlocks();
+            double[][] lfCoeffs = new double[size.y][size.x];
             for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
-                IntPoint size = varblock.sizeInBlocks();
-                double[][] lfCoeffs = new double[size.y][size.x];
                 MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], lfCoeffs,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
                     IntPoint.ZERO, size);
@@ -196,10 +196,11 @@ public class HFCoefficients {
     private double[][][][] dequantizeHFCoefficients(int[][][][] coeffs) {
         OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
         double[][][][] dequant = new double[varblocks.length][3][][];
+        double globalScale = (double)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
         double[] scaleFactor = new double[]{
-            Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
-            1.0D,
-            Math.pow(0.8D, frame.getFrameHeader().bqmScale - 2D),
+            globalScale * Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
+            globalScale,
+            globalScale * Math.pow(0.8D, frame.getFrameHeader().bqmScale - 2D),
         };
         double[][][][] weights = frame.getHFGlobal().weights;
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
@@ -214,11 +215,12 @@ public class HFCoefficients {
                     int coeff = pos.get(co);
                     double quant;
                     if (Math.abs(coeff) <= 1)
-                        quant = coeff * matrix.quantBias[Frame.cMap[c]];
+                        quant = coeff * matrix.quantBias[c];
                     else
                         quant = coeff - matrix.quantBiasNumerator / coeff;
-                    quant *= varblock.hfMult() * scaleFactor[c];
-                    IntPoint weightPos = varblock.flip() || varblock.transformType().isVertical()
+                    // SPEC: wrong scale factor here and hfmul multiplier
+                    quant *= scaleFactor[c] / varblock.hfMult();
+                    IntPoint weightPos = varblock.transformType().isVertical()
                         ? pos.transpose() : pos;
                     quant *= weightPos.get(weights[varblock.transformType().parameterIndex][c]);
                     pos.set(dq, quant);

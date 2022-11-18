@@ -77,11 +77,13 @@ public final class MathHelper {
     public static void forwardDCTHorizontal(double[][] src, int yIn, int xStartIn,
             double[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
         double invLength = 1D / xLength;
+        dest[yOut][xStartOut] = 0;
         for (int x = 0; x < xLength; x++) {
             dest[yOut][xStartOut] += src[yIn][xStartIn + x];
         }
         dest[yOut][xStartOut] *= invLength;
         for (int k = 1; k < xLength; k++) {
+            dest[yOut][xStartOut + k] = 0;
             for (int n = 0; n < xLength; n++) {
                 dest[yOut][xStartOut + k] += src[yIn][xStartIn + n] * cosineLut[xLogLength][k - 1][n];
             }
@@ -104,11 +106,13 @@ public final class MathHelper {
     public static void forwardDCTVertical(double[][] src, int xIn, int yStartIn,
         double[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
         double invLength = 1D / yLength;
+        dest[yStartOut][xOut] = 0;
         for (int y = 0; y < yLength; y++) {
             dest[yStartOut][xOut] += src[yStartIn + y][xIn];
         }
         dest[yStartOut][xOut] *= invLength;
         for (int k = 1; k < yLength; k++) {
+            dest[yStartOut + k][xOut] = 0;
             for (int n = 0; n < yLength; n++) {
                 dest[yStartOut + k][xOut] += src[yStartIn + n][xIn] * cosineLut[yLogLength][k - 1][n];
             }

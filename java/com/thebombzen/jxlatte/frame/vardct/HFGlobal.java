@@ -322,7 +322,7 @@ public class HFGlobal {
         TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
         for (int c = 0; c < 3; c++) {
-            int i = Frame.cMap[c];
+            int i = c;
             double[][] w;
             switch (params[index].mode) {
                 case TransformType.MODE_DCT:
