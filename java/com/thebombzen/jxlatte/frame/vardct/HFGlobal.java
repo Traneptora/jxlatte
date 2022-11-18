@@ -390,10 +390,6 @@ public class HFGlobal {
                 if (weights[index][c][p.y][p.x] <= 0D || !Double.isFinite(weights[index][c][p.y][p.x]))
                     throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
                 weights[index][c][p.y][p.x] = 1D / weights[index][c][p.y][p.x];
-                if (c == 0)
-                    weights[index][c][p.y][p.x] /= 16D;
-                if (c == 2)
-                    weights[index][c][p.y][p.x] /= 2D;
             }
         }
     }
