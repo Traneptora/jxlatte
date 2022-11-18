@@ -228,7 +228,11 @@ public class Frame {
     }
 
     private double[][] performUpsampling(double[][] buffer, int c) {
-        int color = globalMetadata.getColorChannelCount();
+        int color;
+        if (header.encoding == FrameFlags.VARDCT)
+            color = 3;
+        else
+            color = globalMetadata.getColorChannelCount();
         int k;
         if (c < color)
             k = header.upsampling;
@@ -395,7 +399,9 @@ public class Frame {
         lfGlobal = FunctionalHelper.join(getBitreader(0)
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
         IntPoint paddedSize = getPaddedFrameSize();
-        buffer = new double[globalMetadata.getTotalChannelCount()][paddedSize.y][paddedSize.x];
+        // VarDCT always has 3 channels even in grayscale
+        buffer = new double[(header.encoding == FrameFlags.VARDCT ? 3 : globalMetadata.getColorChannelCount())
+            + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
         TaskList<Void> tasks = new TaskList<>();
 
         decodeLFGroups(tasks);

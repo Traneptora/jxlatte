@@ -88,9 +88,9 @@ public class HFGlobal {
             {640.0, 320.0, 128.0, 64.0, 32.0, 16.0},
         }, TransformType.MODE_DCT2);
         double[][] dct4x4params = {
-            {843.649426659137152, 0.0, 0.0, 0.0},
-            {289.6948005482115584, 0.0, 0.0, 0.0},
-            {137.04727932185712576, -0.25, -0.25, -0.5},
+            {2200, 0.0, 0.0, 0.0},
+            {392, 0.0, 0.0, 0.0},
+            {112, -0.25, -0.25, -0.5},
         };
         defaultParams[3] = new DCTParams(dct4x4params, new double[][]{
             {1.0, 1.0},
@@ -390,6 +390,10 @@ public class HFGlobal {
                 if (weights[index][c][p.y][p.x] <= 0D || !Double.isFinite(weights[index][c][p.y][p.x]))
                     throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
                 weights[index][c][p.y][p.x] = 1D / weights[index][c][p.y][p.x];
+                if (c == 0)
+                    weights[index][c][p.y][p.x] /= 16D;
+                if (c == 2)
+                    weights[index][c][p.y][p.x] /= 2D;
             }
         }
     }

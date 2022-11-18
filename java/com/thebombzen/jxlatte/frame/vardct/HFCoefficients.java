@@ -148,7 +148,8 @@ public class HFCoefficients {
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
                     IntPoint.ZERO, size);
                 for (IntPoint p : FlowHelper.range2D(size)) {
-                    p.set(dequantHFCoeff[i][c], p.get(lfCoeffs) * p.get(varblock.transformType().llfScale));
+                    double llf = p.get(lfCoeffs) * p.get(varblock.transformType().llfScale);
+                    p.set(dequantHFCoeff[i][c], llf);
                 }
             }
         }
