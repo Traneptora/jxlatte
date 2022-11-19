@@ -124,8 +124,7 @@ public class PassGroup {
                 buffer[ps.y + flipY * 4 + iy][ps.x + (flipX == 1 ? 0 : 4) + ix] = scratchBlock[1][ix][iy];
             }
         }
-        // SPEC: wrong coefficient
-        scratchBlock[0][0][0] = coeffs[p.y][p.x] - coeffs[p.y][p.x + 1];
+        scratchBlock[0][0][0] = coeffs[p.y][p.x] - coeffs[p.y + 1][p.x];
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
                 scratchBlock[0][iy][ix] = coeffs[p.y + 1 + iy * 2][p.x + ix];
@@ -272,10 +271,12 @@ public class PassGroup {
                                 }
                                 // we're already using scratchblock[1] for the auxDCT2 coordiantes
                                 // but we're putting these far away at (8, 8) so there's no overlap
-                                MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(8, 8), new IntPoint(4, 4), scratchBlock[2]);
+                                MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO,
+                                    new IntPoint(8, 8), new IntPoint(4, 4), scratchBlock[2]);
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = 0; ix < 4; ix++) {
-                                        frameBuffer[c][pixelPosInFrame.y + 4* y + iy][pixelPosInFrame.x + 4*x + ix] = scratchBlock[1][8 + iy][8 + ix];
+                                        frameBuffer[c][pixelPosInFrame.y + 4*y + iy][pixelPosInFrame.x + 4*x + ix]
+                                            = scratchBlock[1][8 + iy][8 + ix];
                                     }
                                 }
                             }

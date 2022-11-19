@@ -32,7 +32,8 @@ public class LFCoefficients {
         FrameHeader header = frame.getFrameHeader();
         ModularChannelInfo[] info = new ModularChannelInfo[3];
         double[][][] dequantLFCoeff = new double[3][][];
-        boolean adaptiveSmoothing = (header.flags & FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING) == 0;
+        boolean adaptiveSmoothing = (header.flags
+            & (FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING | FrameFlags.USE_LF_FRAME)) == 0;
         IntPoint[] shift = header.jpegUpsampling;
         for (int i = 0; i < 3; i++) {
             if (adaptiveSmoothing && !shift[i].equals(IntPoint.ZERO))
@@ -82,7 +83,7 @@ public class LFCoefficients {
                         + coeff[i][y + 1][x - 1] + coeff[i][y + 1][x + 1];
                     weighted[i][y][x] = 0.05226273532324128D * sample + 0.20345139757231578D * adjacent
                         + 0.0334829185968739 * diag;
-                    double g = Math.abs(sample - weighted[i][y][x]) / coeff[i][y][x];
+                    double g = Math.abs(sample - weighted[i][y][x]) * scaledDequant[i];
                     if (g > gap[y][x])
                         gap[y][x] = g;
                 }

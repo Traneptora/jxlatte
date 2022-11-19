@@ -76,13 +76,13 @@ public class HFGlobal {
             {3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
              {560.0, 0.0, -0.3, -0.3, -0.3, -0.3},
              {512.0, -2.0, -1.0, 0.0, -1.0, -2.0},
-        }, new double[][]{}, TransformType.MODE_DCT);
-        defaultParams[1] = new DCTParams(new double[][]{}, new double[][]{
+        }, null, TransformType.MODE_DCT);
+        defaultParams[1] = new DCTParams(null, new double[][]{
                 {280.0, 3160.0, 3160.0},
                 {60.0, 864.0, 864.0},
                 {18.0, 200.0, 200.0},
         }, TransformType.MODE_HORNUSS);
-        defaultParams[2] = new DCTParams(new double[][]{}, new double[][]{
+        defaultParams[2] = new DCTParams(null, new double[][]{
             {3840.0, 2560.0, 1280.0, 640.0, 480.0, 300.0},
             {960.0, 640.0, 320.0, 180.0, 140.0, 120.0},
             {640.0, 320.0, 128.0, 64.0, 32.0, 16.0},
@@ -104,19 +104,19 @@ public class HFGlobal {
                 -0.35865440981033403, -0.31322389111877305, -0.37615025315725483},
             {1157.50408145487200256, -2.0531423165804414, -1.4, -0.50687130033378396,
                 -0.42708730624733904, -1.4856834539296244, -4.9209142884401604},
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[5] = new DCTParams(new double[][]{
             {15718.40830982518931456, -1.025, -0.98, -0.9012, -0.4, -0.48819395464, -0.421064, -0.27},
             {7305.7636810695983104, -0.8041958212306401, -0.7633036457487539, -0.55660379990111464,
                 -0.49785304658857626, -0.43699592683512467, -0.40180866526242109, -0.27321683125358037},
             {3803.53173721215041536, -3.060733579805728, -2.0413270132490346, -2.0235650159727417,
                 -0.5495389509954993, -0.4, -0.4, -0.3},
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[6] = new DCTParams(new double[][]{
             {7240.7734393502, -0.7, -0.7, -0.2, -0.2, -0.2, -0.5},
             {1448.15468787004, -0.5, -0.5, -0.5, -0.2, -0.2, -0.2},
             {506.854140754517, -1.4, -0.2, -0.5, -0.5, -1.5, -3.6},
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[7] = new DCTParams(new double[][]{
             {16283.2494710648897, -1.7812845336559429, -1.6309059012653515,
                 -1.0382179034313539, -0.85, -0.7, -0.9, -1.2360638576849587},
@@ -124,13 +124,13 @@ public class HFGlobal {
                 -0.30340000000000003, -0.61, -0.5, -0.5, -0.6},
             {3397.77603275308720128, -0.321327362693153371, -0.34507619223117997,
                 -0.70340000000000003, -0.9, -1.0, -1.0, -1.1754605576265209},
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[8] = new DCTParams(new double[][]{
             {13844.97076442300573, -0.97113799999999995, -0.658, -0.42026, -0.22712, -0.2206, -0.226, -0.6},
             {4798.964084220744293, -0.61125308982767057, -0.83770786552491361, -0.79014862079498627,
                 -0.2692727459704829, -0.38272769465388551, -0.22924222653091453, -0.20719098826199578},
             {1807.236946760964614, -1.2, -1.2, -0.7, -0.7, -0.7, -0.4, -0.5},
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         double[][] dct4x8Params = {
             {2198.050556016380522, -0.96269623020744692, -0.76194253026666783, -0.6551140670773547},
             {764.3655248643528689, -0.92630200888366945, -0.9675229603596517, -0.27845290869168118},
@@ -151,32 +151,32 @@ public class HFGlobal {
             prepend(23966.1665298448605, seqA),
             prepend(8380.19148390090414, seqB),
             prepend(4493.02378009847706, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[12] = new DCTParams(new double[][]{
             prepend(15358.89804933239925, seqA),
             prepend(5597.360516150652990, seqB),
             prepend(2919.961618960011210, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[13] = new DCTParams(new double[][]{
             prepend(47932.3330596897210, seqA),
             prepend(16760.38296780180828, seqB),
             prepend(8986.04756019695412, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[14] = new DCTParams(new double[][]{
             prepend(30717.796098664792, seqA),
             prepend(11194.72103230130598, seqB),
             prepend(5839.92323792002242, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[15] = new DCTParams(new double[][]{
             prepend(95864.6661193794420, seqA),
             prepend(33520.76593560361656, seqB),
             prepend(17972.09512039390824, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
         defaultParams[16] = new DCTParams(new double[][]{
             prepend(61435.5921973295970, seqA),
             prepend(24209.44206460261196, seqB),
             prepend(12979.84647584004484, seqC),
-        }, new double[][]{}, TransformType.MODE_DCT);
+        }, null, TransformType.MODE_DCT);
     }
 
     static {
@@ -219,7 +219,7 @@ public class HFGlobal {
                         m[y][x] = 64D * reader.readF16();
                     }
                 }
-                params[index] = new DCTParams(new double[][]{}, m, encodingMode);
+                params[index] = new DCTParams(null, m, encodingMode);
                 break;
             case TransformType.MODE_DCT2:
                 m = new double[3][6];
@@ -228,7 +228,7 @@ public class HFGlobal {
                         m[y][x] = 64D * reader.readF16();
                     }
                 }
-                params[index] = new DCTParams(new double[][]{}, m, encodingMode);
+                params[index] = new DCTParams(null, m, encodingMode);
                 break;
             case TransformType.MODE_DCT4:
                 m = new double[3][2];
@@ -240,7 +240,7 @@ public class HFGlobal {
                 params[index] = new DCTParams(readDCTParams(reader), m, encodingMode);
                 break;
             case TransformType.MODE_DCT:
-                params[index] = new DCTParams(readDCTParams(reader), new double[][]{}, encodingMode);
+                params[index] = new DCTParams(readDCTParams(reader), null, encodingMode);
                 break;
             case TransformType.MODE_RAW:
                 double den = reader.readF16();
@@ -260,7 +260,7 @@ public class HFGlobal {
                         m[c][p.y * tt.matrixWidth + p.x] = b[c][p.y][p.x];
                     }
                 }
-                params[index] = new DCTParams(new double[][]{}, m, encodingMode, den);
+                params[index] = new DCTParams(null, m, encodingMode, den);
                 break;
             case TransformType.MODE_AFV:
                 m = new double[3][9];
@@ -322,21 +322,20 @@ public class HFGlobal {
         TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
         for (int c = 0; c < 3; c++) {
-            int i = c;
             double[][] w;
             switch (params[index].mode) {
                 case TransformType.MODE_DCT:
-                    weights[index][i] = getDCTQuantWeights(tt.matrixWidth, tt.matrixHeight, params[index].dctParam[c]);
+                    weights[index][c] = getDCTQuantWeights(tt.matrixWidth, tt.matrixHeight, params[index].dctParam[c]);
                     break;
                 case TransformType.MODE_DCT4:
-                    weights[index][i] = new double[8][8];
+                    weights[index][c] = new double[8][8];
                     w = getDCTQuantWeights(4, 4, params[index].dctParam[c]);
                     for (IntPoint p : FlowHelper.range2D(8, 8)) {
-                        weights[index][i][p.y][p.x] = w[p.y/2][p.x/2];
+                        weights[index][c][p.y][p.x] = w[p.y/2][p.x/2];
                     }
-                    weights[index][i][1][0] /= params[index].param[c][0];
-                    weights[index][i][0][1] /= params[index].param[c][0];
-                    weights[index][i][1][1] /= params[index].param[c][1];
+                    weights[index][c][1][0] /= params[index].param[c][0];
+                    weights[index][c][0][1] /= params[index].param[c][0];
+                    weights[index][c][1][1] /= params[index].param[c][1];
                     break;
                 case TransformType.MODE_DCT2:
                     w = new double[8][8];
@@ -351,7 +350,7 @@ public class HFGlobal {
                         w[p.y][p.x+4] = w[p.x+4][p.y] = params[index].param[c][4];
                         w[p.y+4][p.x+4] = params[index].param[c][5];
                     }
-                    weights[index][i] = w;
+                    weights[index][c] = w;
                     break;
                 case TransformType.MODE_HORNUSS:
                     w = new double[8][8];
@@ -360,18 +359,18 @@ public class HFGlobal {
                     w[1][1] = params[index].param[c][2];
                     w[0][1] = w[1][0] = params[index].param[c][1];
                     w[0][0] = 1D;
-                    weights[index][i] = w;
+                    weights[index][c] = w;
                     break;
                 case TransformType.MODE_DCT4_8:
-                    weights[index][i] = new double[8][8];
+                    weights[index][c] = new double[8][8];
                     w = getDCTQuantWeights(8, 4, params[index].dctParam[c]);
                     for (IntPoint p : FlowHelper.range2D(8, 8)) {
-                        weights[index][i][p.y][p.x] = w[p.y/2][p.x];
+                        weights[index][c][p.y][p.x] = w[p.y/2][p.x];
                     }
-                    weights[index][i][1][0] /= params[index].param[c][0];
+                    weights[index][c][1][0] /= params[index].param[c][0];
                     break;
                 case TransformType.MODE_AFV:
-                    weights[index][i] = getAFVTransformWeights(index, c);
+                    weights[index][c] = getAFVTransformWeights(index, c);
                     break;
                 case TransformType.MODE_RAW:
                     weights[index][c] = new double[tt.matrixHeight][tt.matrixWidth];

@@ -85,9 +85,8 @@ public class HFCoefficients {
                         (nonZero + numBlocks - 1) / numBlocks);
                 }
                 // SPEC: spec doesn't say you abort here if nonZero == 0
-                if (nonZero <= 0) {
+                if (nonZero <= 0)
                     continue;
-                }
                 int size = hfPass.order[tt.orderID][c].length;
                 int[] ucoeff = new int[size - numBlocks];
                 int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
