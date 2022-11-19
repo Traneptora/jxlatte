@@ -7,6 +7,7 @@ import com.thebombzen.jxlatte.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.color.ToneMapping;
+import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
 
 public class ImageHeader {
@@ -76,8 +77,45 @@ public class ImageHeader {
         0.02727416f, 0.19446600f, 0.00159832f, -0.02232473f, 0.74982506f,
         0.11452620f, -0.03348048f, -0.01605681f, -0.02070339f, -0.00458223f
     };
+
+    private static int getICCContext(byte[] buffer, int index) {
+        if (index <= 128)
+            return 0;
+        int b1 = (int)buffer[index - 1] & 0xFF;
+        int b2 = (int)buffer[index - 2] & 0xFF;
+        int p1, p2;
+        if (b1 >= 'a' && b1 <= 'z' || b1 >= 'A' && b1 <= 'Z')
+            p1 = 0;
+        else if (b1 >= '0' && b1 <= '9' || b1 == '.' || b1 == ',')
+            p1 = 1;
+        else if (b1 <= 1)
+            p1 = 2 + b1;
+        else if (b1 > 1 && b1 < 16)
+            p1 = 4;
+        else if (b1 > 240 && b1 < 255)
+            p1 = 5;
+        else if (b1 == 255)
+            p1 = 6;
+        else
+            p1 = 7;
+
+        if (b2 >= 'a' && b2 <= 'z' || b2 >= 'A' && b2 <= 'Z')
+            p2 = 0;
+        else if (b2 >= '0' && b2 <= '9' || b2 == '.' || b2 == ',')
+            p2 = 1;
+        else if (b2 < 16)
+            p2 = 2;
+        else if (b2 > 240)
+            p2 = 3;
+        else
+            p2 = 4;
+
+        return 1 + p1 + 8 * p2;
+    }
     
     private SizeHeader size;
+    private int orientedWidth;
+    private int orientedHeight;
     private int level = 5;
     private int orientation;
     private SizeHeader intrinsicSize = null;
@@ -96,6 +134,7 @@ public class ImageHeader {
     private float[] up8weights;
     private double[][][][][] upWeights = null;
     private int[] alphaIndices;
+    private byte[] encodedICC;
 
     private ImageHeader() {
 
@@ -124,6 +163,14 @@ public class ImageHeader {
                 header.animationHeader = new AnimationHeader(reader);
         } else {
             header.orientation = 1;
+        }
+
+        if (header.orientation > 4) {
+            header.orientedWidth = header.size.height;
+            header.orientedHeight = header.size.width;
+        } else {
+            header.orientedWidth = header.size.width;
+            header.orientedHeight = header.size.height;
         }
 
         if (allDefault) {
@@ -187,6 +234,22 @@ public class ImageHeader {
         } else {
             header.up8weights = DEFAULT_UP8;
         }
+
+        if (header.colorEncoding.useIccProfile) {
+            int encodedSize;
+            try {
+                encodedSize = Math.toIntExact(reader.readU64());
+            } catch (ArithmeticException ex) {
+                throw new InvalidBitstreamException(ex);
+            }
+            header.encodedICC = new byte[encodedSize];
+            EntropyStream iccDistribution = new EntropyStream(reader, 41);
+            for (int i = 0; i < encodedSize; i++)
+                header.encodedICC[i] = (byte)iccDistribution.readSymbol(reader, getICCContext(header.encodedICC, i));
+            if (!iccDistribution.validateFinalState())
+                throw new InvalidBitstreamException("ICC Stream");
+        }
+        reader.zeroPadToByte();
 
         return header;
     }
@@ -261,6 +324,14 @@ public class ImageHeader {
 
     public ToneMapping getToneMapping() {
         return toneMapping;
+    }
+
+    public int getOrientedWidth() {
+        return orientedWidth;
+    }
+
+    public int getOrientedHeight() {
+        return orientedHeight;
     }
 
     public Extensions getExtensions() {

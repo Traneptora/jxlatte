@@ -272,7 +272,7 @@ public class PassGroup {
                                 // we're already using scratchblock[1] for the auxDCT2 coordiantes
                                 // but we're putting these far away at (8, 8) so there's no overlap
                                 MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO,
-                                    new IntPoint(8, 8), new IntPoint(4, 4), scratchBlock[2]);
+                                    new IntPoint(8), new IntPoint(4), scratchBlock[2]);
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = 0; ix < 4; ix++) {
                                         frameBuffer[c][pixelPosInFrame.y + 4*y + iy][pixelPosInFrame.x + 4*x + ix]

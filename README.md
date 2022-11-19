@@ -35,11 +35,13 @@ TL;DR Supported features:
   - All Lossless Images
   - All JXL Art
 - All JPEG reconstructions
+- Most VarDCT Images
 
 Features currently implemented at this time:
 
 - Image Header
   - Image Header parsing
+  - Orientation
 - Entropy decoding: DONE
   - Prefix Coding
   - ANS Coding
@@ -59,7 +61,7 @@ Features currently implemented at this time:
     - RCT
     - Palette
     - Squeeze
-- VarDCT: Debugging
+- VarDCT
   - LF Coefficients
   - HF Coefficients
   - Dequantization Weights
@@ -91,7 +93,9 @@ Features not yet supported at this time:
 
 - Image Header
   - ICC Profile decoding
-  - Orientation
 - Restoration Filters
   - Edge Preserving Filter, 2-3 Iterations
-- VarDCT: Finish Debugging
+- VarDCT:
+  - LF Frames
+- Image Features:
+  - Animation

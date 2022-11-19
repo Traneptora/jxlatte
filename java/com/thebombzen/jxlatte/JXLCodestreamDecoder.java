@@ -1,7 +1,9 @@
 package com.thebombzen.jxlatte;
 
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,7 +15,6 @@ import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.BlendingInfo;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
@@ -21,9 +22,65 @@ import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.FlowHelper;
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
+
+    private static double[][] transposeBuffer(double[][] src, int orientation) {
+        IntPoint size = IntPoint.sizeOf(src);
+        double[][] dest = orientation > 4 ? new double[size.x][size.y]
+            : orientation > 1 ? new double[size.y][size.x] : null;
+        switch (orientation) {
+            case 1:
+                return src;
+            case 2:
+                // flip horizontally
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[p.y][size.x - 1 - p.x] = src[p.y][p.x];
+                });
+                return dest;
+            case 3:
+                // rotate 180 degrees
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[size.y - 1 - p.y][size.x - 1 - p.x] = src[p.y][p.x];
+                });
+                return dest;
+            case 4:
+                // flip vertically
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[size.y - 1 - p.y][p.x] = src[p.y][p.x];
+                });
+                return dest;
+            case 5:
+                // transpose
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[p.x][p.y] = src[p.y][p.x];
+                });
+                return dest;
+            case 6:
+                // rotate clockwise
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[p.x][size.y - 1 - p.y] = src[p.y][p.x];
+                });
+                return dest;
+            case 7:
+                // skew transpose
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[size.x - 1 - p.x][size.y - 1 - p.y] = src[p.y][p.x];
+                });
+                return dest;
+            case 8:
+                // rotate counterclockwise
+                FlowHelper.parallelIterate(size, p -> {
+                    dest[size.x - 1 - p.x][p.y] = src[p.y][p.x];
+                });
+                return dest;
+            default:
+                throw new IllegalStateException("Challenge complete how did we get here");
+        }
+    }
+
     private Bitreader bitreader;
     private ImageHeader imageHeader;
     private long flags;
@@ -31,41 +88,6 @@ public class JXLCodestreamDecoder {
     public JXLCodestreamDecoder(Bitreader in, long flags) {
         this.bitreader = in;
         this.flags = flags;
-    }
-
-    private static int getICCContext(byte[] buffer, int index) {
-        if (index <= 128)
-            return 0;
-        int b1 = (int)buffer[index - 1] & 0xFF;
-        int b2 = (int)buffer[index - 2] & 0xFF;
-        int p1, p2;
-        if (b1 >= 'a' && b1 <= 'z' || b1 >= 'A' && b1 <= 'Z')
-            p1 = 0;
-        else if (b1 >= '0' && b1 <= '9' || b1 == '.' || b1 == ',')
-            p1 = 1;
-        else if (b1 <= 1)
-            p1 = 2 + b1;
-        else if (b1 > 1 && b1 < 16)
-            p1 = 4;
-        else if (b1 > 240 && b1 < 255)
-            p1 = 5;
-        else if (b1 == 255)
-            p1 = 6;
-        else
-            p1 = 7;
-
-        if (b2 >= 'a' && b2 <= 'z' || b2 >= 'A' && b2 <= 'Z')
-            p2 = 0;
-        else if (b2 >= '0' && b2 <= '9' || b2 == '.' || b2 == ',')
-            p2 = 1;
-        else if (b2 < 16)
-            p2 = 2;
-        else if (b2 > 240)
-            p2 = 3;
-        else
-            p2 = 4;
-
-        return 1 + p1 + 8 * p2;
     }
 
     private void computePatches(double[][][][] references, Frame frame) throws InvalidBitstreamException {
@@ -288,10 +310,10 @@ public class JXLCodestreamDecoder {
     }
 
     public JXLImage decode(int level) throws IOException {
-        return decode(level, System.err);
+        return decode(level, new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
     }
 
-    public JXLImage decode(int level, PrintStream err) throws IOException {
+    public JXLImage decode(int level, PrintWriter err) throws IOException {
         long info = (flags & 0b110) >> 1;
         this.imageHeader = ImageHeader.parse(bitreader, level);
         if (info >= 1) {
@@ -314,24 +336,6 @@ public class JXLCodestreamDecoder {
             if (imageHeader.getAnimationHeader() != null)
                 err.format("    Animated: true%n");
         }
-        if (imageHeader.getColorEncoding().useIccProfile) {
-            int encodedSize;
-            try {
-                encodedSize = Math.toIntExact(bitreader.readU64());
-            } catch (ArithmeticException ex) {
-                throw new InvalidBitstreamException(ex);
-            }
-            if (info >= 1) {
-                err.format("    ICC Profile, Size: %d%n", encodedSize);
-            }
-            byte[] encodedIcc = new byte[encodedSize];
-            EntropyStream iccDistribution = new EntropyStream(bitreader, 41);
-            for (int i = 0; i < encodedSize; i++)
-                encodedIcc[i] = (byte)iccDistribution.readSymbol(bitreader, getICCContext(encodedIcc, i));
-            if (!iccDistribution.validateFinalState())
-                throw new InvalidBitstreamException("ICC Stream");
-        }
-        bitreader.zeroPadToByte();
 
         if (imageHeader.getPreviewHeader() != null) {
             Frame frame = new Frame(bitreader, imageHeader);
@@ -391,6 +395,18 @@ public class JXLCodestreamDecoder {
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = canvas;
         }
-        return new JXLImage(canvas, imageHeader);
+
+        int orientation = imageHeader.getOrientation();
+
+        int cShift =  3 - imageHeader.getColorChannelCount();
+
+        double[][][] orientedCanvas = new double[canvas.length - cShift][][];
+
+        for (int c = 0; c < canvas.length; c++) {
+            int i = cShift > 0 && c < 3 ? 1 : c - cShift;
+            orientedCanvas[i] = transposeBuffer(canvas[c], orientation);
+        }
+
+        return new JXLImage(orientedCanvas, imageHeader);
     }
 }

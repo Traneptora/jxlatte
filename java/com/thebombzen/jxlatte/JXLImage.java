@@ -230,11 +230,11 @@ public class JXLImage {
     }
 
     public int getWidth() {
-        return imageHeader.getSize().width;
+        return imageHeader.getOrientedWidth();
     }
 
     public int getHeight() {
-        return imageHeader.getSize().height;
+        return imageHeader.getOrientedHeight();
     }
 
     public double[][][] getBuffer() {

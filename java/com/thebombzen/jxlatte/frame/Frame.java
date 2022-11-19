@@ -3,7 +3,7 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -539,9 +539,10 @@ public class Frame {
             outputBuffer[c] = tmp;
         }
 
-        if (header.restorationFilter.epfIterations >= 2) {
-            System.err.println("TODO: Second EPF Iteration");
-        }
+        if (header.restorationFilter.epfIterations < 2)
+            return;
+
+        System.err.println("TODO: Second EPF Iteration");
     }
 
     private double epfDistance1(double[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
@@ -804,7 +805,7 @@ public class Frame {
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 
-    public void printDebugInfo(long info, PrintStream err) {
+    public void printDebugInfo(long info, PrintWriter err) {
         err.println("Frame Info:");
         err.format("    Encoding: %s%n", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
