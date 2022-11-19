@@ -34,7 +34,7 @@ TL;DR Supported features:
 - Anything in Modular Mode
   - All Lossless Images
   - All JXL Art
-  - All JPEG reconstructions
+- All JPEG reconstructions
 
 Features currently implemented at this time:
 
@@ -59,19 +59,18 @@ Features currently implemented at this time:
     - RCT
     - Palette
     - Squeeze
-- VarDCT: DONE
-  - HF Block Contexts
-  - LF Channel Correlation
+- VarDCT: Debugging
   - LF Coefficients
-  - HF Metadata
   - HF Coefficients
-  - Transforms
+  - Dequantization Weights
+  - Recorrelation (Chroma From Luma)
+  - Inverse Transforms
     - Inverse DCT
     - Hornuss
     - AFV
     - Small DCTs
 - Image features: DONE
-  - Upsampling
+  - Non-separable upsampling
   - Patches
   - Splines
   - Noise Synthesis
@@ -83,6 +82,10 @@ Features currently implemented at this time:
   - Frame Blending
   - Color Management
   - PNG Output
+  - PFM Output
+- Restoration Filters:
+  - Gaborish
+  - EPF 1 Iteration
 
 Features not yet supported at this time:
 
@@ -90,5 +93,5 @@ Features not yet supported at this time:
   - ICC Profile decoding
   - Orientation
 - Restoration Filters
-  - Gaborish
-  - Edge Preserving Filter
+  - Edge Preserving Filter, 2-3 Iterations
+- VarDCT: Finish Debugging

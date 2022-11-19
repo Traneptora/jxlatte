@@ -26,20 +26,19 @@ public class LFCoefficients {
             System.err.println("TODO: Implement LF Frames");
             throw new UnsupportedOperationException("LF Frames currently not implemented");
         }
-        IntPoint size = frame.getLFGroupSize(parent.lfGroupID);
-        IntPoint lfSize = size.shiftLeft(-3);
+        IntPoint sizeInPixels = frame.getLFGroupSize(parent.lfGroupID);
+        IntPoint sizeInBlocks = sizeInPixels.shiftRight(3);
         this.extraPrecision = reader.readBits(2);
         FrameHeader header = frame.getFrameHeader();
         ModularChannelInfo[] info = new ModularChannelInfo[3];
         double[][][] dequantLFCoeff = new double[3][][];
         boolean adaptiveSmoothing = (header.flags & FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING) == 0;
+        IntPoint[] shift = header.jpegUpsampling;
         for (int i = 0; i < 3; i++) {
-            int hshift = header.jpegUpsampling[i].x;
-            int vshift = header.jpegUpsampling[i].y;
-            if (adaptiveSmoothing && (hshift > 0 || vshift > 0))
+            if (adaptiveSmoothing && !shift[i].equals(IntPoint.ZERO))
                 throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
-            IntPoint channelSize = lfSize.shiftLeft(-hshift, -vshift);
-            info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, hshift, vshift);
+            IntPoint channelSize = sizeInBlocks.shiftRight(shift[i]);
+            info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, shift[i].x, shift[i].y);
             dequantLFCoeff[i] = new double[channelSize.y][channelSize.x];
         }
         this.lfQuant = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
@@ -47,9 +46,11 @@ public class LFCoefficients {
         double[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
         int[][][] quant = lfQuant.getDecodedBuffer();
         for (int i = 0; i < 3; i++) {
+            // quant is in Y, X, B order
+            int c = Frame.cMap[i];
             for (int y = 0; y < quant[i].length; y++) {
                 for (int x = 0; x < quant[i][y].length; x++) {
-                    dequantLFCoeff[Frame.cMap[i]][y][x] = quant[i][y][x] * scaledDequant[Frame.cMap[i]] / (1 << extraPrecision);
+                    dequantLFCoeff[c][y][x] = quant[i][y][x] * scaledDequant[c] / (1 << extraPrecision);
                 }
             }
         }
@@ -81,7 +82,7 @@ public class LFCoefficients {
                         + coeff[i][y + 1][x - 1] + coeff[i][y + 1][x + 1];
                     weighted[i][y][x] = 0.05226273532324128D * sample + 0.20345139757231578D * adjacent
                         + 0.0334829185968739 * diag;
-                    double g = Math.abs(sample - weighted[i][y][x]) / coeff[Frame.cMap[i]][y][x];
+                    double g = Math.abs(sample - weighted[i][y][x]) / coeff[i][y][x];
                     if (g > gap[y][x])
                         gap[y][x] = g;
                 }
