@@ -2,6 +2,7 @@ package com.thebombzen.jxlatte.color;
 
 import java.util.function.DoubleUnaryOperator;
 
+import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public final class ColorManagement {
@@ -51,12 +52,14 @@ public final class ColorManagement {
     private static double[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
-        double[][] primaryMatrix = new double[][]{getXYZ(primaries.red), getXYZ(primaries.green), getXYZ(primaries.blue)};
-        double[][] inversePrimaries = MathHelper.invertMatrix3x3(primaryMatrix);
+        double[][] primaryMatrix = new double[][]{getXYZ(primaries.red),
+                getXYZ(primaries.green), getXYZ(primaries.blue)};
+        double[][] primariesT = MathHelper.transposeMatrix(primaryMatrix, new IntPoint(3));
+        double[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesT);
         double[] w = getXYZ(wp);
         double[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
         double[][] a = new double[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
-        return MathHelper.matrixMutliply(primaryMatrix, a);
+        return MathHelper.matrixMutliply(primariesT, a);
     }
 
     public static double[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,

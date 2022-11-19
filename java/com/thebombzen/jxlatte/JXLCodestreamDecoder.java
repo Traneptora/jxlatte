@@ -335,6 +335,7 @@ public class JXLCodestreamDecoder {
             }
             if (imageHeader.getAnimationHeader() != null)
                 err.format("    Animated: true%n");
+            err.flush();
         }
 
         if (imageHeader.getPreviewHeader() != null) {
@@ -355,6 +356,7 @@ public class JXLCodestreamDecoder {
                 err.format("    Lossless: %s%n", header.encoding == FrameFlags.VARDCT ? "No" : "Possibly");
             if (info >= 2)
                 frame.printDebugInfo(info, err);
+            err.flush();
             frame.decodeFrame();
             frames.add(frame);
         } while (!header.isLast);

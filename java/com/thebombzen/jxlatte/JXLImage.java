@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte;
 
+import java.io.IOException;
 import java.util.function.DoubleUnaryOperator;
 
 import com.thebombzen.jxlatte.bundle.ImageHeader;
@@ -25,8 +26,9 @@ public class JXLImage {
 
     private CIEXY white1931;
     private CIEPrimaries primaries1931;
+    private byte[] iccProfile;
 
-    protected JXLImage(double[][][] buffer, ImageHeader header) {
+    protected JXLImage(double[][][] buffer, ImageHeader header) throws IOException {
         this.buffer = buffer;
         this.colorEncoding = header.getColorEncoding().colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
@@ -34,8 +36,10 @@ public class JXLImage {
         ColorEncodingBundle bundle = header.getColorEncoding();
         if (imageHeader.isXYBEncoded()) {
             this.transfer = ColorFlags.TF_LINEAR;
+            this.iccProfile = null;
         } else {
             this.transfer = bundle.tf;
+            this.iccProfile = header.getDecodedICC();
         }
         this.taggedTransfer = bundle.tf;
         this.primaries = bundle.primaries;
@@ -53,6 +57,7 @@ public class JXLImage {
         this.transfer = image.transfer;
         this.primaries1931 = image.primaries1931;
         this.white1931 = image.white1931;
+        this.iccProfile = image.iccProfile;
         if (copyBuffer) {
             buffer = new double[image.buffer.length][][];
             for (int c = 0; c < buffer.length; c++) {
@@ -239,5 +244,13 @@ public class JXLImage {
 
     public double[][][] getBuffer() {
         return buffer;
+    }
+
+    public boolean hasICCProfile() {
+        return iccProfile != null;
+    }
+
+    public byte[] getICCProfile() {
+        return iccProfile;
     }
 }

@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.io;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
@@ -92,6 +93,27 @@ public interface Bitreader extends Closeable {
         return readBits(n) + (1 << n);
     }
 
-    public void zeroPadToByte() throws IOException;
+    public default int readICCVarint() throws IOException {
+        long value = 0;
+        for (int shift = 0; shift < 63; shift += 7) {
+            long b = readBits(8);
+            value |= (b & 127L) << shift;
+            if (b <= 127L)
+                break;
+        }
+        if (value > Integer.MAX_VALUE)
+            throw new InvalidBitstreamException("ICC Varint Overflow");
+        return (int)value;
+    }
 
+    public default boolean atEnd() throws IOException {
+        try {
+            showBits(1);
+        } catch (EOFException eof) {
+            return true;
+        }
+        return false;
+    }
+
+    public void zeroPadToByte() throws IOException;
 }

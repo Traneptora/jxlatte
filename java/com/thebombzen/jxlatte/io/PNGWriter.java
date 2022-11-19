@@ -5,6 +5,7 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
@@ -29,6 +30,7 @@ public class PNGWriter {
     private CIEPrimaries primaries;
     private CIEXY whitePoint;
     private CRC32 crc32 = new CRC32();
+    private byte[] iccProfile = null;
 
     public PNGWriter(JXLImage image) {
         this(image, image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8);
@@ -52,7 +54,8 @@ public class PNGWriter {
             primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
         if (whitePoint == null)
             whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
-        image = image.transform(primaries, whitePoint, ColorFlags.TF_SRGB);
+        this.iccProfile = image.getICCProfile();
+        image = iccProfile != null ? image : image.transform(primaries, whitePoint, ColorFlags.TF_SRGB);
         this.buffer = image.getBuffer();
         this.bitDepth = bitDepth;
         this.maxValue = ~(~0 << bitDepth);
@@ -116,6 +119,28 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
+    private void writeICCP() throws IOException {
+        if (iccProfile == null)
+            return;
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        DataOutputStream dout = new DataOutputStream(bout);
+        dout.writeInt(0x69_43_43_50); // iCCP
+        byte[] s = "jxlatte".getBytes(StandardCharsets.UTF_8);
+        dout.write(s);
+        dout.write(0); // null terminator
+        dout.write(0); // compression method 0
+        DeflaterOutputStream defout = new DeflaterOutputStream(dout, new Deflater(deflateLevel));
+        defout.write(iccProfile);
+        defout.flush();
+        defout.close();
+        byte[] buf = bout.toByteArray();
+        out.writeInt(buf.length - 4);
+        out.write(buf);
+        crc32.reset();
+        crc32.update(buf);
+        out.writeInt((int)crc32.getValue());
+    }
+
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
         int s = MathHelper.round(buffer[c][y][x] * maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
@@ -152,6 +177,7 @@ public class PNGWriter {
         this.out = new DataOutputStream(outputStream);
         out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
         writeIHDR();
+        writeICCP();
         writeCHRM();
         writeIDAT();
         out.writeInt(0);

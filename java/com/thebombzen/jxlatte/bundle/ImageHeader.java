@@ -1,6 +1,9 @@
 package com.thebombzen.jxlatte.bundle;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.color.ColorEncodingBundle;
@@ -9,6 +12,9 @@ import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.color.ToneMapping;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.InputStreamBitreader;
+import com.thebombzen.jxlatte.util.IntPoint;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class ImageHeader {
 
@@ -78,6 +84,13 @@ public class ImageHeader {
         0.11452620f, -0.03348048f, -0.01605681f, -0.02070339f, -0.00458223f
     };
 
+    private static final char[] MNTRGB = "mntrRGB XYZ ".toCharArray();
+    private static final char[] ACSP = "acsp".toCharArray();
+    private static final String[] iccTags = new String[]{
+        "cprt", "wtpt", "bkpt", "rXYZ", "gXYZ", "bXYZ", "kXYZ", "rTRC", "gTRC",
+        "bTRC", "kTRC", "chad", "desc", "chrm", "dmnd", "dmdd", "lumi"
+    };
+
     private static int getICCContext(byte[] buffer, int index) {
         if (index <= 128)
             return 0;
@@ -135,6 +148,7 @@ public class ImageHeader {
     private double[][][][][] upWeights = null;
     private int[] alphaIndices;
     private byte[] encodedICC;
+    private byte[] decodedICC = null;
 
     private ImageHeader() {
 
@@ -389,5 +403,217 @@ public class ImageHeader {
         if (level != 5 && level != 10)
             throw new InvalidBitstreamException();
         this.level = level;
+    }
+
+    private int getICCPrediction(byte[] buffer, int i) {
+        if (i <= 3)
+            return buffer.length >>> (8 * (3 - i));
+        if (i == 8)
+            return 4;
+        if (i >= 12 && i <= 23)
+            return MNTRGB[i - 12];
+        if (i >= 36 && i <= 39)
+            return ACSP[i - 36];
+        if (buffer[40] == 'A') {
+            if (i == 41 || i == 42)
+                return 'P';
+            if (i == 43)
+                return 'L';
+        } else if (buffer[40] == 'M') {
+            if (i == 41)
+                return 'S';
+            if (i == 42)
+                return 'F';
+            if (i == 43)
+                return 'T';
+        } else if (buffer[40] == 'S') {
+            if (buffer[41] == 'G') {
+                if (i == 42)
+                    return 'I';
+                if (i == 43)
+                    return 32;
+            } else if (buffer[41] == 'U') {
+                if (i == 42)
+                    return 'N';
+                if (i == 43)
+                    return 'W';
+            }
+        }
+        if (i == 70)
+            return 246;
+        if (i == 71)
+            return 214;
+        if (i == 73)
+            return 1;
+        if (i == 78)
+            return 211;
+        if (i == 79)
+            return 45;
+        if (i >= 80 && i < 84)
+            return buffer[i - 76];
+
+        return 0;
+    }
+
+    private byte[] shuffle(byte[] buffer, int width) {
+        int height = MathHelper.ceilDiv(buffer.length, width);
+        byte[] result = new byte[buffer.length];
+        for (int i = 0; i < buffer.length; i++) {
+            int j = IntPoint.coordinates(i, height).transpose().unwrapCoord(width);
+            result[j] = buffer[i];
+        }
+
+        return result;
+    }
+
+    @SuppressWarnings("resource")
+    public synchronized byte[] getDecodedICC() throws IOException {
+        if (decodedICC != null)
+            return decodedICC;
+        if (encodedICC == null)
+            return null;
+        Bitreader commandReader = new InputStreamBitreader(new ByteArrayInputStream(encodedICC));
+        int outputSize = commandReader.readICCVarint();
+        int commandSize = commandReader.readICCVarint();
+        // readICCVarint is always a multiple of bytes
+        int commandStart = (int)(commandReader.getBitsCount() >> 3);
+        int dataStart = (int)(commandStart + commandSize);
+        Bitreader dataReader = new InputStreamBitreader(new ByteArrayInputStream(
+            encodedICC, dataStart, encodedICC.length - dataStart));
+        int headerSize = Math.min(128, outputSize);
+        decodedICC = new byte[outputSize];
+        int resultPos = 0;
+
+        // header section
+        for (int i = 0; i < headerSize; i++) {
+            int e = dataReader.readBits(8);
+            int p = getICCPrediction(decodedICC, i);
+            decodedICC[resultPos++] = (byte)((p + e) & 0xFF);
+        }
+        if (resultPos == outputSize)
+            return decodedICC;
+
+        // taglist section
+        int tagCount = commandReader.readICCVarint() - 1;
+        if (tagCount >= 0) {
+            for (int i = 24; i >= 0; i -= 8)
+                decodedICC[resultPos++] = (byte)((tagCount >>> i) & 0xFF);
+            int prevTagStart = 128 + tagCount * 12;
+            int prevTagSize = 0;
+            while (!commandReader.atEnd() && (commandReader.getBitsCount() >> 3) < dataStart) {
+                int command = commandReader.readBits(8);
+                int tagCode = command & 0x3F;
+                if (tagCode == 0)
+                    break;
+                String tag;
+                byte[] tcr;
+                if (tagCode == 1) {
+                    tcr = new byte[4];
+                    for (int i = 0; i < 4; i++)
+                        tcr[i] = (byte)dataReader.readBits(8);
+                    tag = new String(tcr, StandardCharsets.US_ASCII);
+                } else if (tagCode == 2) {
+                    tag = "rTRC";
+                } else if (tagCode == 3) {
+                    tag = "rXYZ";
+                } else if (tagCode >= 4 && tagCode <= 21) {
+                    tag = iccTags[tagCode - 4];
+                } else {
+                    throw new InvalidBitstreamException("Illegal ICC Tag Code");
+                }
+
+                int tagStart = (command & 0x40) > 0 ? commandReader.readICCVarint() : prevTagStart + prevTagSize;
+                int tagSize = (command & 0x80) > 0 ? commandReader.readICCVarint() :
+                    Arrays.asList("rXYZ", "gXYZ", "bXYZ", "kXYZ", "wtpt", "bkpt", "lumi")
+                    .contains(tag) ? 20 : prevTagSize;
+
+                prevTagSize = tagSize;
+                prevTagStart = tagStart;
+
+                String[] tags = tagCode == 2 ? new String[]{"rTRC", "gTRC", "bTRC"}
+                    : tagCode == 3 ? new String[]{"rXYZ", "gXYZ", "bXYZ"} : new String[]{tag};
+                for (String wTag : tags) {
+                    tcr = wTag.getBytes(StandardCharsets.US_ASCII);
+                    for (int i = 0; i < 4; i++)
+                        decodedICC[resultPos++] = (byte)(tcr[i] & 0xFF);
+                    for (int i = 24; i >= 0; i -= 8)
+                        decodedICC[resultPos++] = (byte)((tagStart >>> i) & 0xFF);
+                    for (int i = 24; i >= 0; i -= 8)
+                        decodedICC[resultPos++] = (byte)((tagSize >>> i) & 0xFF);
+                    if (tagCode == 3)
+                        tagStart += tagSize;
+                }
+            }
+        }
+
+        // data section
+        while (!commandReader.atEnd() && (commandReader.getBitsCount() >> 3) < dataStart) {
+            int command = commandReader.readBits(8);
+            if (command == 1) {
+                int num = commandReader.readICCVarint();
+                for (int i = 0; i < num; i++)
+                    decodedICC[resultPos++] = (byte)dataReader.readBits(8);
+            } else if (command == 2 || command == 3) {
+                int num = commandReader.readICCVarint();
+                byte[] b = new byte[num];
+                for (int p = 0; p < num; p++)
+                    b[p] = (byte)dataReader.readBits(8);
+                int width = command == 2 ? 2 : 4;
+                b = shuffle(b, width);
+                System.arraycopy(b, 0, decodedICC, resultPos, b.length);
+                resultPos += b.length;
+            } else if (command == 4) {
+                int flags = commandReader.readBits(8);
+                int width = (flags & 3) + 1;
+                if (width == 3)
+                    throw new InvalidBitstreamException("Illegal width=3");
+                int order = (flags & 12) >>> 2;
+                if (order == 3)
+                    throw new InvalidBitstreamException("Illegal order=3");
+                int stride = (flags & 0x10) > 0 ? commandReader.readICCVarint() : width;
+                if (stride * 4 >= resultPos)
+                    throw new InvalidBitstreamException("Stride too large");
+                if (stride < width)
+                    throw new InvalidBitstreamException("Stride too small");
+                int num = commandReader.readICCVarint();
+                byte[] b = new byte[num];
+                for (int p = 0; p < num; p++)
+                    b[p] = (byte)dataReader.readBits(8);
+                if (width == 2 || width == 4)
+                    b = shuffle(b, width);
+                for (int i = 0; i < num; i += width) {
+                    int n = order + 1;
+                    int[] prev = new int[n];
+                    for (int j = 0; j < n; j++) {
+                        for (int k = 0; k < width; k++) {
+                            prev[j] <<= 8;
+                            prev[j] |= decodedICC[resultPos - stride * (j + 1) + k] & 0xFF;
+                        }
+                    }
+                    int p = order == 0 ? prev[0] : order == 1 ? 2 * prev[0] - prev[1]
+                        : 3 * prev[0] - 3 * prev[1] + prev[2];
+                    for (int j = 0; j < width && i + j < num; j++)
+                        decodedICC[resultPos++] = (byte)((b[i + j] + (p >>> (8 * (width - 1 - j)))) & 0xFF);
+                }
+            } else if (command == 10) {
+                decodedICC[resultPos++] = (byte)'X';
+                decodedICC[resultPos++] = (byte)'Y';
+                decodedICC[resultPos++] = (byte)'Z';
+                decodedICC[resultPos++] = (byte)' ';
+                resultPos += 4;
+                for (int i = 0; i < 12; i++)
+                    decodedICC[resultPos++] = (byte)dataReader.readBits(8);
+            } else if (command >= 16 && command < 24) {
+                String[] s = {"XYZ ", "desc", "text", "mluc", "para", "curv", "sf32", "gbd "};
+                char[] trc = s[command - 16].toCharArray();
+                for (int i = 0; i < 4; i++)
+                    decodedICC[resultPos++] = (byte)trc[i];
+                resultPos += 4;
+            } else {
+                throw new InvalidBitstreamException("Illegal Data Command");
+            }
+        }
+
+        return decodedICC;
     }
 }
