@@ -420,7 +420,7 @@ public class Frame {
         int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
 
         for (int c = 0; c < modularBuffer.length; c++) {
-            int cIn = c + buffer.length - modularBuffer.length;
+            int cIn = c;
             double scaleFactor;
             boolean xybM = globalMetadata.isXYBEncoded() && header.encoding == FrameFlags.MODULAR;
             // X, Y, B is encoded as Y, X, (B - Y)
