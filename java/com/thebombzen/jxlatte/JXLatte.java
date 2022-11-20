@@ -268,5 +268,13 @@ public class JXLatte {
         while (writeImage(options, decoder)) {
             // pass
         }
+
+        try {
+            decoder.close();
+        } catch (IOException ioe) {
+            if (options.debug)
+                ioe.printStackTrace();
+            System.exit(2);
+        }
     }
 }

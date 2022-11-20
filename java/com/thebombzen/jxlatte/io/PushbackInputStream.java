@@ -108,4 +108,10 @@ public class PushbackInputStream extends InputStream {
         bufferPos += count;
         return count;        
     }
+
+    @Override
+    public void close() throws IOException {
+        if (in != null)
+            in.close();
+    }
 }

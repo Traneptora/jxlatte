@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte.io;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -7,7 +8,7 @@ import java.util.Arrays;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
 
-public class Demuxer implements ExceptionalSupplier<byte[]> {
+public class Demuxer implements ExceptionalSupplier<byte[]>, Closeable {
 
     private static final byte[] CONTAINER_SIGNATURE = new byte[]{
         0x00, 0x00, 0x00, 0x0C, 'J', 'X', 'L', ' ', 0x0D, 0x0A, (byte)0x87, 0x0A
@@ -151,5 +152,10 @@ public class Demuxer implements ExceptionalSupplier<byte[]> {
         }
 
         return containerDemux();
+    }
+
+    @Override
+    public void close() throws IOException {
+        in.close();
     }
 }

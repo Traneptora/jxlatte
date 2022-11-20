@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte;
 
 import java.io.BufferedInputStream;
+import java.io.Closeable;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.io.InputStream;
 import com.thebombzen.jxlatte.io.Demuxer;
 import com.thebombzen.jxlatte.io.PushbackInputStream;
 
-public class JXLDecoder {
+public class JXLDecoder implements Closeable {
     private Demuxer demuxer;
     private JXLCodestreamDecoder decoder;
 
@@ -33,5 +34,10 @@ public class JXLDecoder {
     public JXLImage decode() throws IOException {
         demuxer.reset();
         return decoder.decode();
+    }
+
+    @Override
+    public void close() throws IOException {
+        demuxer.close();
     }
 }
