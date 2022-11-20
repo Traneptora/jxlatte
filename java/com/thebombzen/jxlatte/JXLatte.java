@@ -46,6 +46,10 @@ public class JXLatte {
             "    --output-png-depth=N         use N-bit output for PNG,",
             "                                     N must be 8 or 16",
             "    --output-format=<png|pfm>    write image in this output format",
+            "    --info                       output info about the input file",
+            "    --info=verbose               be more verbose with info",
+            "    --hdr                        output PNG files in HDR",
+            "                                     (BT.2020 Primaries, D65 White Point, PQ Transfer)",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };

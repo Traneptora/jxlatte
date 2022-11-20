@@ -353,7 +353,8 @@ public class JXLCodestreamDecoder {
             frame.readHeader();
             header = frame.getFrameHeader();
             if (info >= 1 && frames.size() == 0)
-                err.format("    Lossless: %s%n", header.encoding == FrameFlags.VARDCT ? "No" : "Possibly");
+                err.format("    Lossless: %s%n",
+                    header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
             if (info >= 2)
                 frame.printDebugInfo(info, err);
             err.flush();
