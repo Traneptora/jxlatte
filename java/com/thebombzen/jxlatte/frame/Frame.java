@@ -37,9 +37,17 @@ public class Frame {
 
     public static final int[] cMap = new int[]{1, 0, 2};
 
-    private static IntPoint[] epfCross = new IntPoint[]{
-        new IntPoint(0, 0), new IntPoint(0, 1), new IntPoint(1, 0),
-        new IntPoint(-1, 0), new IntPoint(0, -1)
+    private static IntPoint[] epfCross = new IntPoint[] {
+        IntPoint.ZERO,
+        new IntPoint(0, 1), new IntPoint(1, 0),
+        new IntPoint(-1, 0), new IntPoint(0, -1),
+    };
+
+    private static IntPoint[] epfDoubleCross = new IntPoint[] {
+        IntPoint.ZERO,
+        new IntPoint(-1, 0), new IntPoint(0, -1), new IntPoint(1, 0), new IntPoint(0, 1),
+        new IntPoint(1, -1), new IntPoint(1, 1), new IntPoint(-1, -1), new IntPoint(-1, 1),
+        new IntPoint(2, 0), new IntPoint(0, 2), new IntPoint(-2, 0), new IntPoint(-2, 2),
     };
 
     private static double[][] laplacian = null;
@@ -508,12 +516,8 @@ public class Frame {
 
         for (int i : FlowHelper.range(3)) {
 
-            if (i == 0) {
-                if (header.restorationFilter.epfIterations == 3) {
-                    System.err.println("TODO: Third EPF Iteration");
-                }
+            if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
-            }
 
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
@@ -531,7 +535,7 @@ public class Frame {
                     }
                     return;
                 }
-                for (IntPoint ip : epfCross) {
+                for (IntPoint ip : (i == 0 ? epfDoubleCross : epfCross)) {
                     IntPoint np = p.plus(ip).mirrorCoordinate(size);
                     double dist = i == 2 ? epfDistance2(buffer, p, np, size) : epfDistance1(buffer, p, np, size);
                     double weight = epfWeight(sigmaScale, dist, s, p);
