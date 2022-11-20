@@ -12,7 +12,7 @@ import com.thebombzen.jxlatte.io.PNGWriter;
 
 public class JXLatte {
 
-    public static final String JXLATTE_VERSION = "0.0.2";
+    public static final String JXLATTE_VERSION = "0.1.0";
 
     private static final int OUTPUT_DEFAULT = -1;
     private static final int OUTPUT_PNG = 0;

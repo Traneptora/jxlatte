@@ -26,8 +26,6 @@ PNGWriter writer = new PNGWriter(image);
 writer.write(output);
 ```
 
-although at the moment it's too WIP to produce an image for many input files.
-
 ## Features
 
 TL;DR Supported features:
