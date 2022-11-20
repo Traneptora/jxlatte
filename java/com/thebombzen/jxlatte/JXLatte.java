@@ -10,25 +10,34 @@ import java.util.Arrays;
 
 import com.thebombzen.jxlatte.io.PFMWriter;
 import com.thebombzen.jxlatte.io.PNGWriter;
+import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
 
 public class JXLatte {
 
     public static final String JXLATTE_VERSION = "0.1.0";
 
+    private static void writeImage(ExceptionalConsumer<? super OutputStream> writer,
+            String outputFilename) throws IOException {
+        boolean stdout = outputFilename.equals("-");
+        OutputStream out = new BufferedOutputStream(stdout ? System.out : new FileOutputStream(outputFilename));
+        try {
+            writer.accept(out);
+        } finally {
+            if (!outputFilename.equals("-")) {
+                out.close();
+            }
+        }
+    }
+
     private static void writePNG(String outputFilename, JXLImage image, Options options) throws IOException {
         int bitDepth = options.hdr ? 16 : options.outputDepth;
         PNGWriter writer = new PNGWriter(image, bitDepth, options.hdr);
-        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-")
-                ? System.out : new FileOutputStream(outputFilename))) {
-            writer.write(out);
-        }
+        writeImage(writer::write, outputFilename);
     }
 
     private static void writePFM(String outputFilename, JXLImage image, Options options) throws IOException {
         PFMWriter writer = new PFMWriter(image);
-        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-") ? System.out : new FileOutputStream(outputFilename))) {
-            writer.write(out);
-        }
+        writeImage(writer::write, outputFilename);
     }
 
     private static void usage(boolean success) {
