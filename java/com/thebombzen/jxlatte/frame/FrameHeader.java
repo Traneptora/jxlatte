@@ -134,15 +134,15 @@ public class FrameHeader {
             this.origin = new IntPoint();
         }
         if (haveCrop) {
-            width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
-            height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30) / upsampling;
+            width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
         } else {
-            width = parent.getSize().width / upsampling;
-            height = parent.getSize().height / upsampling;
+            width = parent.getSize().width;
+            height = parent.getSize().height;
         }
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
-        boolean fullFrame = origin.x <= 0 && origin.y <= 0 && (width * upsampling + origin.x) >= parent.getSize().width
-            && (height * upsampling + origin.y) >= parent.getSize().height;
+        boolean fullFrame = origin.x <= 0 && origin.y <= 0 && (width + origin.x) >= parent.getSize().width
+            && (height + origin.y) >= parent.getSize().height;
         ecBlendingInfo = new BlendingInfo[parent.getExtraChannelCount()];
         if (normalFrame) {
             blendingInfo = new BlendingInfo(reader, ecBlendingInfo.length > 0, fullFrame);

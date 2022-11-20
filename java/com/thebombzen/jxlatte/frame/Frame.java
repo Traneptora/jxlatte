@@ -645,9 +645,9 @@ public class Frame {
     public void initializeNoise(long seed0) {
         if (lfGlobal.noiseParameters == null)
             return;
-        int rowStride = MathHelper.ceilDiv(width, header.groupDim);
-        double[][][] noiseBuffer = new double[3][height][width];
-        int numGroups = rowStride * MathHelper.ceilDiv(height, header.groupDim);
+        int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
+        double[][][] noiseBuffer = new double[3][header.height][header.width];
+        int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
         TaskList<Void> tasks = new TaskList<>();
         for (int group = 0; group < numGroups; group++) {
             IntPoint groupXYUp = IntPoint.coordinates(group, rowStride).times(header.upsampling);
@@ -670,14 +670,14 @@ public class Frame {
             }
         }
 
-        this.noiseBuffer = new double[3][height][width];
+        this.noiseBuffer = new double[3][header.height][header.width];
         tasks.collect();
 
-        FlowHelper.parallelIterate(3, new IntPoint(width, height), (c, x, y) -> {
+        FlowHelper.parallelIterate(3, new IntPoint(header.width, header.height), (c, x, y) -> {
             for (int iy = 0; iy < 5; iy++) {
                 for (int ix = 0; ix < 5; ix++) {
-                    int cy = MathHelper.mirrorCoordinate(y + iy - 2, height);
-                    int cx = MathHelper.mirrorCoordinate(x + ix - 2, width);
+                    int cy = MathHelper.mirrorCoordinate(y + iy - 2, header.height);
+                    int cx = MathHelper.mirrorCoordinate(x + ix - 2, header.width);
                     this.noiseBuffer[c][y][x] += noiseBuffer[c][cy][cx] * laplacian[iy][ix];
                 }
             }

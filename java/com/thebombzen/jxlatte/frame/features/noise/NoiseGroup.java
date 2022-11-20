@@ -8,8 +8,8 @@ public class NoiseGroup {
 
     public NoiseGroup(FrameHeader header, long seed0, double[][][] noiseBuffer, int x0, int y0) {
         long seed1 = ((long)x0 << 32) | (long)y0;      
-        int xSize = Math.min(header.groupDim, header.width * header.upsampling - x0);
-        int ySize = Math.min(header.groupDim, header.height * header.upsampling - y0);
+        int xSize = Math.min(header.groupDim, header.width - x0);
+        int ySize = Math.min(header.groupDim, header.height - y0);
         rng = new XorShiro(seed0, seed1);
         int[] bits = new int[16];
         for (int c = 0; c < 3; c++) {
