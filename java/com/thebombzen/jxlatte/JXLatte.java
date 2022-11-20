@@ -22,6 +22,7 @@ public class JXLatte {
         OutputStream out = new BufferedOutputStream(stdout ? System.out : new FileOutputStream(outputFilename));
         try {
             writer.accept(out);
+            out.flush();
         } finally {
             if (!outputFilename.equals("-")) {
                 out.close();
@@ -275,6 +276,10 @@ public class JXLatte {
             if (options.debug)
                 ioe.printStackTrace();
             System.exit(2);
+        }
+
+        if (options.output != null && options.output.equals("-")) {
+            System.out.close();
         }
     }
 }
