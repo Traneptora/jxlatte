@@ -84,14 +84,12 @@ Features currently implemented at this time:
   - Color Management
   - PNG Output
   - PFM Output
-- Restoration Filters:
+- Restoration Filters: DONE
   - Gaborish
-  - EPF 1 Iteration
+  - EPF
 
 Features not yet supported at this time:
 
-- Restoration Filters
-  - Edge Preserving Filter, 2-3 Iterations
 - VarDCT:
   - LF Frames
 - Image Features:
