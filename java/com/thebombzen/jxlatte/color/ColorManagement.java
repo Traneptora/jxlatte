@@ -11,9 +11,9 @@ public final class ColorManagement {
     }
 
     private static final double[][] BRADFORD = new double[][]{
-        {0.8951D, -0.7502D, 0.0389D},
-        {0.2664D, 1.7135D, -0.0685D},
-        {-0.1614D, 0.0367D, 1.0296D}
+        {0.8951D, 0.2664D, -0.1614D},
+        {-0.7502D, 1.7135D, 0.0367D},
+        {0.0389D, -0.0685D, 1.0296D}
     };
 
     private static final double[][] BRADFORD_INVERSE = MathHelper.invertMatrix3x3(BRADFORD);
@@ -101,6 +101,8 @@ public final class ColorManagement {
                         return 1.0992968268094429403D * Math.pow(f, 0.45D) - 0.0992968268094429403D;
                 };
             case ColorFlags.TF_DCI:
+                transfer = 3846154;
+                break;
             case ColorFlags.TF_HLG:
                 throw new UnsupportedOperationException("Not yet implemented");
         }
@@ -137,13 +139,15 @@ public final class ColorManagement {
                     return Math.pow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
                 };
             case ColorFlags.TF_DCI:
+                transfer = 3846154;
+                break;
             case ColorFlags.TF_HLG:
                 throw new UnsupportedOperationException("Not yet implemented");
         }
     
         if (transfer < (1 << 24)) {
             double gamma = 1e7D / transfer;
-            return f -> MathHelper.signedPow(f, gamma);
+            return f -> Math.pow(f, gamma);
         }
     
         throw new IllegalArgumentException("Invalid transfer function");
