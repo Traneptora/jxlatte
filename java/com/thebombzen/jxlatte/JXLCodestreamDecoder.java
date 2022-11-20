@@ -22,6 +22,7 @@ import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.Demuxer;
+import com.thebombzen.jxlatte.io.PushbackInputStream;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -83,12 +84,14 @@ public class JXLCodestreamDecoder {
     }
 
     private Bitreader bitreader;
+    private PushbackInputStream in;
     private ImageHeader imageHeader;
     private Options options;
     private Demuxer demuxer;
 
-    public JXLCodestreamDecoder(Bitreader in, Options options, Demuxer demuxer) {
-        this.bitreader = in;
+    public JXLCodestreamDecoder(PushbackInputStream in, Options options, Demuxer demuxer) {
+        this.in = in;
+        this.bitreader = new Bitreader(in);
         this.options = options;
         this.demuxer = demuxer;
     }
@@ -318,6 +321,8 @@ public class JXLCodestreamDecoder {
     }
 
     public JXLImage decode(PrintWriter err) throws IOException {
+        if (bitreader.atEnd())
+            return null;
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
@@ -416,6 +421,15 @@ public class JXLCodestreamDecoder {
             orientedCanvas[i] = transposeBuffer(canvas[c], orientation);
         }
 
-        return new JXLImage(orientedCanvas, imageHeader);
+        JXLImage image = new JXLImage(orientedCanvas, imageHeader);
+
+        bitreader.zeroPadToByte();
+        byte[] drain = bitreader.drainCache();
+        if (drain != null)
+            demuxer.pushBack(drain);
+        while ((drain = in.drain()) != null)
+            demuxer.pushBack(drain);
+
+        return image;
     }
 }

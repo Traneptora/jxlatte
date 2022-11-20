@@ -207,8 +207,19 @@ public class Bitreader extends InputStream {
         try {
             return readBits(8);
         } catch (EOFException eof) {
-            return 01;
+            return -1;
         }
+    }
+
+    public byte[] drainCache() throws IOException {
+        if (cacheBits % 8 != 0)
+            throw new IllegalStateException("You must align before drainCache");
+        int cacheBytes = cacheBits / 8;
+        if (cacheBytes == 0)
+            return null;
+        byte[] buffer = new byte[cacheBytes];
+        read(buffer);
+        return buffer;
     }
 
     @Override

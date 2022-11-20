@@ -188,19 +188,7 @@ public class JXLatte {
         return options;
     }
 
-    public static void main(String[] args) {
-        Options options = parseOptions(args);
-
-        JXLDecoder decoder = null;
-        try {
-            decoder = options.input.equals("-")
-                ? new JXLDecoder(System.in, options)
-                : new JXLDecoder(options.input, options);
-        } catch (FileNotFoundException ex) {
-            System.err.format("jxlatte: Unable to open file: %s%n", options.input);
-            System.exit(2);
-        }
-
+    private static boolean writeImage(Options options, JXLDecoder decoder) {
         JXLImage image = null;
         try {
             image = decoder.decode();
@@ -225,6 +213,9 @@ public class JXLatte {
             System.exit(4);
         }
 
+        if (image == null)
+            return false;
+
         if (options.output != null) {
             try {
                 if (options.outputFormat == Options.OUTPUT_PFM) {
@@ -247,6 +238,26 @@ public class JXLatte {
             }
         } else {
             System.err.println("Decoded to pixels, discarding output.");
+        }
+
+        return true;
+    }
+
+    public static void main(String[] args) {
+        Options options = parseOptions(args);
+
+        JXLDecoder decoder = null;
+        try {
+            decoder = options.input.equals("-")
+                ? new JXLDecoder(System.in, options)
+                : new JXLDecoder(options.input, options);
+        } catch (FileNotFoundException ex) {
+            System.err.format("jxlatte: Unable to open file: %s%n", options.input);
+            System.exit(2);
+        }
+
+        while (writeImage(options, decoder)) {
+            // pass
         }
     }
 }
