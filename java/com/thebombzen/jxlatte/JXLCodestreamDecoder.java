@@ -324,6 +324,7 @@ public class JXLCodestreamDecoder {
             boolean alpha = imageHeader.hasAlpha();
             err.format("    Pixel Format: %s%n",
                 gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
+            err.format("    Bit Depth: %d%n", imageHeader.getBitDepthHeader().bitsPerSample);
             if (info >= 2) {
                 err.format("    Extra Channels: %d%n", imageHeader.getExtraChannelCount());
                 err.format("    XYB Encoded: %b%n", imageHeader.isXYBEncoded());
