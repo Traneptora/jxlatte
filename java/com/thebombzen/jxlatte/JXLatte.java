@@ -18,8 +18,15 @@ public class JXLatte {
     private static final int OUTPUT_PNG = 0;
     private static final int OUTPUT_PFM = 1;
 
+    public static final long FLAG_DEBUG = 1;
+    public static final long FLAG_INFO_MASK = 6;
+    public static final long FLAG_INFO = 2;
+    public static final long FLAG_VERBOSE = 4;
+    public static final long FLAG_TRACE = 6;
+    public static final long FLAG_HDR = 8;
+
     private static void writePNG(String outputFilename, JXLImage image, int depth, long flags) throws IOException {
-        boolean hdr = (flags & 0b1000L) > 0;
+        boolean hdr = (flags & FLAG_HDR) > 0;
         int bitDepth = hdr ? 16 : depth;
         PNGWriter writer = new PNGWriter(image, bitDepth, hdr);
         try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-")
@@ -116,11 +123,11 @@ public class JXLatte {
                     }
                     break;
                 case "debug":
-                    flags = ~(~flags | 0b1L);
+                    flags = ~(~flags | FLAG_DEBUG);
                     switch (value.toLowerCase()) {
                         case "":
                         case "yes":
-                            flags |= 0b1L;
+                            flags |= FLAG_DEBUG;
                             break;
                         case "no":
                             break;
@@ -130,19 +137,19 @@ public class JXLatte {
                     }
                     break;
                 case "info":
-                    flags = ~(~flags | 0b110L);
+                    flags = ~(~flags | FLAG_INFO_MASK);
                     switch (value.toLowerCase()) {
                         case "":
                         case "yes":
-                            flags |= 0b010L;
+                            flags |= FLAG_INFO;
                             break;
                         case "no":
                             break;
                         case "verbose":
-                            flags |= 0b100L;
+                            flags |= FLAG_VERBOSE;
                             break;
                         case "trace":
-                            flags |= 0b110L;
+                            flags |= FLAG_TRACE;
                             break;
                         default:
                             System.err.format("jxlatte: unknown debug flag: %s%n", value);
@@ -150,11 +157,11 @@ public class JXLatte {
                     }
                     break;
                 case "hdr":
-                    flags = ~(~flags | 0b1000L);
+                    flags = ~(~flags | FLAG_HDR);
                     switch (value.toLowerCase()) {
                         case "":
                         case "yes":
-                            flags |= 0b1000L;
+                            flags |= FLAG_HDR;
                             break;
                         case "no":
                             break;
@@ -198,7 +205,7 @@ public class JXLatte {
             System.exit(2);
         }
 
-        boolean debug = (flags & 0b1L) > 0;
+        boolean debug = (flags & FLAG_DEBUG) > 0;
 
         JXLImage image = null;
         try {
