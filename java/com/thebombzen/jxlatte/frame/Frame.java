@@ -64,6 +64,8 @@ public class Frame {
     private int groupRowStride;
     private int lfGroupRowStride;
     private MATree globalTree;
+    private int width;
+    private int height;
 
     public Frame(Bitreader reader, ImageHeader globalMetadata) {
         this.globalReader = reader;
@@ -110,8 +112,8 @@ public class Frame {
     public void readHeader() throws IOException {
         globalReader.zeroPadToByte();
         this.header = new FrameHeader(globalReader, this.globalMetadata);
-        int width = header.width;
-        int height = header.height;
+        width = header.width;
+        height = header.height;
         width = MathHelper.ceilDiv(width, header.upsampling);
         height = MathHelper.ceilDiv(height, header.upsampling);
         width = MathHelper.ceilDiv(width, 1 << (3 * header.lfLevel));
@@ -431,7 +433,7 @@ public class Frame {
                 scaleFactor = 1.0D;
             else
                 scaleFactor = 1.0D / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-            FlowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+            FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
                 if (xybM && cIn == 2)
                     buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
@@ -605,8 +607,8 @@ public class Frame {
     public void upsample() {
         for (int c = 0; c < buffer.length; c++)
             buffer[c] = performUpsampling(buffer[c], c);
-        header.width *= header.upsampling;
-        header.height *= header.upsampling;
+        width *= header.upsampling;
+        height *= header.upsampling;
         header.origin = header.origin.times(header.upsampling);
     }
 
@@ -622,11 +624,9 @@ public class Frame {
     public void initializeNoise(long seed0) {
         if (lfGlobal.noiseParameters == null)
             return;
-        int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
-        int height = header.height * header.upsampling;
-        int width = header.width * header.upsampling;
+        int rowStride = MathHelper.ceilDiv(width, header.groupDim);
         double[][][] noiseBuffer = new double[3][height][width];
-        int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
+        int numGroups = rowStride * MathHelper.ceilDiv(height, header.groupDim);
         TaskList<Void> tasks = new TaskList<>();
         for (int group = 0; group < numGroups; group++) {
             IntPoint groupXYUp = IntPoint.coordinates(group, rowStride).times(header.upsampling);
@@ -668,6 +668,7 @@ public class Frame {
         if (lfGlobal.noiseParameters == null)
             return;
         double[] lut = lfGlobal.noiseParameters.lut;
+        // header.width here to avoid upsampling
         FlowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
             // SPEC: spec doesn't mention the *0.5 here, it says *6
             // SPEC: spec doesn't mention clamping to 0 here
@@ -775,9 +776,9 @@ public class Frame {
 
     public IntPoint getPaddedFrameSize() {
         if (header.encoding == FrameFlags.VARDCT)
-            return new IntPoint(header.width, header.height).ceilDiv(8).times(8);
+            return new IntPoint(width, height).ceilDiv(8).times(8);
         else
-            return new IntPoint(header.width, header.height);
+            return new IntPoint(width, height);
     }
 
     public MATree getGlobalTree() {
@@ -800,8 +801,8 @@ public class Frame {
     /* gets the sample for the IMAGE position x and y */
     public double getSample(int c, int x, int y) {
         return x < header.origin.x || y < header.origin.y
-            || x - header.origin.x >= header.width
-            || y - header.origin.y >= header.height
+            || x - header.origin.x >= width
+            || y - header.origin.y >= height
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 
@@ -814,7 +815,7 @@ public class Frame {
                     : header.type == FrameFlags.SKIP_PROGRESSIVE ? "Skip Progressive"
                     : "????";
         err.format("    Type: %s%n", type);
-        err.format("    Size: %dx%d%n", header.width * header.upsampling, header.height * header.upsampling);
+        err.format("    Size: %dx%d%n", width, height);
         err.format("    Origin: (%d, %d)%n", header.origin.x, header.origin.y);
         err.format("    YCbCr: %b%n", header.doYCbCr);
     }
