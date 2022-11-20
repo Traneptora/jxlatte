@@ -83,11 +83,11 @@ public class JXLCodestreamDecoder {
 
     private Bitreader bitreader;
     private ImageHeader imageHeader;
-    private long flags;
+    private Options options;
 
-    public JXLCodestreamDecoder(Bitreader in, long flags) {
+    public JXLCodestreamDecoder(Bitreader in, Options options) {
         this.bitreader = in;
-        this.flags = flags;
+        this.options = options;
     }
 
     private void computePatches(double[][][][] references, Frame frame) throws InvalidBitstreamException {
@@ -314,9 +314,8 @@ public class JXLCodestreamDecoder {
     }
 
     public JXLImage decode(int level, PrintWriter err) throws IOException {
-        long info = (flags & 0b110) >> 1;
         this.imageHeader = ImageHeader.parse(bitreader, level);
-        if (info >= 1) {
+        if (options.verbosity >= Options.VERBOSITY_INFO) {
             err.println("Image:");
             err.format("    Level: %d%n", level);
             err.format("    Size: %dx%d%n", imageHeader.getSize().width, imageHeader.getSize().height);
@@ -325,7 +324,7 @@ public class JXLCodestreamDecoder {
             err.format("    Pixel Format: %s%n",
                 gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
             err.format("    Bit Depth: %d%n", imageHeader.getBitDepthHeader().bitsPerSample);
-            if (info >= 2) {
+            if (options.verbosity >= Options.VERBOSITY_VERBOSE) {
                 err.format("    Extra Channels: %d%n", imageHeader.getExtraChannelCount());
                 err.format("    XYB Encoded: %b%n", imageHeader.isXYBEncoded());
                 ColorEncodingBundle ce = imageHeader.getColorEncoding();
@@ -353,11 +352,11 @@ public class JXLCodestreamDecoder {
             Frame frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
             header = frame.getFrameHeader();
-            if (info >= 1 && frames.size() == 0)
+            if (options.verbosity >= Options.VERBOSITY_INFO && frames.size() == 0)
                 err.format("    Lossless: %s%n",
                     header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
-            if (info >= 2)
-                frame.printDebugInfo(info, err);
+            if (options.verbosity >= Options.VERBOSITY_VERBOSE)
+                frame.printDebugInfo(options, err);
             err.flush();
             frame.decodeFrame();
             frames.add(frame);

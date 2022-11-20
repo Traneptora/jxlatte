@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.Options;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.features.noise.NoiseGroup;
@@ -827,7 +828,7 @@ public class Frame {
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 
-    public void printDebugInfo(long info, PrintWriter err) {
+    public void printDebugInfo(Options options, PrintWriter err) {
         err.println("Frame Info:");
         err.format("    Encoding: %s%n", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
