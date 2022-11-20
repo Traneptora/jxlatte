@@ -504,47 +504,54 @@ public class Frame {
             }
         });
 
-        if (header.restorationFilter.epfIterations == 3) {
-            System.err.println("TODO: Third EPF Iteration");
-        }
-
         double[][][] outputBuffer = new double[3][size.y][size.x];
 
-        FlowHelper.parallelIterate(size, (p) -> {
-            double sumWeights = 0D;
-            double[] sumChannels = new double[3];
-            double s = p.shiftRight(3).get(sigma);
-            if (s < 0.3) {
-                for (int c = 0; c < 3; c++) {
-                    outputBuffer[c][p.y][p.x] = buffer[c][p.y][p.x];
+        for (int i : FlowHelper.range(3)) {
+
+            if (i == 0) {
+                if (header.restorationFilter.epfIterations == 3) {
+                    System.err.println("TODO: Third EPF Iteration");
                 }
-                return;
+                continue;
             }
-            for (IntPoint ip : epfCross) {
-                IntPoint np = p.plus(ip).mirrorCoordinate(size);
-                double dist = epfDistance1(buffer, p, np, size);
-                double weight = epfWeight(stepMultiplier, dist, s, p);
-                sumWeights += weight;
-                for (int c = 0; c < 3; c++) {
-                    sumChannels[c] += np.get(buffer[c]) * weight;
+
+            if (i == 2 && header.restorationFilter.epfIterations < 2)
+                break;
+
+            double sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
+                i == 1 ? 1.0D : header.restorationFilter.epfPass2SigmaScale);
+
+            FlowHelper.parallelIterate(size, (p) -> {
+                double sumWeights = 0D;
+                double[] sumChannels = new double[3];
+                double s = p.shiftRight(3).get(sigma);
+                if (s < 0.3) {
+                    for (int c = 0; c < 3; c++) {
+                        outputBuffer[c][p.y][p.x] = buffer[c][p.y][p.x];
+                    }
+                    return;
                 }
-            }
+                for (IntPoint ip : epfCross) {
+                    IntPoint np = p.plus(ip).mirrorCoordinate(size);
+                    double dist = i == 2 ? epfDistance2(buffer, p, np, size) : epfDistance1(buffer, p, np, size);
+                    double weight = epfWeight(sigmaScale, dist, s, p);
+                    sumWeights += weight;
+                    for (int c = 0; c < 3; c++) {
+                        sumChannels[c] += np.get(buffer[c]) * weight;
+                    }
+                }
+                for (int c = 0; c < 3; c++) {
+                    p.set(outputBuffer[c], sumChannels[c] / sumWeights);
+                }
+            });
+
             for (int c = 0; c < 3; c++) {
-                p.set(outputBuffer[c], sumChannels[c] / sumWeights);
+                /* swapping lets us re-use the output buffer without re-allocing */
+                double[][] tmp = buffer[c];
+                buffer[c] = outputBuffer[c];
+                outputBuffer[c] = tmp;
             }
-        });
-
-        for (int c = 0; c < 3; c++) {
-            /* swapping lets us re-use the output buffer without re-allocing */
-            double[][] tmp = buffer[c];
-            buffer[c] = outputBuffer[c];
-            outputBuffer[c] = tmp;
         }
-
-        if (header.restorationFilter.epfIterations < 2)
-            return;
-
-        System.err.println("TODO: Second EPF Iteration");
     }
 
     private double epfDistance1(double[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
@@ -557,6 +564,16 @@ public class Frame {
             }
         }
 
+        return dist;
+    }
+
+    private double epfDistance2(double[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
+        double dist = 0;
+        for (int c = 0; c < 3; c++) {
+            dist += Math.abs(basePos.mirrorCoordinate(size).get(buffer[c])
+                    - distPos.mirrorCoordinate(size).get(buffer[c]))
+                    * header.restorationFilter.epfChannelScale[c];
+        }
         return dist;
     }
 
