@@ -117,8 +117,9 @@ public class LFCoefficients {
         // chroma from luma
         if (shift[0].plus(shift[1]).plus(shift[2]).equals(IntPoint.ZERO)) {
             LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
-            double kX = lfc.baseCorrelationX + (lfc.xFactorLF - 127D) / (double)lfc.colorFactor;
-            double kB = lfc.baseCorrelationB + (lfc.bFactorLF - 127D) / (double)lfc.colorFactor;
+            // SPEC: -128, not -127
+            double kX = lfc.baseCorrelationX + (lfc.xFactorLF - 128D) / (double)lfc.colorFactor;
+            double kB = lfc.baseCorrelationB + (lfc.bFactorLF - 128D) / (double)lfc.colorFactor;
             for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(dequantLFCoeff[1]))) {
                 dequantLFCoeff[0][p.y][p.x] += kX * dequantLFCoeff[1][p.y][p.x];
                 dequantLFCoeff[2][p.y][p.x] += kB * dequantLFCoeff[1][p.y][p.x];
