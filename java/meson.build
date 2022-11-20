@@ -1,11 +1,3 @@
-jxlatte_jar = jar('jxlatte',
-    sources: src,
-    java_resources: structured_sources(
-        files('resources/bt2020-d65-pq.icc'),
-    ),
-    main_class: 'com.thebombzen.jxlatte.JXLatte',
-)
-
 src = files(
     # com.thebombzen.jxlatte
     'com/thebombzen/jxlatte/InvalidBitstreamException.java',
@@ -117,4 +109,12 @@ src = files(
     'com/thebombzen/jxlatte/util/functional/ExceptionalRunnable.java',
     'com/thebombzen/jxlatte/util/functional/ExceptionalSupplier.java',
     'com/thebombzen/jxlatte/util/functional/FunctionalHelper.java',
+)
+
+jxlatte_jar = jar('jxlatte',
+    sources: src,
+    java_resources: structured_sources(
+        files('resources/bt2020-d65-pq.icc'),
+    ),
+    main_class: 'com.thebombzen.jxlatte.JXLatte',
 )
