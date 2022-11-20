@@ -327,7 +327,7 @@ public class JXLCodestreamDecoder {
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
         if (options.verbosity >= Options.VERBOSITY_INFO) {
-            err.println("Image:");
+            err.format("Image: %s%n", options.input != null ? options.input : "<stdin>");
             err.format("    Level: %d%n", level);
             err.format("    Size: %dx%d%n", imageHeader.getSize().width, imageHeader.getSize().height);
             boolean gray = imageHeader.getColorChannelCount() < 3;

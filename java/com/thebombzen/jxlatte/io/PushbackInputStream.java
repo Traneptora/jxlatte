@@ -91,8 +91,16 @@ public class PushbackInputStream extends InputStream {
             return 0;
         if (refillBuffer())
             return 0;
-        if (buffer == null)
-            return in.skip(n);
+        if (buffer == null) {
+            try {
+                long count = Math.min(n, in.available());
+                return in.skip(count);
+            } catch (IOException ioe) {
+                if (ioe.getMessage().equals("Illegal seek"))
+                    return 0;
+                throw ioe;
+            }
+        }
 
         int count = available();
         if (count > n)
