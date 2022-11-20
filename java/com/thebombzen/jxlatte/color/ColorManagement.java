@@ -90,8 +90,8 @@ public final class ColorManagement {
                 };
             case ColorFlags.TF_PQ:
                 return f -> {
-                    double d = MathHelper.signedPow(f, 0.159423828125D);
-                    return MathHelper.signedPow((0.8359375D + 18.8515625D * d) / (1D + 18.6875D * d), 78.84375D);
+                    double d = Math.pow(f, 0.159423828125D);
+                    return Math.pow((0.8359375D + 18.8515625D * d) / (1D + 18.6875D * d), 78.84375D);
                 };
             case ColorFlags.TF_BT709:
                 return f -> {
@@ -133,8 +133,8 @@ public final class ColorManagement {
                 };
             case ColorFlags.TF_PQ:
                 return f -> {
-                    double d = MathHelper.signedPow(f, 0.012683313515655965121D);
-                    return MathHelper.signedPow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
+                    double d = Math.pow(f, 0.012683313515655965121D);
+                    return Math.pow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
                 };
             case ColorFlags.TF_DCI:
             case ColorFlags.TF_HLG:
