@@ -5,6 +5,7 @@ src = files(
     'com/thebombzen/jxlatte/JXLCodestreamDecoder.java',
     'com/thebombzen/jxlatte/JXLDecoder.java',
     'com/thebombzen/jxlatte/JXLImage.java',
+    'com/thebombzen/jxlatte/Options.java',
 
     # com.thebombzen.jxlatte.bundle
     'com/thebombzen/jxlatte/bundle/AnimationHeader.java',
@@ -86,12 +87,11 @@ src = files(
 
     # com.thebombzen.jxlatte.io
     'com/thebombzen/jxlatte/io/Bitreader.java',
-    'com/thebombzen/jxlatte/io/ByteArrayQueueInputStream.java',
     'com/thebombzen/jxlatte/io/Demuxer.java',
-    'com/thebombzen/jxlatte/io/InputStreamBitreader.java',
     'com/thebombzen/jxlatte/io/IOHelper.java',
     'com/thebombzen/jxlatte/io/PFMWriter.java',
     'com/thebombzen/jxlatte/io/PNGWriter.java',
+    'com/thebombzen/jxlatte/io/PushbackInputStream.java',
 
     # com.thebombzen.jxlatte.util
     'com/thebombzen/jxlatte/util/FlowHelper.java',

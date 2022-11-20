@@ -26,7 +26,6 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -201,7 +200,7 @@ public class Frame {
     private byte[] readBuffer(int index) throws IOException {
         int length = tocLengths[index];
         byte[] buffer = new byte[length + 4];
-        int read = globalReader.readBytes(buffer, 0, length);
+        int read = globalReader.read(buffer, 0, length);
         if (read < length)
             throw new EOFException("Unable to read full TOC entry");
         return buffer;
@@ -212,7 +211,7 @@ public class Frame {
             return CompletableFuture.completedFuture(this.globalReader);
         int permutedIndex = tocPermuation[index];
         return buffers[permutedIndex].thenApply((buff) -> {
-            return new InputStreamBitreader(new ByteArrayInputStream(buff));
+            return new Bitreader(new ByteArrayInputStream(buff));
         });
     }
 

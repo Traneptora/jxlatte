@@ -6,9 +6,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.thebombzen.jxlatte.io.ByteArrayQueueInputStream;
+import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.Demuxer;
-import com.thebombzen.jxlatte.io.InputStreamBitreader;
+import com.thebombzen.jxlatte.io.PushbackInputStream;
 
 public class JXLDecoder {
     private Demuxer demuxer;
@@ -24,9 +24,7 @@ public class JXLDecoder {
 
     public JXLDecoder(InputStream in, Options options) {
         demuxer = new Demuxer(in);
-        new Thread(demuxer).start();
-        decoder = new JXLCodestreamDecoder(
-            new InputStreamBitreader(new ByteArrayQueueInputStream(demuxer.getQueue())), options);
+        decoder = new JXLCodestreamDecoder(new Bitreader(new PushbackInputStream(demuxer)), options, demuxer);
     }
 
     public JXLDecoder(String filename, Options options) throws FileNotFoundException {
@@ -34,17 +32,6 @@ public class JXLDecoder {
     }
 
     public JXLImage decode() throws IOException {
-        IOException error = null;
-        JXLImage ret = null;
-        try {
-            demuxer.checkException();
-            ret = decoder.decode(demuxer.getLevel());
-        } catch (IOException ex) {
-            error = ex;
-        }
-        demuxer.joinExceptionally();
-        if (error != null)
-            throw error;
-        return ret;
+        return decoder.decode();
     }
 }

@@ -1,16 +1,13 @@
 package com.thebombzen.jxlatte.io;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
 
-public class Demuxer implements Runnable {
+public class Demuxer implements ExceptionalSupplier<byte[]> {
 
     private static final byte[] CONTAINER_SIGNATURE = new byte[]{
         0x00, 0x00, 0x00, 0x0C, 'J', 'X', 'L', ' ', 0x0D, 0x0A, (byte)0x87, 0x0A
@@ -31,162 +28,128 @@ public class Demuxer implements Runnable {
         return makeTag(tagArray, 0, tagArray.length);
     }
 
-    private InputStream in;
-    private BlockingQueue<byte[]> queue = new LinkedBlockingQueue<>();
-    private CompletableFuture<Integer> level = new CompletableFuture<>();
-    private CompletableFuture<Void> exception = new CompletableFuture<>();
+    private PushbackInputStream in;
+    private int level = 5;
+    private boolean foundSignature = false;
+    private long posInBox = 0;
+    private long boxSize;
+    private boolean container;
 
     public Demuxer(InputStream in) {
-        this.in = in;
-    }
-
-    public BlockingQueue<byte[]> getQueue() {
-        return queue;
-    }
-
-    public void checkException() {
-        try {
-            exception.getNow(null);
-        } catch (CompletionException ex) {
-            FunctionalHelper.sneakyThrow(ex);
-        }
-    }
-
-    public void joinExceptionally() {
-        FunctionalHelper.join(exception);
+        this.in = new PushbackInputStream(in);
     }
 
     public int getLevel() {
-        return FunctionalHelper.join(level);
+        return level;
     }
 
-    private void dummyDemux() throws Throwable {
-        byte[] buffer = new byte[4096];
-        while (true) {
-            int count = in.read(buffer);
-            if (count > 0) {
-                byte[] buf = new byte[count];
-                System.arraycopy(buffer, 0, buf, 0, count);
-                queue.put(buf);
-            } else {
-                queue.put(new byte[0]);
-                break;
-            }
-        }
+    public void reset() {
+        level = 5;
+        foundSignature = false;
+        posInBox = 0;
     }
 
-    private void containerDemux() throws Throwable {
-        byte[] boxSize = new byte[8];
+    public void pushBack(byte[] buffer) {
+        in.pushBack(buffer);
+    }
+
+    private byte[] containerDemux() throws IOException {
+        byte[] boxSizeArray = new byte[8];
         byte[] boxTag = new byte[4];
         while (true) {
-            int c = IOHelper.readFully(in, boxSize, 0, 4);
+            int c = IOHelper.readFully(in, boxSizeArray, 0, 4);
             if (c != 0) {
-                if (c < 4) {
+                if (c < 4)
                     throw new InvalidBitstreamException("Truncated box size");
-                } else {
-                    queue.put(new byte[0]);
-                    return;
-                }
+                
+                return new byte[0];
             }
-            long size = makeTag(boxSize, 0, 4);
-            if (size == 1) {
-                if (IOHelper.readFully(in, boxSize, 0, 8) != 0)
+            boxSize = makeTag(boxSizeArray, 0, 4);
+            if (boxSize == 1) {
+                if (IOHelper.readFully(in, boxSizeArray, 0, 8) != 0)
                     throw new InvalidBitstreamException("Truncated extended size");
-                size = makeTag(boxSize, 0, 8);
-                if (size > 0)
-                    size -= 8;
+                    boxSize = makeTag(boxSizeArray, 0, 8);
+                if (boxSize > 0)
+                    boxSize -= 8;
             }
-            if (size > 0)
-                size -= 8;
-            if (size < 0)
+            if (boxSize > 0)
+                boxSize -= 8;
+            if (boxSize < 0)
                 throw new InvalidBitstreamException("Illegal box size");
             if (IOHelper.readFully(in, boxTag) != 0)
                 throw new InvalidBitstreamException("Truncated box tag");
             int tag = (int)makeTag(boxTag);
             if (tag == JXLL) {
-                if (size != 1L)
+                if (boxSize != 1L)
                     throw new InvalidBitstreamException("jxll box must be size == 1");
                 int l = in.read();
                 if (l != 5 && l != 10)
                     throw new InvalidBitstreamException(String.format("Invalid level: %d", level));
-                level.complete(l);
+                level = l;
                 continue;
             }
-            boolean finalImageBox = tag == JXLC;
             if (tag == JXLP) {
                 if (IOHelper.readFully(in, boxTag) != 0)
                     throw new InvalidBitstreamException("Truncated sequence number");
-                int sequenceNumber = (int)makeTag(boxTag);
-                finalImageBox = (sequenceNumber & 0x80_00_00_00) != 0;
-                size -= 4;
+                boxSize -= 4;
             }
             if (tag == JXLP || tag == JXLC) {
-                if (!level.isDone())
-                    level.complete(5);
-                if (size == 0) {
-                    /* box lasts until EOF */
-                    dummyDemux();
-                    return;
-                } else {
-                    byte[] buffer = new byte[4096];
-                    while (size > 0) {
-                        int len = size > buffer.length ? buffer.length : (int)size;
-                        int count = in.read(buffer, 0, len);
-                        if (count > 0) {
-                            byte[] buf = new byte[count];
-                            System.arraycopy(buffer, 0, buf, 0, count);
-                            queue.put(buf);
-                            size -= count;
-                        } else {
-                            throw new InvalidBitstreamException("Premature end of box");
-                        }
-                    }
-                }
-                if (finalImageBox) {
-                    queue.put(new byte[0]);
-                    return;
-                }
+                posInBox = 0;
+                return supplyExceptionally();
             } else {
-                if (size > 0) {
-                    if (IOHelper.skipFully(in, size) != 0)
+                if (boxSize > 0) {
+                    long s = IOHelper.skipFully(in, boxSize);
+                    if (s != 0)
                         throw new InvalidBitstreamException("Truncated extra box");
+                } else {
+                    return supplyExceptionally();
                 }
             }           
         }
     }
 
-    private void run0() throws Throwable {
-        byte[] signature = new byte[12];
-        int remaining = IOHelper.readFully(in, signature);
-        if (!Arrays.equals(signature, CONTAINER_SIGNATURE)) {
-            level.complete(5);
-            if (remaining != 0) {
-                // shorter than 12 bytes, kinda sus
-                byte[] buf = new byte[signature.length - remaining];
-                System.arraycopy(signature, 0, buf, 0, buf.length);
-                signature = buf; 
-            }
-            queue.put(signature);
-            dummyDemux();
-        } else {
-            containerDemux();
-        }
-    }
-
     @Override
-    public void run() {
-        try {
-            run0();
-            exception.complete(null);
-        } catch (Throwable ex) {
-            exception.completeExceptionally(ex);
-        } finally {
-            level.complete(5);
-            try {
-                in.close();
-            } catch (Throwable ex) {
-                exception.completeExceptionally(ex);
+    public byte[] supplyExceptionally() throws IOException {
+
+        if (!foundSignature) {
+            byte[] signature = new byte[12];
+            int remaining = IOHelper.readFully(in, signature);
+            foundSignature = true;
+            if (!Arrays.equals(signature, CONTAINER_SIGNATURE)) {
+                if (remaining != 0) {
+                    // shorter than 12 bytes, kinda sus
+                    byte[] buf = new byte[signature.length - remaining];
+                    System.arraycopy(signature, 0, buf, 0, buf.length);
+                    signature = buf;
+                }
+                boxSize = 0;
+                posInBox = signature.length;
+                container = false;
+                return signature;
+            } else {
+                boxSize = 12;
+                posInBox = 12;
+                container = true;
             }
         }
+
+        if (!container || boxSize > 0 && posInBox < boxSize || boxSize == 0) {
+            int len = 4096;
+            if (boxSize > 0 && boxSize - posInBox < len)
+                len = (int)(Math.min(Integer.MAX_VALUE, boxSize - posInBox));
+            byte[] buf = new byte[len];
+            int remaining = IOHelper.readFully(in, buf);
+            posInBox += len - remaining;
+            if (remaining > 0) {
+                if (remaining == len)
+                    return new byte[0];
+                byte[] b2 = new byte[len - remaining];
+                System.arraycopy(buf, 0, b2, 0, b2.length);
+                buf = b2;
+            }
+            return buf;
+        }
+
+        return containerDemux();
     }
 }

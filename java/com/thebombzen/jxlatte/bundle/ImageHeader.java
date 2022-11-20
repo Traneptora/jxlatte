@@ -12,7 +12,6 @@ import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
 import com.thebombzen.jxlatte.color.ToneMapping;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.InputStreamBitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -472,13 +471,13 @@ public class ImageHeader {
             return decodedICC;
         if (encodedICC == null)
             return null;
-        Bitreader commandReader = new InputStreamBitreader(new ByteArrayInputStream(encodedICC));
+        Bitreader commandReader = new Bitreader(new ByteArrayInputStream(encodedICC));
         int outputSize = commandReader.readICCVarint();
         int commandSize = commandReader.readICCVarint();
         // readICCVarint is always a multiple of bytes
         int commandStart = (int)(commandReader.getBitsCount() >> 3);
         int dataStart = (int)(commandStart + commandSize);
-        Bitreader dataReader = new InputStreamBitreader(new ByteArrayInputStream(
+        Bitreader dataReader = new Bitreader(new ByteArrayInputStream(
             encodedICC, dataStart, encodedICC.length - dataStart));
         int headerSize = Math.min(128, outputSize);
         decodedICC = new byte[outputSize];

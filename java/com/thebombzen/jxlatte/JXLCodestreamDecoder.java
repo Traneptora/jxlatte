@@ -21,6 +21,7 @@ import com.thebombzen.jxlatte.frame.FrameFlags;
 import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.Demuxer;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -84,10 +85,12 @@ public class JXLCodestreamDecoder {
     private Bitreader bitreader;
     private ImageHeader imageHeader;
     private Options options;
+    private Demuxer demuxer;
 
-    public JXLCodestreamDecoder(Bitreader in, Options options) {
+    public JXLCodestreamDecoder(Bitreader in, Options options, Demuxer demuxer) {
         this.bitreader = in;
         this.options = options;
+        this.demuxer = demuxer;
     }
 
     private void computePatches(double[][][][] references, Frame frame) throws InvalidBitstreamException {
@@ -218,7 +221,8 @@ public class JXLCodestreamDecoder {
         return arr[y][x];
     }
 
-    public void blendFrame(double[][][] canvas, double[][][][] reference, Frame frame) throws InvalidBitstreamException {
+    public void blendFrame(double[][][] canvas, double[][][][] reference, Frame frame)
+            throws InvalidBitstreamException {
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
         FrameHeader header = frame.getFrameHeader();
@@ -309,11 +313,13 @@ public class JXLCodestreamDecoder {
         }
     }
 
-    public JXLImage decode(int level) throws IOException {
-        return decode(level, new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
+    public JXLImage decode() throws IOException {
+        return decode(new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
     }
 
-    public JXLImage decode(int level, PrintWriter err) throws IOException {
+    public JXLImage decode(PrintWriter err) throws IOException {
+        bitreader.showBits(16); // force the level to be populated
+        int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
         if (options.verbosity >= Options.VERBOSITY_INFO) {
             err.println("Image:");

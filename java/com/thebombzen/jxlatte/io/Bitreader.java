@@ -1,47 +1,39 @@
 package com.thebombzen.jxlatte.io;
 
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 
-public interface Bitreader extends Closeable {
+public class Bitreader extends InputStream {
 
-    /**
-     * @param bits Reads 0-32 bits from the bitstream
-     * @return the value of those bits
-     */
-    public int readBits(int bits) throws IOException;
-    /**
-     * @param bits Reads 0-32 bits from the bitstream, but puts them back
-     * @return the value of those bits
-     */
-    public int showBits(int bits) throws IOException;
-    /**
-     * @param bits Skips any number of bits from the bitstream
-     * @return The number of bits skipped
-     */
-    public long skipBits(long bits) throws IOException;
-    public long getBitsCount();
-    public int readBytes(byte[] buffer, int offset, int length) throws IOException;
+    private InputStream in;
+    private long cache = 0;
+    private int cacheBits = 0;
+    private long bitsRead = 0;
 
-    public default int readBytes(byte[] buffer) throws IOException {
-        return readBytes(buffer, 0, buffer.length);
+    public Bitreader(InputStream in) {
+        this.in = in;
     }
 
-    public default boolean readBool() throws IOException {
+    @Override
+    public int read(byte[] buffer) throws IOException {
+        return read(buffer, 0, buffer.length);
+    }
+
+    public boolean readBool() throws IOException {
         return readBits(1) != 0;
     }
 
-    public default int readU32(int c0, int u0, int c1, int u1, int c2, int u2, int c3, int u3) throws IOException {
+    public int readU32(int c0, int u0, int c1, int u1, int c2, int u2, int c3, int u3) throws IOException {
         int choice = readBits(2);
         int[] c = new int[]{c0, c1, c2, c3};
         int[] u = new int[]{u0, u1, u2, u3};
         return c[choice] + readBits(u[choice]);
     }
 
-    public default long readU64() throws IOException {
+    public long readU64() throws IOException {
         int index = readBits(2);
         if (index == 0)
             return 0L;
@@ -62,7 +54,7 @@ public interface Bitreader extends Closeable {
         return value;
     }
 
-    public default float readF16() throws IOException {
+    public float readF16() throws IOException {
         int bits16 = readBits(16);
         int mantissa = bits16 & 0x3FF;
         int biased_exp = (bits16 >>> 10) & 0x1F;
@@ -76,7 +68,7 @@ public interface Bitreader extends Closeable {
         return Float.intBitsToFloat(total);
     }
 
-    public default int readEnum() throws IOException {
+    public int readEnum() throws IOException {
         int constant = readU32(0, 0, 1, 0, 2, 4, 18, 6);
         if (constant > 63)
             throw new InvalidBitstreamException("Enum constant > 63");
@@ -84,7 +76,7 @@ public interface Bitreader extends Closeable {
     }
 
     /* used with ANS */
-    public default int readU8() throws IOException {
+    public int readU8() throws IOException {
         if (!readBool())
             return 0;
         int n = readBits(3);
@@ -93,7 +85,7 @@ public interface Bitreader extends Closeable {
         return readBits(n) + (1 << n);
     }
 
-    public default int readICCVarint() throws IOException {
+    public int readICCVarint() throws IOException {
         long value = 0;
         for (int shift = 0; shift < 63; shift += 7) {
             long b = readBits(8);
@@ -106,7 +98,7 @@ public interface Bitreader extends Closeable {
         return (int)value;
     }
 
-    public default boolean atEnd() throws IOException {
+    public boolean atEnd() throws IOException {
         try {
             showBits(1);
         } catch (EOFException eof) {
@@ -115,5 +107,127 @@ public interface Bitreader extends Closeable {
         return false;
     }
 
-    public void zeroPadToByte() throws IOException;
+    /**
+     * @param bits Reads 0-32 bits from the bitstream
+     * @return the value of those bits
+     */
+    public int readBits(int bits) throws IOException {
+        if (bits == 0)
+            return 0;
+        if (bits < 0 || bits > 32)
+            throw new IllegalArgumentException("Must read between 0-32 bits, inclusive");
+        if (bits <= cacheBits) {
+            int ret = (int)(cache & ~(~0L << bits));
+            cacheBits -= bits;
+            cache >>>= bits;
+            bitsRead += bits;
+            return ret;
+        }
+        int count = in.available();
+        int max = (64 - cacheBits) / 8;
+        count = count > 0 ? (count < max ? count : max) : 1;
+        boolean eof = false;
+        for (int i = 0; i < count; i++) {
+            int b = in.read();
+            if (b < 0) {
+                eof = true;
+                break;
+            }
+            cache |= (b & 0xFFL) << cacheBits;
+            cacheBits += 8;
+        }
+        if (eof && bits > cacheBits)
+            throw new EOFException("Unable to read enough bits: " + (getBitsCount() + bits));
+        return readBits(bits);
+    }
+
+    /**
+     * @param bits Reads 0-32 bits from the bitstream, but puts them back
+     * @return the value of those bits
+     */
+    public int showBits(int bits) throws IOException {
+        int n = readBits(bits);
+        bitsRead -= bits;
+        cache = (cache << bits) | (n & ~(~0L << bits));
+        cacheBits += bits;
+        return n;
+    }
+
+    public void zeroPadToByte() throws IOException {
+        int remaining = cacheBits % 8;
+        if (remaining > 0) {
+            int padding = readBits(remaining);
+            if (padding != 0)
+                throw new InvalidBitstreamException("Nonzero zero-padding-to-byte");
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        in.close();
+    }
+
+    @Override
+    public long skip(long bytes) throws IOException {
+        return skipBits(bytes << 3) >> 3;
+    }
+
+    /**
+     * @param bits Skips any number of bits from the bitstream
+     * @return The number of bits skipped
+     */
+    public long skipBits(long bits) throws IOException {
+        if (bits < 0)
+            throw new IllegalArgumentException();
+        if (bits == 0)
+            return 0;
+        if (bits <= cacheBits) {
+            cacheBits -= bits;
+            cache >>>= bits;
+            bitsRead += bits;
+            return bits;
+        }
+        long cacheSave = cacheBits;
+        skipBits(cacheBits);
+        bits -= cacheSave;
+        long dangler = bits % 8L;
+        long skipped = bits - dangler - 8L * IOHelper.skipFully(in, (bits - dangler) / 8L);
+        bitsRead += skipped;
+        skipped += cacheSave;
+        readBits((int)dangler);
+        return skipped + dangler;
+    }
+
+    public long getBitsCount() {
+        return bitsRead;
+    }
+
+    @Override
+    public int read() throws IOException {
+        try {
+            return readBits(8);
+        } catch (EOFException eof) {
+            return 01;
+        }
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) throws IOException {
+        if (length == 0)
+            return 0;
+        if (cacheBits % 8 != 0)
+            throw new IllegalStateException("You must align before readBytes");
+        int cacheBytes = cacheBits / 8;
+        for (int i = 0; i < cacheBytes; i++) {
+            if (length-- < 1)
+                return i;
+            buffer[offset + i] = (byte)readBits(8);
+        }
+        int remaining = IOHelper.readFully(in, buffer, offset + cacheBytes, length);
+        bitsRead += (length - remaining) * 8L;
+        int ret = cacheBytes + length - remaining;
+        if (ret == 0)
+            return -1;
+        return ret;
+    }
 }
