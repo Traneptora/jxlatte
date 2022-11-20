@@ -39,9 +39,10 @@ TL;DR Supported features:
 
 Features currently implemented at this time:
 
-- Image Header
+- Image Header: DONE
   - Image Header parsing
   - Orientation
+  - ICC Profile Decoding
 - Entropy decoding: DONE
   - Prefix Coding
   - ANS Coding
@@ -91,8 +92,6 @@ Features currently implemented at this time:
 
 Features not yet supported at this time:
 
-- Image Header
-  - ICC Profile decoding
 - Restoration Filters
   - Edge Preserving Filter, 2-3 Iterations
 - VarDCT:
