@@ -230,12 +230,12 @@ public class JXLCodestreamDecoder {
         for (int c = 0; c < canvas.length; c++) {
             double[][] newBuffer = frame.getBuffer()[c];
             BlendingInfo info;
-            if (c < colorChannels) {
+            if (c < colorChannels)
                 info = frame.getFrameHeader().blendingInfo;
-            } else {
+            else
                 info = frame.getFrameHeader().ecBlendingInfo[c - colorChannels];
-            }
-            boolean isAlpha = c >= colorChannels && imageHeader.getExtraChannelInfo(c - colorChannels).type == ExtraChannelType.ALPHA;
+            boolean isAlpha = c >= colorChannels
+                && imageHeader.getExtraChannelInfo(c - colorChannels).type == ExtraChannelType.ALPHA;
             boolean premult = imageHeader.hasAlpha()
                         ? imageHeader.getExtraChannelInfo(info.alphaChannel).alphaAssociated
                         : true;

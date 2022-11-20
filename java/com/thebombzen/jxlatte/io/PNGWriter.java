@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.CRC32;
@@ -11,6 +12,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
+import com.thebombzen.jxlatte.JXLatte;
 import com.thebombzen.jxlatte.color.CIEPrimaries;
 import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorFlags;
@@ -31,31 +33,33 @@ public class PNGWriter {
     private CIEXY whitePoint;
     private CRC32 crc32 = new CRC32();
     private byte[] iccProfile = null;
+    private boolean hdr;
+    private int tf;
 
     public PNGWriter(JXLImage image) {
-        this(image, image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8);
+        this(image, false);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth) {
-        this(image, bitDepth, Deflater.NO_COMPRESSION);
+    public PNGWriter(JXLImage image, boolean hdr) {
+        this(image, -1, hdr);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel) {
-        this(image, bitDepth, deflateLevel, null, null);
+    public PNGWriter(JXLImage image, int bitDepth, boolean hdr) {
+        this(image, bitDepth, Deflater.DEFAULT_COMPRESSION, hdr);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, CIEPrimaries primaries, CIEXY whitePoint) {
+    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, boolean hdr) {
+        if (bitDepth <= 0)
+            bitDepth = hdr || image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8;
         if (bitDepth != 8 && bitDepth != 16)
             throw new IllegalArgumentException("PNG only supports 8 and 16");
+        this.hdr = hdr;
         boolean gray = image.getColorEncoding() == ColorFlags.CE_GRAY;
-        this.primaries = primaries;
-        this.whitePoint = whitePoint;
-        if (primaries == null)
-            primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
-        if (whitePoint == null)
-            whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        this.primaries = ColorFlags.getPrimaries(hdr ? ColorFlags.PRI_BT2100 : ColorFlags.PRI_SRGB);
+        this.whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        this.tf = hdr ? ColorFlags.TF_PQ : ColorFlags.TF_SRGB;
         this.iccProfile = image.getICCProfile();
-        image = iccProfile != null ? image : image.transform(primaries, whitePoint, ColorFlags.TF_SRGB);
+        image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf);
         this.buffer = image.getBuffer();
         this.bitDepth = bitDepth;
         this.maxValue = ~(~0 << bitDepth);
@@ -92,36 +96,28 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
-    private void writeCHRM() throws IOException {
-        if (primaries == null && whitePoint == null)
+    private void writeSRGB() throws IOException {
+        if (iccProfile != null || hdr)
             return;
-        if (primaries == null)
-            primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
-        if (whitePoint == null)
-            whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        DataOutputStream dout = new DataOutputStream(bout);
-        dout.writeInt(0x63_48_52_4D);
-        dout.writeInt((int)(100000D * whitePoint.x));
-        dout.writeInt((int)(100000D * whitePoint.y));
-        dout.writeInt((int)(100000D * primaries.red.x));
-        dout.writeInt((int)(100000D * primaries.red.y));
-        dout.writeInt((int)(100000D * primaries.green.x));
-        dout.writeInt((int)(100000D * primaries.green.y));
-        dout.writeInt((int)(100000D * primaries.blue.x));
-        dout.writeInt((int)(100000D * primaries.blue.y));
-        dout.close();
-        byte[] buf = bout.toByteArray();
-        crc32.reset();
-        out.writeInt(buf.length - 4);
-        out.write(buf);
-        crc32.update(buf);
-        out.writeInt((int)crc32.getValue());
+        DataOutputStream dout = new DataOutputStream(out);
+        dout.writeInt(0x00_00_00_01);
+        dout.writeInt(0x73_52_47_42); // sRGB
+        dout.write(1); // relative colorimetric
+        dout.writeInt(0xD9_C9_2C_7F); // crc
+        dout.flush();
     }
 
     private void writeICCP() throws IOException {
-        if (iccProfile == null)
-            return;
+        if (iccProfile == null) {
+            if (hdr) {
+                this.iccProfile = new byte[8708];
+                try (InputStream in = JXLatte.class.getResourceAsStream("/bt2020-d65-pq.icc")) {
+                    IOHelper.readFully(in, this.iccProfile);
+                }
+            } else {
+                return;
+            }
+        }
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(bout);
         dout.writeInt(0x69_43_43_50); // iCCP
@@ -177,8 +173,11 @@ public class PNGWriter {
         this.out = new DataOutputStream(outputStream);
         out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
         writeIHDR();
-        writeICCP();
-        writeCHRM();
+        if (hdr || this.iccProfile != null) {
+            writeICCP();
+        } else {
+            writeSRGB();
+        }
         writeIDAT();
         out.writeInt(0);
         out.writeInt(0x49_45_4E_44); // IEND

@@ -18,9 +18,12 @@ public class JXLatte {
     private static final int OUTPUT_PNG = 0;
     private static final int OUTPUT_PFM = 1;
 
-    private static void writePNG(String outputFilename, JXLImage image, int depth) throws IOException {
-        PNGWriter writer = depth > 0 ? new PNGWriter(image, depth) : new PNGWriter(image);
-        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-") ? System.out : new FileOutputStream(outputFilename))) {
+    private static void writePNG(String outputFilename, JXLImage image, int depth, long flags) throws IOException {
+        boolean hdr = (flags & 0b1000L) > 0;
+        int bitDepth = hdr ? 16 : depth;
+        PNGWriter writer = new PNGWriter(image, bitDepth, hdr);
+        try (OutputStream out = new BufferedOutputStream(outputFilename.equals("-")
+                ? System.out : new FileOutputStream(outputFilename))) {
             writer.write(out);
         }
     }
@@ -141,7 +144,21 @@ public class JXLatte {
                             System.err.format("jxlatte: unknown debug flag: %s%n", value);
                             System.exit(1);
                     }
-                break;
+                    break;
+                case "hdr":
+                    flags = ~(~flags | 0b1000L);
+                    switch (value.toLowerCase()) {
+                        case "":
+                        case "yes":
+                            flags |= 0b1000L;
+                            break;
+                        case "no":
+                            break;
+                        default:
+                            System.err.format("jxlatte: unknown HDR flag: %s%n", value);
+                            System.exit(1);
+                    }
+                    break;
                 default:
                     System.err.format("jxlatte: unknown arg: %s%n", arg);
                     System.exit(1);
@@ -210,7 +227,7 @@ public class JXLatte {
                     writePFM(outputFilename, image);
                 } else if (outputFormat == OUTPUT_PNG) {
                     System.err.println("Decoded to pixels, writing PNG output.");
-                    writePNG(outputFilename, image, outputDepth);
+                    writePNG(outputFilename, image, outputDepth, flags);
                 }
             } catch (FileNotFoundException fnfe) {
                 System.err.println("jxlatte: could not open output file for writing");

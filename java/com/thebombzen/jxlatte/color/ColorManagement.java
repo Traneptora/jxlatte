@@ -52,14 +52,17 @@ public final class ColorManagement {
     private static double[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
-        double[][] primaryMatrix = new double[][]{getXYZ(primaries.red),
-                getXYZ(primaries.green), getXYZ(primaries.blue)};
-        double[][] primariesT = MathHelper.transposeMatrix(primaryMatrix, new IntPoint(3));
-        double[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesT);
+        double[][] primariesTr = new double[][]{
+            getXYZ(primaries.red),
+            getXYZ(primaries.green),
+            getXYZ(primaries.blue)
+        };
+        double[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, new IntPoint(3));
+        double[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesMatrix);
         double[] w = getXYZ(wp);
         double[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
         double[][] a = new double[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
-        return MathHelper.matrixMutliply(primariesT, a);
+        return MathHelper.matrixMutliply(primariesMatrix, a);
     }
 
     public static double[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,

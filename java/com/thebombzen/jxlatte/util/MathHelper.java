@@ -210,15 +210,29 @@ public final class MathHelper {
         return Math.min(Math.max(v, lower), upper);
     }
 
-    public static double[] matrixMutliply(double[][] matrix, double[] vector) {
+    public static double[] matrixMutliply(double[][] matrix, double[] columnVector) {
         if (matrix == null)
-            return vector;
-        if (matrix.length != vector.length || vector.length == 0)
+            return columnVector;
+        if (matrix[0].length != columnVector.length || columnVector.length == 0)
+            throw new IllegalArgumentException();
+        double[] total = new double[matrix.length];
+        for (int y = 0; y < total.length; y++) {
+            for (int x = 0; x < columnVector.length; x++) {
+                total[y] += matrix[y][x] * columnVector[x];
+            }
+        }
+        return total;
+    }
+
+    public static double[] matrixMutliply(double[] rowVector, double[][] matrix) {
+        if (matrix == null)
+            return rowVector;
+        if (matrix.length != rowVector.length || rowVector.length == 0)
             throw new IllegalArgumentException();
         double[] total = new double[matrix[0].length];
-        for (int j = 0; j < total.length; j++) {
-            for (int i = 0; i < vector.length; i++) {
-                total[j] += matrix[i][j] * vector[i];
+        for (int x = 0; x < total.length; x++) {
+            for (int y = 0; y < rowVector.length; y++) {
+                total[x] += rowVector[y] * matrix[y][x];
             }
         }
         return total;
@@ -231,9 +245,9 @@ public final class MathHelper {
             return left;
         if (left.length == 0 || left[0].length == 0 || right.length == 0 || left.length != right[0].length)
             throw new IllegalArgumentException();
-        double[][] result = new double[right.length][];
-        for (int x = 0; x < right.length; x++)
-            result[x] = matrixMutliply(left, right[x]);
+        double[][] result = new double[left.length][right[0].length];
+        for (int y = 0; y < right.length; y++)
+            result[y] = matrixMutliply(left[y], right);
         return result;
     }
 
