@@ -76,7 +76,7 @@ public class HFCoefficients {
                 IntPoint sizeInBlocks = varblock.sizeInBlocks();
                 int numBlocks = sizeInBlocks.x * sizeInBlocks.y;
                 int predicted = getPredictedNonZeroes(c, varblock.blockPosInGroup.shiftRight(shift[c]));
-                int lfIndex = varblock.blockPosInLFGroup.get(lfg.lfIndex);
+                int lfIndex = varblock.blockPosInLFGroup.get(lfg.lfCoeff.lfIndex);
                 int blockCtx = getBlockContext(c, varblock, lfIndex);
                 int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
                 int nonZero = stream.readSymbol(reader, nonZeroCtx);

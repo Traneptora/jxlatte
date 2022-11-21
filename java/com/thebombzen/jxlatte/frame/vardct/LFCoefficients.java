@@ -16,8 +16,8 @@ import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFCoefficients {
     public final int extraPrecision;
-    public final int[][][] lfQuant;
     public final double[][][] dequantLFCoeff;
+    public final int[][] lfIndex;
     public final Frame frame;
 
     public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
@@ -44,7 +44,7 @@ public class LFCoefficients {
         }
         ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
         lfQuantStream.decodeChannels(reader);
-        lfQuant = lfQuantStream.getDecodedBuffer();
+        int[][][] lfQuant = lfQuantStream.getDecodedBuffer();
         lfQuantStream = null;
         double[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
         for (int i = 0; i < 3; i++) {
@@ -60,6 +60,13 @@ public class LFCoefficients {
             this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant, header.jpegUpsampling);
         } else {
             this.dequantLFCoeff = dequantLFCoeff;
+        }
+        this.lfIndex = new int[parent.size.y][parent.size.x];
+        HFBlockContext hfctx = frame.getLFGlobal().hfBlockCtx;
+        for (int y = 0; y < parent.size.y; y++) {
+            for (int x = 0; x < parent.size.x; x++) {
+                lfIndex[y][x] = getLFIndex(lfQuant, hfctx, new IntPoint(x, y), frame.getFrameHeader().jpegUpsampling);
+            }
         }
     }
 
@@ -127,5 +134,26 @@ public class LFCoefficients {
             }
         }
         return dequantLFCoeff;
+    }
+
+    private int getLFIndex(int[][][] lfQuant, HFBlockContext hfctx, IntPoint blockPos, IntPoint[] upsampling) {
+        int[] index = new int[3];
+
+        for (int i = 0; i < 3; i++) {
+            IntPoint shifted = blockPos.shiftLeft(upsampling[i].negate());
+            for (int t : hfctx.lfThresholds[i]) {
+                if (lfQuant[Frame.cMap[i]][shifted.y][shifted.x] > t) {
+                    index[i]++;
+                }
+            }
+        }
+
+        int lfIndex = index[0];
+        lfIndex *= hfctx.lfThresholds[2].length + 1;
+        lfIndex += index[2];
+        lfIndex *= hfctx.lfThresholds[1].length + 1;
+        lfIndex += index[1];
+
+        return lfIndex;
     }
 }
