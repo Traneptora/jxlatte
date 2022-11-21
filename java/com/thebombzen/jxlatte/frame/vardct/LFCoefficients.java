@@ -45,6 +45,7 @@ public class LFCoefficients {
         ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
         lfQuantStream.decodeChannels(reader);
         lfQuant = lfQuantStream.getDecodedBuffer();
+        lfQuantStream = null;
         double[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
         for (int i = 0; i < 3; i++) {
             // quant is in Y, X, B order

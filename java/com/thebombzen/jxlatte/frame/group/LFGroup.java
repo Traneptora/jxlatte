@@ -27,17 +27,23 @@ public class LFGroup {
         this.frame = parent;
         this.size = frame.getLFGroupSize(index).shiftRight(3);
 
+        if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
+            this.lfCoeff = new LFCoefficients(reader, this, parent);
+        else
+            this.lfCoeff = null;
+
         ModularStream modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
         modularLFGroup.decodeChannels(reader);
-        this.modularLFGroupBuffer = modularLFGroup.getDecodedBuffer();
-        this.modularLFGroupInfo = new ModularChannelInfo[this.modularLFGroupBuffer.length];
+        modularLFGroupBuffer = modularLFGroup.getDecodedBuffer();
+        modularLFGroupInfo = new ModularChannelInfo[this.modularLFGroupBuffer.length];
         for (int c = 0; c < this.modularLFGroupInfo.length; c++) {
             modularLFGroupInfo[c] =  new ModularChannelInfo(modularLFGroup.getChannelInfo(c));
         }
+        // free(modularLFGroup)
+        modularLFGroup = null;
 
         HFBlockContext hfctx = frame.getLFGlobal().hfBlockCtx;
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT) {
-            this.lfCoeff = new LFCoefficients(reader, this, parent);
             this.hfMetadata = new HFMetadata(reader, this, parent);
             this.lfIndex = new int[size.y][size.x];
             for (int y = 0; y < size.y; y++) {
@@ -46,7 +52,6 @@ public class LFGroup {
                 }
             }
         } else {
-            this.lfCoeff = null;
             this.hfMetadata = null;
             this.lfIndex = null;
         }

@@ -12,7 +12,7 @@ public class GlobalModular {
     public final MATree globalTree;
     public final Frame frame;
     public final ModularStream stream;
-    
+
     public GlobalModular(Bitreader reader, Frame parent) throws IOException {
         frame = parent;
         boolean hasGlobalTree = reader.readBool();

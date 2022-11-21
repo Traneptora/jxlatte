@@ -301,30 +301,26 @@ public class Frame {
             }
         }
 
-        TaskList<LFGroup> lfGroupTasks = new TaskList<>();
+        lfGroups = new LFGroup[numLFGroups];
 
-        for (int lfGroupID0 = 0; lfGroupID0 < numLFGroups; lfGroupID0++) {
-            final int lfGroupID = lfGroupID0;
-            lfGroupTasks.submit(getBitreader(1 + lfGroupID), (reader) -> {
-                IntPoint lfGroupPos = IntPoint.coordinates(lfGroupID, lfGroupRowStride);
-                ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
-                    .toArray(ModularChannelInfo[]::new);
-                IntPoint frameSize = getPaddedFrameSize();
-                for (ModularChannelInfo info : replaced) {
-                    IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                    IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
-                    IntPoint chanSize = new IntPoint(info.width, info.height);
-                    IntPoint pos = lfGroupPos.times(chanSize);
-                    IntPoint size = chanSize.min(lfSize.minus(pos));
-                    info.width = size.x;
-                    info.height = size.y;
-                    info.origin = pos;
-                }
-                return new LFGroup(reader, this, lfGroupID, replaced);
-            });
+        for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
+            Bitreader reader = FunctionalHelper.join(getBitreader(1 + lfGroupID));
+            IntPoint lfGroupPos = IntPoint.coordinates(lfGroupID, lfGroupRowStride);
+            ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
+                .toArray(ModularChannelInfo[]::new);
+            IntPoint frameSize = getPaddedFrameSize();
+            for (ModularChannelInfo info : replaced) {
+                IntPoint shift = new IntPoint(info.hshift, info.vshift);
+                IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
+                IntPoint chanSize = new IntPoint(info.width, info.height);
+                IntPoint pos = lfGroupPos.times(chanSize);
+                IntPoint size = chanSize.min(lfSize.minus(pos));
+                info.width = size.x;
+                info.height = size.y;
+                info.origin = pos;
+            }
+            lfGroups[lfGroupID] = new LFGroup(reader, this, lfGroupID, replaced);
         }
-
-        lfGroups = lfGroupTasks.collect().stream().toArray(LFGroup[]::new);
 
         /* populate decoded LF Groups */
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
@@ -802,6 +798,10 @@ public class Frame {
             return new IntPoint(width, height).ceilDiv(8).times(8);
         else
             return new IntPoint(width, height);
+    }
+
+    public IntPoint getModularFrameSize() {
+        return new IntPoint(width, height);
     }
 
     public MATree getGlobalTree() {

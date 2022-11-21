@@ -77,8 +77,8 @@ public class ModularStream {
         for (int i = 0; i < nbTransforms; i++)
             transforms[i] = new TransformInfo(reader);
 
-        int w = frame.getPaddedFrameSize().x;
-        int h = frame.getPaddedFrameSize().y;
+        int w = frame.getModularFrameSize().x;
+        int h = frame.getModularFrameSize().y;
 
         if (channelArray == null) {
             for (int i = 0; i < channelCount; i++) {

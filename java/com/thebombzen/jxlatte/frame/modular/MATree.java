@@ -58,7 +58,11 @@ public class MATree {
                     throw new InvalidBitstreamException("Invalid predictor value");
                 int offset = MathHelper.unpackSigned(stream.readSymbol(reader, 3));
                 int mulLog = stream.readSymbol(reader, 4);
+                if (mulLog > 30)
+                    throw new InvalidBitstreamException("MulLog too large");
                 int mulBits = stream.readSymbol(reader, 5);
+                if (mulBits > (1 << (31 - mulLog)) - 2)
+                    throw new InvalidBitstreamException("MulBits too large");
                 int multiplier = (mulBits + 1) << mulLog;
                 node.context = context;
                 node.predictor = predictor;

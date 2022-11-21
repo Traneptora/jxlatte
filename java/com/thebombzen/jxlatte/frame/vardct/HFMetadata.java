@@ -37,6 +37,7 @@ public class HFMetadata {
             new ModularChannelInfo[]{xFromY, bFromY, blockInfo, sharpness});
         hfStream.decodeChannels(reader);
         hfStreamBuffer = hfStream.getDecodedBuffer();
+        hfStream = null;
         dctSelect = new TransformType[size.y][size.x];
         hfMultiplier = new int[size.y][size.x];
         int[][] blockInfoBuffer = hfStreamBuffer[2];
