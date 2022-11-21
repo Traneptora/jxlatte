@@ -22,7 +22,7 @@ public class HFMetadata {
     public final IntPoint[] blockList;
     public final Map<IntPoint, IntPoint> blockMap = new HashMap<>();
     public final int[][] hfMultiplier;
-    public final ModularStream hfStream;
+    public final int[][][] hfStreamBuffer;
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
         IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
@@ -33,12 +33,13 @@ public class HFMetadata {
         ModularChannelInfo bFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo blockInfo = new ModularChannelInfo(nbBlocks, 2, 0, 0);
         ModularChannelInfo sharpness = new ModularChannelInfo(size.x, size.y, 0, 0);
-        hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parent.lfGroupID,
+        ModularStream hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parent.lfGroupID,
             new ModularChannelInfo[]{xFromY, bFromY, blockInfo, sharpness});
         hfStream.decodeChannels(reader);
+        hfStreamBuffer = hfStream.getDecodedBuffer();
         dctSelect = new TransformType[size.y][size.x];
         hfMultiplier = new int[size.y][size.x];
-        int[][] blockInfoBuffer = hfStream.getDecodedBuffer()[2];
+        int[][] blockInfoBuffer = hfStreamBuffer[2];
         List<IntPoint> blocks = new ArrayList<>();
         IntPoint lastBlock = new IntPoint();
         for (int i = 0; i < nbBlocks; i++) {

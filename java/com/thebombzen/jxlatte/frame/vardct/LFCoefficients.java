@@ -16,7 +16,7 @@ import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFCoefficients {
     public final int extraPrecision;
-    public final ModularStream lfQuant;
+    public final int[][][] lfQuant;
     public final double[][][] dequantLFCoeff;
     public final Frame frame;
 
@@ -42,16 +42,16 @@ public class LFCoefficients {
             info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, shift[i].x, shift[i].y);
             dequantLFCoeff[i] = new double[channelSize.y][channelSize.x];
         }
-        this.lfQuant = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
-        lfQuant.decodeChannels(reader);
+        ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
+        lfQuantStream.decodeChannels(reader);
+        lfQuant = lfQuantStream.getDecodedBuffer();
         double[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
-        int[][][] quant = lfQuant.getDecodedBuffer();
         for (int i = 0; i < 3; i++) {
             // quant is in Y, X, B order
             int c = Frame.cMap[i];
-            for (int y = 0; y < quant[i].length; y++) {
-                for (int x = 0; x < quant[i][y].length; x++) {
-                    dequantLFCoeff[c][y][x] = quant[i][y][x] * scaledDequant[c] / (1 << extraPrecision);
+            for (int y = 0; y < lfQuant[i].length; y++) {
+                for (int x = 0; x < lfQuant[i][y].length; x++) {
+                    dequantLFCoeff[c][y][x] = lfQuant[i][y][x] * scaledDequant[c] / (1 << extraPrecision);
                 }
             }
         }

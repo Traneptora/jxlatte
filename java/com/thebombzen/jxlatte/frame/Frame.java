@@ -331,9 +331,10 @@ public class Frame {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                ModularChannel newChannel = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
-                FlowHelper.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
-                    channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
+                int[][] newChannel = lfGroups[lfGroupID].modularLFGroupBuffer[j];
+                ModularChannelInfo newChannelInfo = lfGroups[lfGroupID].modularLFGroupInfo[j];
+                FlowHelper.parallelIterate(IntPoint.sizeOf(newChannel), (x, y) -> {
+                    channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, newChannel[y][x]);
                 });
             }
         }
@@ -382,9 +383,10 @@ public class Frame {
                 int index = indices[j];
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 for (int group = 0; group < numGroups; group++) {
-                    ModularChannel newChannel = passGroups[pass][group].stream.getChannel(j);
-                    FlowHelper.parallelIterate(new IntPoint(newChannel.width, newChannel.height), (x, y) -> {
-                        channel.set(x + newChannel.origin.x, y + newChannel.origin.y, newChannel.get(x, y));
+                    ModularChannelInfo newChannelInfo = passGroups[pass][group].modularPassGroupInfo[j];
+                    int[][] buff = passGroups[pass][group].modularPassGroupBuffer[j];
+                    FlowHelper.parallelIterate(new IntPoint(newChannelInfo.width, newChannelInfo.height), (x, y) -> {
+                        channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, buff[y][x]);
                     });
                 }
             }
@@ -502,7 +504,7 @@ public class Frame {
                 IntPoint blockPosInLFGroup = bp.minus(lfPosInFrame.shiftLeft(header.logLFGroupDim - 3));
                 LFGroup lfg = lfGroups[lfPosInFrame.unwrapCoord(lfGroupRowStride)];
                 int hf = lfg.hfMetadata.blockMap.get(blockPosInLFGroup).get(lfg.hfMetadata.hfMultiplier);
-                int sharpness = blockPosInLFGroup.get(lfg.hfMetadata.hfStream.getDecodedBuffer()[3]);
+                int sharpness = blockPosInLFGroup.get(lfg.hfMetadata.hfStreamBuffer[3]);
                 if (sharpness < 0 || sharpness > 7)
                     throw new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness);
                 sigma[bp.y][bp.x] = hf * header.restorationFilter.epfQuantMul

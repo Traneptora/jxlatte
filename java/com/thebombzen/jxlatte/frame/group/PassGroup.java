@@ -58,7 +58,8 @@ public class PassGroup {
     };
 
     public final HFCoefficients hfCoefficients;
-    public final ModularStream stream;
+    public final int[][][] modularPassGroupBuffer;
+    public final ModularChannelInfo[] modularPassGroupInfo;
     public final Frame frame;
     public final int groupID;
     public final int passID;
@@ -72,9 +73,13 @@ public class PassGroup {
         } else {
             hfCoefficients = null;
         }
-        stream = new ModularStream(reader, frame,
+        ModularStream stream = new ModularStream(reader, frame,
             18 + 3*frame.getNumLFGroups() + frame.getNumGroups()*pass + group, replacedChannels);
         stream.decodeChannels(reader);
+        modularPassGroupBuffer = stream.getDecodedBuffer();
+        modularPassGroupInfo = new ModularChannelInfo[modularPassGroupBuffer.length];
+        for (int c = 0; c < modularPassGroupInfo.length; c++)
+            modularPassGroupInfo[c] = new ModularChannelInfo(stream.getChannelInfo(c));
     }
 
     private void layBlock(double[][] block, double[][] buffer, IntPoint inPos, IntPoint outPos, IntPoint inSize, boolean transpose) {

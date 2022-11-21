@@ -118,8 +118,8 @@ public class HFCoefficients {
         // shifts are nonnegative so the sum equals zero iff they all equal zero
         if (shift[0].plus(shift[1]).plus(shift[2]).equals(IntPoint.ZERO)) {
             LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
-            int[][] xFactorHF = lfg.hfMetadata.hfStream.getDecodedBuffer()[0];
-            int[][] bFactorHF = lfg.hfMetadata.hfStream.getDecodedBuffer()[1];
+            int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
+            int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
             for (int i = 0; i < varblocks.length; i++) {
                 Varblock varblock = varblocks[i];
                 for (IntPoint pixelPosInVarblock : FlowHelper.range2D(varblock.sizeInPixels())) {

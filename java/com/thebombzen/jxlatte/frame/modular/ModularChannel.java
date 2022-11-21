@@ -89,23 +89,23 @@ public class ModularChannel extends ModularChannelInfo {
     }
 
     private int errorWest(int x, int y, int e) {
-        return x > 0 ? error[e][x - 1][y]: 0;
+        return x > 0 ? error[e][y][x - 1]: 0;
     }
 
     private int errorNorth(int x, int y, int e) {
-        return y > 0 ? error[e][x][y - 1]: 0;
+        return y > 0 ? error[e][y - 1][x]: 0;
     }
 
     private int errorWestWest(int x, int y, int e) {
-        return x > 1 ? error[e][x - 2][y] : 0;
+        return x > 1 ? error[e][y][x - 2] : 0;
     }
 
     private int errorNorthWest(int x, int y, int e) {
-        return x > 0 && y > 0 ? error[e][x - 1][y - 1] : errorNorth(x, y, e);
+        return x > 0 && y > 0 ? error[e][y - 1][x - 1] : errorNorth(x, y, e);
     }
 
     private int errorNorthEast(int x, int y, int e) {
-        return x + 1 < width && y > 0 ? error[e][x + 1][y - 1] : errorNorth(x, y, e);
+        return x + 1 < width && y > 0 ? error[e][y - 1][x + 1] : errorNorth(x, y, e);
     }
 
     protected int prediction(int x, int y, int k) {
@@ -130,7 +130,7 @@ public class ModularChannel extends ModularChannelInfo {
                 v = w + n - northWest(x, y);
                 return MathHelper.clamp(v, n, w);
             case 6:
-                return (pred[x][y] + 3) >> 3;
+                return (pred[y][x] + 3) >> 3;
             case 7:
                 return northEast(x, y);
             case 8:
@@ -210,8 +210,8 @@ public class ModularChannel extends ModularChannelInfo {
         tree = tree.compactify(channelIndex, streamIndex);
         boolean useWP = forceWP || tree.usesWeightedPredictor();
         if (useWP) {
-            error = new int[5][width][height];
-            pred = new int[width][height];
+            error = new int[5][height][width];
+            pred = new int[height][width];
             subpred = new int[4];
             weight = new int[4];
         }
@@ -297,8 +297,8 @@ public class ModularChannel extends ModularChannelInfo {
                 set(x, y, trueValue);
                 if (useWP) {
                     for (int e = 0; e < 4; e++)
-                        error[e][x][y] = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
-                    error[4][x][y] = pred[x][y] - (trueValue << 3);
+                        error[e][y][x] = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
+                    error[4][y][x] = pred[y][x] - (trueValue << 3);
                 }
             }
         }

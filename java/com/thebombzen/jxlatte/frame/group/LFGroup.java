@@ -13,7 +13,8 @@ import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFGroup {
-    public final ModularStream modularLFGroup;
+    public final int[][][] modularLFGroupBuffer;
+    public final ModularChannelInfo[] modularLFGroupInfo;
     public final LFCoefficients lfCoeff;
     public final HFMetadata hfMetadata;
     public final int lfGroupID;
@@ -26,8 +27,13 @@ public class LFGroup {
         this.frame = parent;
         this.size = frame.getLFGroupSize(index).shiftRight(3);
 
-        modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
+        ModularStream modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
         modularLFGroup.decodeChannels(reader);
+        this.modularLFGroupBuffer = modularLFGroup.getDecodedBuffer();
+        this.modularLFGroupInfo = new ModularChannelInfo[this.modularLFGroupBuffer.length];
+        for (int c = 0; c < this.modularLFGroupInfo.length; c++) {
+            modularLFGroupInfo[c] =  new ModularChannelInfo(modularLFGroup.getChannelInfo(c));
+        }
 
         HFBlockContext hfctx = frame.getLFGlobal().hfBlockCtx;
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT) {
@@ -47,7 +53,7 @@ public class LFGroup {
     }
 
     private int getLFIndex(HFBlockContext hfctx, IntPoint blockPos, IntPoint[] upsampling) {
-        int[][][] lfBuff = lfCoeff.lfQuant.getDecodedBuffer();
+        int[][][] lfBuff = lfCoeff.lfQuant;
         int[] c = new int[]{1, 0, 2};
         int[] index = new int[3];
 
