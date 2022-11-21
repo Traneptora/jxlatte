@@ -346,35 +346,30 @@ public class Frame {
     private void decodePassGroups(TaskList<?> tasks) throws IOException {
 
         int numPasses = passes.length;
-        PassGroup[][] passGroups = new PassGroup[numPasses][];
-        TaskList<PassGroup> passGroupTasks = new TaskList<>(numPasses);
+        PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
 
-        for (int pass0 = 0; pass0 < numPasses; pass0++) {
-            final int pass = pass0;
-            for (int group0 = 0; group0 < numGroups; group0++) {
-                final int group = group0;
-                passGroupTasks.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
-                    ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
-                        .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
-                    for (ModularChannelInfo info : replaced) {
-                        IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                        IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
-                        int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
-                        IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
-                        IntPoint chanSize = new IntPoint(info.width, info.height);
-                        info.origin = pos;
-                        IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
-                        info.width = size.x;
-                        info.height = size.y;
-                    }
-                    return new PassGroup(reader, Frame.this, pass, group, replaced);
-                });
+        for (int pass = 0; pass < numPasses; pass++) {
+            for (int group = 0; group < numGroups; group++) {
+                Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
+                ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels)
+                    .stream().map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
+                for (ModularChannelInfo info : replaced) {
+                    IntPoint shift = new IntPoint(info.hshift, info.vshift);
+                    IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
+                    int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
+                    IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
+                    IntPoint chanSize = new IntPoint(info.width, info.height);
+                    info.origin = pos;
+                    IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
+                    info.width = size.x;
+                    info.height = size.y;
+                }
+                passGroups[pass][group] = new PassGroup(reader, Frame.this, pass, group, replaced);
             }
         }
 
         for (int pass = 0; pass < numPasses; pass++) {
             int[] indices = passes[pass].replacedChannelIndices;
-            passGroups[pass] = passGroupTasks.collect(pass).stream().toArray(PassGroup[]::new);
             for (int j = 0; j < indices.length; j++) {
                 int index = indices[j];
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
@@ -393,9 +388,8 @@ public class Frame {
                 for (int group = 0; group < numGroups; group++) {
                     PassGroup passGroup = passGroups[pass][group];
                     PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
-                    tasks.submit(() -> passGroup.invertVarDCT(buffer, prev));
+                    passGroup.invertVarDCT(buffer, prev);
                 }
-                tasks.collect();
             }
         }
     }
