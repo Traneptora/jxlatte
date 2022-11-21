@@ -39,6 +39,8 @@ public class MATree {
         int contextId = 0;
         int nodesRemaining = 1;
         while (nodesRemaining-- > 0) {
+            if (nodes.size() > (1 << 20))
+                throw new InvalidBitstreamException("Tree too large");
             int property = stream.readSymbol(reader, 1) - 1;
             MATree node = nodes.size() == 0 ? this : new MATree();
             if (property >= 0) {
