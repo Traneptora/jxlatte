@@ -160,7 +160,7 @@ public class HFCoefficients {
                         final int fx = x >> 6;
                         final float kX;
                         final float kB;
-                        if (by && fx << 6 == fx) {
+                        if (by && fx << 6 == x) {
                             kX = lfc.baseCorrelationX + hfX[fx] / (float)lfc.colorFactor;
                             kB = lfc.baseCorrelationB + hfB[fx] / (float)lfc.colorFactor;
                             xF[fx] = kX;
@@ -264,6 +264,7 @@ public class HFCoefficients {
             if (varblock == null)
                 continue;
             final TransformType tt = varblock.transformType();
+            final boolean flip = tt.isVertical();
             final float[][][] w2 = weights[tt.parameterIndex];
             for (final int c : Frame.cMap) {
                 if (!varblock.isCorner(shift[c]))
@@ -289,14 +290,8 @@ public class HFCoefficients {
                             final float f = coeff;
                             quant = f - matrix.quantBiasNumerator / f;
                         }
-                        final int wx, wy;
-                        if (tt.isVertical()) {
-                            wy = x;
-                            wx = y;
-                        } else {
-                            wx = x;
-                            wy = y;
-                        }
+                        final int wx = flip ? y : x;
+                        final int wy = flip ? x : y;
                         dq1[x] = quant * sfc * w3[wy][wx];
                     }
                 }

@@ -25,9 +25,7 @@ public final class MathHelper {
     }
 
     public static int unpackSigned(int value) {
-        // prevent overflow and extra casework
-        long v = (long)value & 0xFF_FF_FF_FFL;
-        return (int)((v & 1L) == 0L ? v / 2L : -(v + 1L) / 2L);
+        return (value & 1) == 0 ? (value >>> 1) : (~value >>> 1) | 0x80_00_00_00;
     }
 
     public static int round(float d) {
