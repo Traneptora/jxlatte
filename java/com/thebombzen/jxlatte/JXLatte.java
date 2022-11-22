@@ -32,7 +32,7 @@ public class JXLatte {
 
     private static void writePNG(String outputFilename, JXLImage image, Options options) throws IOException {
         int bitDepth = options.hdr ? 16 : options.outputDepth;
-        PNGWriter writer = new PNGWriter(image, bitDepth, options.hdr);
+        PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, options.hdr);
         writeImage(writer::write, outputFilename);
     }
 
@@ -128,6 +128,18 @@ public class JXLatte {
                 }
                 if (options.outputDepth != 8 && options.outputDepth != 16) {
                     System.err.println("jxlatte: Only 8-bit and 16-bit outputs supported in PNG");
+                    System.exit(1);
+                }
+                return true;
+            case "output-png-compression":
+                try {
+                    options.outputCompression = Integer.parseInt(valueL);
+                } catch (NumberFormatException nfe) {
+                    System.err.format("jxlatte: Not a number: %s%n", value);
+                    System.exit(1);
+                }
+                if (options.outputCompression < 0 || options.outputCompression > 9) {
+                    System.err.println("jxlatte: Only compression 0-9 supported in PNG");
                     System.exit(1);
                 }
                 return true;

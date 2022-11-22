@@ -16,6 +16,7 @@ public class Options {
     public int verbosity = 0;
     public boolean hdr = false;
     public int outputDepth = -1;
+    public int outputCompression = 1;
 
     public String input = null;
     public String output = null;
@@ -30,5 +31,9 @@ public class Options {
         this.verbosity = options.verbosity;
         this.hdr = options.hdr;
         this.outputDepth = options.outputDepth;
+        this.outputCompression = options.outputCompression;
+
+        this.input = options.input;
+        this.output = options.output;
     }
 }
