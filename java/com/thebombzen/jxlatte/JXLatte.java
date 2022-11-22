@@ -47,15 +47,23 @@ public class JXLatte {
             "Usage: java -jar jxlatte.jar [options...] [--] <input.jxl> [output]",
             "",
             "Options: ",
-            "    --help                       print this message",
-            "    --debug                      turn on debugging output",
-            "    --output-png-depth=N         use N-bit output for PNG,",
-            "                                     N must be 8 or 16",
-            "    --output-format=<png|pfm>    write image in this output format",
-            "    --info                       output info about the input file",
-            "    --info=verbose               be more verbose with info",
-            "    --hdr                        output PNG files in HDR",
-            "                                     (BT.2020 Primaries, D65 White Point, PQ Transfer)",
+            "    --help",
+            "        print this message",
+            "    --debug",
+            "        turn on debugging output",
+            "    --format=<png|pfm>",
+            "        write image in this output format",
+            "    --png-depth=N",
+            "        use N-bit output for PNG, N must be 8 or 16",
+            "    --png-compression=N",
+            "        use zlib level N to compress PNG output, N must be 0-9",
+            "    --info",
+            "        output info about the input file",
+            "    --info=verbose, --verbose, --v",
+            "        be more verbose with info",
+            "    --png-hdr",
+            "        output PNG files in HDR",
+            "        (BT.2020 Primaries, D65 White Point, PQ Transfer)",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };
@@ -89,13 +97,13 @@ public class JXLatte {
             case "help":
                 usage(true);
                 return true;
-            case "output-format":
+            case "format":
                 if (valueL.equals("png")) {
                     options.outputFormat = Options.OUTPUT_PNG;
                 } else if (valueL.equals("pfm")) {
                     options.outputFormat = Options.OUTPUT_PFM;
                 } else {
-                    System.err.format("jxlatte: Unknown --output-format: %s%n", value);
+                    System.err.format("jxlatte: Unknown --format: %s%n", value);
                     System.exit(1);
                 }
                 return true;
@@ -119,11 +127,11 @@ public class JXLatte {
                     System.exit(1);
                 }
                 return true;
-            case "output-png-depth":
+            case "png-depth":
                 try {
                     options.outputDepth = Integer.parseInt(valueL);
                 } catch (NumberFormatException nfe) {
-                    System.err.format("jxlatte: Not a number: %s%n", value);
+                    System.err.format("jxlatte: Not an integer: %s%n", value);
                     System.exit(1);
                 }
                 if (options.outputDepth != 8 && options.outputDepth != 16) {
@@ -131,11 +139,11 @@ public class JXLatte {
                     System.exit(1);
                 }
                 return true;
-            case "output-png-compression":
+            case "png-compression":
                 try {
                     options.outputCompression = Integer.parseInt(valueL);
                 } catch (NumberFormatException nfe) {
-                    System.err.format("jxlatte: Not a number: %s%n", value);
+                    System.err.format("jxlatte: Not an integer: %s%n", value);
                     System.exit(1);
                 }
                 if (options.outputCompression < 0 || options.outputCompression > 9) {
