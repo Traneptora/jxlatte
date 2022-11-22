@@ -140,7 +140,7 @@ public class LFCoefficients {
         int[] index = new int[3];
 
         for (int i = 0; i < 3; i++) {
-            IntPoint shifted = blockPos.shiftLeft(upsampling[i].negate());
+            IntPoint shifted = blockPos.shiftRight(upsampling[i]);
             for (int t : hfctx.lfThresholds[i]) {
                 if (lfQuant[Frame.cMap[i]][shifted.y][shifted.x] > t) {
                     index[i]++;

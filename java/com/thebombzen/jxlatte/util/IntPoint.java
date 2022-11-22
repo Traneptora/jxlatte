@@ -98,8 +98,8 @@ public class IntPoint {
     }
 
     public IntPoint shiftLeft(int hshift, int vshift) {
-        int x = hshift < 0 ? this.x >> -hshift : this.x << hshift;
-        int y = vshift < 0 ? this.y >> -vshift : this.y << vshift;
+        final int x = this.x << hshift;
+        final int y = this.y << vshift;
         return new IntPoint(x, y);
     }
 
@@ -112,46 +112,21 @@ public class IntPoint {
     }
 
     public IntPoint shiftRight(int hshift, int vshift) {
-        return shiftLeft(-hshift, -vshift);
+        final int x = this.x >> hshift;
+        final int y = this.y >> vshift;
+        return new IntPoint(x, y);
     }
 
     public IntPoint shiftRight(int shift) {
-        return shiftLeft(-shift);
+        return shiftRight(shift, shift);
     }
 
     public IntPoint shiftRight(IntPoint shift) {
-        return shiftLeft(shift.negate());
+        return shiftRight(shift.x, shift.y);
     }
 
     public int unwrapCoord(int rowStride) {
         return y * rowStride + x;
-    }
-
-    public int get(int[][] array) {
-        return array[y][x];
-    }
-
-    public float get(float[][] array) {
-        return array[y][x];
-    }
-
-    public <T> T get(T[][] array) {
-        return array[y][x];
-    }
-
-    public IntPoint set(int[][] array, int value) {
-        array[y][x] = value;
-        return this;
-    }
-
-    public IntPoint set(float[][] array, float value) {
-        array[y][x] = value;
-        return this;
-    }
-
-    public <T> IntPoint set(T[][] array, T value) {
-        array[y][x] = value;
-        return this;
     }
 
     public IntPoint min(IntPoint p) {

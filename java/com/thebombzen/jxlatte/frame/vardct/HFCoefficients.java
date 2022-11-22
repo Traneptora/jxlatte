@@ -1,8 +1,6 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
@@ -10,7 +8,6 @@ import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -38,70 +35,86 @@ public class HFCoefficients {
     };
 
     public final int hfPreset;
-    private HFBlockContext hfctx;
+    private final HFBlockContext hfctx;
     public final LFGroup lfg;
     public final int groupID;
-    private int[][][] nonZeroes;
+    private final int[][][] nonZeroes;
     public final float[][][][] dequantHFCoeff;
     public final EntropyStream stream;
     public final Frame frame;
     public final Varblock[] varblocks;
 
+    public static long readTime = 0L;
+    public static long dequantTime = 0L;
+    public static long recorrelateTime = 0L;
+    public static long llfTime = 0L;
+    public static long blockCount = 0L;
+
     public HFCoefficients(Bitreader reader, Frame frame, int pass, int group) throws IOException {
+        long time0 = System.nanoTime() / 1_000_000L;
         hfPreset = reader.readBits(MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1));
         this.groupID = group;
         this.frame = frame;
         this.hfctx = frame.getLFGlobal().hfBlockCtx;
         this.lfg = frame.getLFGroupForGroup(group);
-        int offset = 495 * hfctx.numClusters * hfPreset;
-        HFPass hfPass = frame.getHFPass(pass);
-        IntPoint groupSize = frame.groupSize(group);
-        IntPoint groupBlockSize = groupSize.shiftRight(3);
+        final int offset = 495 * hfctx.numClusters * hfPreset;
+        final HFPass hfPass = frame.getHFPass(pass);
+        final IntPoint groupSize = frame.groupSize(group);
+        final IntPoint groupBlockSize = groupSize.shiftRight(3);
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
-        List<int[][][]> coeffs = new ArrayList<>();
-        IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         stream = new EntropyStream(hfPass.contextStream);
-        List<Varblock> varBlockList = new ArrayList<>();
+        final int[][][][] coeffs = new int[lfg.hfMetadata.blockList.length][][][];
+        varblocks = new Varblock[lfg.hfMetadata.blockList.length];
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
-            Varblock varblock = lfg.hfMetadata.blockList[i].get(lfg.hfMetadata.blockMap);
-            if (!varblock.groupPosInLFGroup.equals(frame.groupPosInLFGroup(lfg.lfGroupID, groupID)))
+            final Varblock varblock = lfg.hfMetadata.getVarblock(i);
+            if (varblock.groupID != groupID)
                 continue; // block is not in this group
-            varBlockList.add(varblock);
-            TransformType tt = varblock.transformType();
-            int[][][] co = new int[3][tt.blockHeight][tt.blockWidth];
-            coeffs.add(co);
-            for (int c : Frame.cMap) {
-                if (!varblock.isCorner(shift[c]))
+            varblocks[i] = varblock;
+            final TransformType tt = varblock.transformType();
+            final int[][][] co = new int[3][tt.blockHeight][tt.blockWidth];
+            coeffs[i] = co;
+            final boolean flip = varblock.flip() || tt.isVertical();
+            final int hfMult = varblock.hfMult();
+            final int lfIndex = lfg.lfCoeff.lfIndex[varblock.blockPosInLFGroup.y][varblock.blockPosInLFGroup.x];
+            final IntPoint sizeInBlocks = varblock.sizeInBlocks();
+            final int numBlocks = sizeInBlocks.x * sizeInBlocks.y;
+            for (final int c : Frame.cMap) {
+                final IntPoint shiftC = shift[c];
+                if (!varblock.isCorner(shiftC))
                     continue; // subsampled block
-                IntPoint sizeInBlocks = varblock.sizeInBlocks();
-                int numBlocks = sizeInBlocks.x * sizeInBlocks.y;
-                int predicted = getPredictedNonZeroes(c, varblock.blockPosInGroup.shiftRight(shift[c]));
-                int lfIndex = varblock.blockPosInLFGroup.get(lfg.lfCoeff.lfIndex);
-                int blockCtx = getBlockContext(c, varblock, lfIndex);
-                int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
+                final IntPoint shiftedBlockPos = varblock.blockPosInGroup.shiftRight(shiftC);
+                final int predicted = getPredictedNonZeroes(c, shiftedBlockPos);
+                final int blockCtx = getBlockContext(c, tt.orderID, hfMult, lfIndex);
+                final int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
                 int nonZero = stream.readSymbol(reader, nonZeroCtx);
-                for (IntPoint p : FlowHelper.range2D(sizeInBlocks)) {
-                    varblock.blockPosInGroup.shiftRight(shift[c]).plus(p).set(nonZeroes[c],
-                        (nonZero + numBlocks - 1) / numBlocks);
+                final int[][] nz = nonZeroes[c];
+                for (int iy = 0; iy < sizeInBlocks.y; iy++) {
+                    for (int ix = 0; ix < sizeInBlocks.x; ix++) {
+                        nz[shiftedBlockPos.y + iy][shiftedBlockPos.x + ix]
+                            = (nonZero + numBlocks - 1) / numBlocks;
+                    }
                 }
                 // SPEC: spec doesn't say you abort here if nonZero == 0
                 if (nonZero <= 0)
                     continue;
-                int size = hfPass.order[tt.orderID][c].length;
-                int[] ucoeff = new int[size - numBlocks];
-                int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
+                final int size = hfPass.order[tt.orderID][c].length;
+                final int[] ucoeff = new int[size - numBlocks];
+                final int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
+                final int[][] cco = co[c];
                 for (int k = 0; k < ucoeff.length; k++) {
                     // SPEC: spec has this condition flipped
-                    int prev = k == 0 ? (nonZero > size/16 ? 0 : 1) : (ucoeff[k - 1] != 0 ? 1 : 0);
-                    int ctx = histCtx + getCoefficientContext(k + numBlocks, nonZero, numBlocks, prev);
+                    final int prev = k == 0 ? (nonZero > size/16 ? 0 : 1) : (ucoeff[k - 1] != 0 ? 1 : 0);
+                    final int ctx = histCtx + getCoefficientContext(k + numBlocks, nonZero, numBlocks, prev);
                     ucoeff[k] = stream.readSymbol(reader, ctx);
-                    IntPoint orderPos = hfPass.order[tt.orderID][c][k + numBlocks];
-                    IntPoint pos = varblock.flip() || tt.isVertical() ? orderPos.transpose() : orderPos;
-                    co[c][pos.y][pos.x] = MathHelper.unpackSigned(ucoeff[k]);
-                    if (ucoeff[k] != 0)
-                        nonZero--;
-                    if (nonZero <= 0)
-                        break;
+                    final IntPoint pos = hfPass.order[tt.orderID][c][k + numBlocks];
+                    final int posX = flip ? pos.y : pos.x;
+                    final int posY = flip ? pos.x : pos.y;
+                    cco[posY][posX] = MathHelper.unpackSigned(ucoeff[k]);
+                    if (ucoeff[k] != 0) {
+                        if (--nonZero == 0)
+                            break;
+                    }                    
                 }
                 // SPEC: spec doesn't mention that nonZero > 0 is illegal
                 if (nonZero != 0)
@@ -110,57 +123,100 @@ public class HFCoefficients {
         }
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
-        this.varblocks = varBlockList.stream().toArray(Varblock[]::new);
 
-        this.dequantHFCoeff = dequantizeHFCoefficients(coeffs.stream().toArray(int[][][][]::new));
+        long time1 = System.nanoTime() / 1_000_000L;
+
+        this.dequantHFCoeff = dequantizeHFCoefficients(coeffs);
+
+        long time2 = System.nanoTime() / 1_000_000L;
 
         // chroma from luma
         // shifts are nonnegative so the sum equals zero iff they all equal zero
-        if (shift[0].plus(shift[1]).plus(shift[2]).equals(IntPoint.ZERO)) {
-            LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
-            int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
-            int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
+        if (shift[0].x + shift[1].x + shift[2].x + shift[0].y + shift[1].y + shift[2].y == 0) {
+            final LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
+            final int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
+            final int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
+            final float[][] xFactors = new float[xFactorHF.length][xFactorHF[0].length];
+            final float[][] bFactors = new float[bFactorHF.length][bFactorHF[0].length];
             for (int i = 0; i < varblocks.length; i++) {
-                Varblock varblock = varblocks[i];
-                for (IntPoint pixelPosInVarblock : FlowHelper.range2D(varblock.sizeInPixels())) {
-                    IntPoint factorPos = varblock.pixelPosInLFGroup.plus(pixelPosInVarblock).divide(64);
-                    float kX = lfc.baseCorrelationX + factorPos.get(xFactorHF) / (float)lfc.colorFactor;
-                    float kB = lfc.baseCorrelationB + factorPos.get(bFactorHF) / (float)lfc.colorFactor;
-                    float dequantY = pixelPosInVarblock.get(dequantHFCoeff[i][1]);
-                    float dequantX = pixelPosInVarblock.get(dequantHFCoeff[i][0]);
-                    float dequantB = pixelPosInVarblock.get(dequantHFCoeff[i][2]);
-                    pixelPosInVarblock.set(dequantHFCoeff[i][0], dequantX + kX * dequantY);
-                    pixelPosInVarblock.set(dequantHFCoeff[i][2], dequantB + kB * dequantY);
+                final Varblock varblock = varblocks[i];
+                if (varblock == null)
+                    continue;
+                final IntPoint sizeInPixels = varblock.sizeInPixels();
+                final float[][][] dq = dequantHFCoeff[i];
+                for (int iy = 0; iy < sizeInPixels.y; iy++) {
+                    final int y = varblock.pixelPosInLFGroup.y + iy;
+                    final int fy = y >> 6;
+                    final boolean by = fy << 6 == y;
+                    final float[] xF = xFactors[fy];
+                    final float[] bF = bFactors[fy];
+                    final int[] hfX = xFactorHF[fy];
+                    final int[] hfB = bFactorHF[fy];
+                    final float[] dq0 = dq[0][iy];
+                    final float[] dq1 = dq[1][iy];
+                    final float[] dq2 = dq[2][iy];
+                    for (int ix = 0; ix < sizeInPixels.x; ix++) {
+                        final int x = varblock.pixelPosInLFGroup.x + ix;
+                        final int fx = x >> 6;
+                        final float kX;
+                        final float kB;
+                        if (by && fx << 6 == fx) {
+                            kX = lfc.baseCorrelationX + hfX[fx] / (float)lfc.colorFactor;
+                            kB = lfc.baseCorrelationB + hfB[fx] / (float)lfc.colorFactor;
+                            xF[fx] = kX;
+                            bF[fx] = kB;
+                        } else {
+                            kX = xF[fx];
+                            kB = bF[fx];
+                        }
+                        final float dequantY = dq1[ix];
+                        dq0[ix] += kX * dequantY;
+                        dq2[ix] += kB * dequantY;
+                    }
                 }
             }
         }
-        float[][][] scratchBlock = new float[2][256][256];
+
+        long time3 = System.nanoTime() / 1_000_000L;
+
+        final float[][][] scratchBlock = new float[2][256][256];
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
-            Varblock varblock = varblocks[i];
-            IntPoint size = varblock.sizeInBlocks();
-            float[][] lfCoeffs = new float[size.y][size.x];
+            final Varblock varblock = varblocks[i];
+            if (varblock == null)
+                continue;
+            final IntPoint size = varblock.sizeInBlocks();
+            final TransformType tt = varblock.transformType();
             for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
-                MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], lfCoeffs,
+                final float[][] dq = dequantHFCoeff[i][c];
+                MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], dq,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
                     IntPoint.ZERO, size, scratchBlock[0], scratchBlock[1]);
-                for (IntPoint p : FlowHelper.range2D(size)) {
-                    float llf = p.get(lfCoeffs) * p.get(varblock.transformType().llfScale);
-                    p.set(dequantHFCoeff[i][c], llf);
+                for (int y = 0; y < size.y; y++) {
+                    final float[] dqy = dq[y];
+                    final float[] llfy = tt.llfScale[y];
+                    for (int x = 0; x < size.x; x++)
+                        dqy[x] *= llfy[x];
                 }
             }
         }
+
+        long time4 = System.nanoTime() / 1_000_000L;
+
+        llfTime += time4 - time3;
+        recorrelateTime += time3 - time2;
+        dequantTime += time2 - time1;
+        readTime += time1 - time0;
+        blockCount++;
     }
 
-    private int getBlockContext(int c, Varblock varblock, int lfIndex) {
-        int s = varblock.transformType().orderID;
-        int idx = (c < 2 ? 1 - c : c) * 13 + s;
+    private int getBlockContext(final int c, final int orderID, final int hfMult, final int lfIndex) {
+        int idx = (c < 2 ? 1 - c : c) * 13 + orderID;
         idx *= hfctx.qfThresholds.length + 1;
-        int qf = varblock.hfMult();
-        for (int t : hfctx.qfThresholds) {
-            if (qf > t)
+        for (final int t : hfctx.qfThresholds) {
+            if (hfMult > t)
                 idx++;
         }
         idx *= hfctx.numLFContexts;
@@ -192,37 +248,57 @@ public class HFCoefficients {
         return (nonZeroes[c][pos.y - 1][pos.x] + nonZeroes[c][pos.y][pos.x - 1] + 1) >> 1;
     }
 
-    private float[][][][] dequantizeHFCoefficients(int[][][][] coeffs) {
-        OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
-        float[][][][] dequant = new float[varblocks.length][3][][];
-        float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
-        float[] scaleFactor = new float[]{
+    private float[][][][] dequantizeHFCoefficients(final int[][][][] coeffs) {
+        final OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
+        final float[][][][] dequant = new float[varblocks.length][3][][];
+        final float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
+        final float[] scaleFactor = new float[]{
             globalScale * (float)Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
             globalScale,
             globalScale * (float)Math.pow(0.8D, frame.getFrameHeader().bqmScale - 2D),
         };
-        float[][][][] weights = frame.getHFGlobal().weights;
-        IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        final float[][][][] weights = frame.getHFGlobal().weights;
+        final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         for (int i = 0; i < varblocks.length; i++) {
-            Varblock varblock = varblocks[i];
-            for (int c : Frame.cMap) {
+            final Varblock varblock = varblocks[i];
+            if (varblock == null)
+                continue;
+            final TransformType tt = varblock.transformType();
+            final float[][][] w2 = weights[tt.parameterIndex];
+            for (final int c : Frame.cMap) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
-                int[][] co = coeffs[i][c];
-                float[][] dq = new float[co.length][co[0].length];
-                for (IntPoint pos : FlowHelper.range2D(varblock.sizeInPixels())) {
-                    int coeff = pos.get(co);
-                    float quant;
-                    if (Math.abs(coeff) <= 1)
-                        quant = coeff * matrix.quantBias[c];
-                    else
-                        quant = coeff - matrix.quantBiasNumerator / coeff;
-                    // SPEC: wrong scale factor here and hfmul multiplier
-                    quant *= scaleFactor[c] / varblock.hfMult();
-                    IntPoint weightPos = varblock.transformType().isVertical()
-                        ? pos.transpose() : pos;
-                    quant *= weightPos.get(weights[varblock.transformType().parameterIndex][c]);
-                    pos.set(dq, quant);
+                final float[][] w3 = w2[c];
+                final int[][] co = coeffs[i][c];
+                final float[][] dq = new float[co.length][co[0].length];
+                final float qbc = matrix.quantBias[c];
+                final float sfc = scaleFactor[c] / varblock.hfMult();
+                for (int y = 0; y < tt.blockHeight; y++) {
+                    final float[] dq1 = dq[y];
+                    final int[] co2 = co[y];
+                    for (int x = 0; x < tt.blockWidth; x++) {
+                        final int coeff = co2[x];
+                        final float quant;
+                        if (coeff == 0) {
+                            quant = 0;
+                        } else if (coeff == 1) {
+                            quant = qbc;
+                        } else if (coeff == -1) {
+                            quant = -qbc;
+                        } else {
+                            final float f = coeff;
+                            quant = f - matrix.quantBiasNumerator / f;
+                        }
+                        final int wx, wy;
+                        if (tt.isVertical()) {
+                            wy = x;
+                            wx = y;
+                        } else {
+                            wx = x;
+                            wy = y;
+                        }
+                        dq1[x] = quant * sfc * w3[wy][wx];
+                    }
                 }
                 dequant[i][c] = dq;
             }

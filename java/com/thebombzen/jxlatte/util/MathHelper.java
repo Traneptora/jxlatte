@@ -70,27 +70,25 @@ public final class MathHelper {
         for (int n = 1; n < xLength; n++) {
             final float[] lut = cosineLut[xLogLength][n - 1];
             final float s2 = s[xStartIn + n];
-            for (int k = 0; k < xLength; k++) {
+            for (int k = 0; k < xLength; k++)
                 d[xStartOut + k] += s2 * lut[k];
-            }
         }
     }
+
     public static void forwardDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
             final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
         final float invLength = 1f / xLength;
         final float[] d = dest[yOut];
         final float[] s = src[yIn];
         float d2 = 0f;
-        for (int x = 0; x < xLength; ++x) {
+        for (int x = 0; x < xLength; ++x)
             d2 += s[xStartIn + x];
-        }
         d[xStartOut] = d2 * invLength;
         for (int k = 1; k < xLength; ++k) {
             d2 = 0f;
             final float[] lut = cosineLut[xLogLength][k - 1];
-            for (int n = 0; n < xLength; ++n) {
+            for (int n = 0; n < xLength; ++n)
                 d2 += s[xStartIn + n] * lut[n];
-            }
             d[xStartOut + k] = d2 * invLength;
         }
     }
@@ -100,19 +98,17 @@ public final class MathHelper {
             final float[][] scratchSpace2, boolean transposed) {
         final int xLogLength = ceilLog2(length.x);
         final int yLogLength = ceilLog2(length.y);
-        for (int y = 0; y < length.y; y++) {
+        for (int y = 0; y < length.y; y++)
             inverseDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        }
         MathHelper.transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
         if (transposed) {
-            for (int y = 0; y < length.x; y++) {
-                inverseDCTHorizontal(scratchSpace2, y, 0, dest, startOut.y + y, startOut.x,
-                    yLogLength, length.y);
-            }
+            for (int y = 0; y < length.x; y++)
+                inverseDCTHorizontal(scratchSpace2, y, 0, dest,
+                    startOut.y + y, startOut.x, yLogLength, length.y);
         } else {
-            for (int x = 0; x < length.x; x++) {
-                inverseDCTHorizontal(scratchSpace2, x, 0, scratchSpace1, x, 0, yLogLength, length.y);
-            }
+            for (int x = 0; x < length.x; x++)
+                inverseDCTHorizontal(scratchSpace2, x, 0, scratchSpace1,
+                    x, 0, yLogLength, length.y);
             MathHelper.transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());  
         }
     }
@@ -120,13 +116,11 @@ public final class MathHelper {
     public static void forwardDCT2D(final float[][] src, final float[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length,float[][] scratchSpace1, float[][] scratchSpace2) {
         final int xLogLength = ceilLog2(length.x);
         final int yLogLength = ceilLog2(length.y);
-        for (int y = 0; y < length.y; y++) {
+        for (int y = 0; y < length.y; y++)
             forwardDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        }
         MathHelper.transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
-        for (int x = 0; x < length.x; x++) {
+        for (int x = 0; x < length.x; x++)
             forwardDCTHorizontal(scratchSpace2, x, 0, scratchSpace1, x, 0, yLogLength, length.y);
-        }
         MathHelper.transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());
     }
 

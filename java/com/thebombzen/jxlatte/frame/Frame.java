@@ -24,6 +24,7 @@ import com.thebombzen.jxlatte.frame.group.PassGroup;
 import com.thebombzen.jxlatte.frame.modular.MATree;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
+import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -405,6 +406,7 @@ public class Frame {
         long time3 = System.nanoTime() / 1_000_000L;
 
         System.err.format("PassGroups:%n  Construct: %d%n  Lay: %d%n  Invert: %d%n", time1 - time0, time2 - time1, time3 - time2);
+        System.err.format("        Read: %d%n        Dequant: %d%n        Recorrelate: %d%n        Overlay: %d%n", HFCoefficients.readTime, HFCoefficients.dequantTime, HFCoefficients.recorrelateTime, HFCoefficients.llfTime);
     }
 
     public void decodeFrame() throws IOException {
@@ -521,11 +523,11 @@ public class Frame {
         
         FlowHelper.parallelIterate(size.shiftRight(3), (bp) -> {
             if (header.encoding == FrameFlags.VARDCT) {
-                IntPoint lfPosInFrame = bp.shiftRight(header.logLFGroupDim - 3);
-                IntPoint blockPosInLFGroup = bp.minus(lfPosInFrame.shiftLeft(header.logLFGroupDim - 3));
-                LFGroup lfg = lfGroups[lfPosInFrame.unwrapCoord(lfGroupRowStride)];
-                int hf = blockPosInLFGroup.get(lfg.hfMetadata.blockMap).hfMult();
-                int sharpness = blockPosInLFGroup.get(lfg.hfMetadata.hfStreamBuffer[3]);
+                final IntPoint lfPosInFrame = bp.shiftRight(header.logLFGroupDim - 3);
+                final IntPoint blockPosInLFGroup = bp.minus(lfPosInFrame.shiftLeft(header.logLFGroupDim - 3));
+                final LFGroup lfg = lfGroups[lfPosInFrame.unwrapCoord(lfGroupRowStride)];
+                final int hf = lfg.hfMetadata.blockMap[blockPosInLFGroup.y][blockPosInLFGroup.x].hfMult();
+                final int sharpness = lfg.hfMetadata.hfStreamBuffer[3][blockPosInLFGroup.y][blockPosInLFGroup.x];
                 if (sharpness < 0 || sharpness > 7)
                     throw new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness);
                 sigma[bp.y][bp.x] = hf * header.restorationFilter.epfQuantMul
@@ -551,7 +553,7 @@ public class Frame {
             FlowHelper.parallelIterate(size, (p) -> {
                 float sumWeights = 0f;
                 float[] sumChannels = new float[3];
-                float s = p.shiftRight(3).get(sigma);
+                final float s = sigma[p.y >> 3][p.x >> 3];
                 if (s < 0.3) {
                     for (int c = 0; c < 3; c++) {
                         outputBuffer[c][p.y][p.x] = buffer[c][p.y][p.x];
@@ -564,17 +566,17 @@ public class Frame {
                     float weight = epfWeight(sigmaScale, dist, s, p);
                     sumWeights += weight;
                     for (int c = 0; c < 3; c++) {
-                        sumChannels[c] += np.get(buffer[c]) * weight;
+                        sumChannels[c] += buffer[c][np.y][np.x] * weight;
                     }
                 }
                 for (int c = 0; c < 3; c++) {
-                    p.set(outputBuffer[c], sumChannels[c] / sumWeights);
+                    outputBuffer[c][p.y][p.x] = sumChannels[c] / sumWeights;
                 }
             });
 
             for (int c = 0; c < 3; c++) {
                 /* swapping lets us re-use the output buffer without re-allocing */
-                float[][] tmp = buffer[c];
+                final float[][] tmp = buffer[c];
                 buffer[c] = outputBuffer[c];
                 outputBuffer[c] = tmp;
             }
@@ -585,8 +587,11 @@ public class Frame {
         float dist = 0;
         for (int c = 0; c < 3; c++) {
             for (IntPoint p : epfCross) {
-                dist += Math.abs(basePos.plus(p).mirrorCoordinate(size).get(buffer[c])
-                    - distPos.plus(p).mirrorCoordinate(size).get(buffer[c]))
+                final int pX = MathHelper.mirrorCoordinate(basePos.x + p.x, size.x);
+                final int pY = MathHelper.mirrorCoordinate(basePos.y + p.y, size.y);
+                final int dX = MathHelper.mirrorCoordinate(distPos.x + p.x, size.x);
+                final int dY = MathHelper.mirrorCoordinate(distPos.y + p.y, size.y);
+                dist += Math.abs(buffer[c][pY][pX] - buffer[c][dY][dX])
                     * header.restorationFilter.epfChannelScale[c];
             }
         }
@@ -597,8 +602,11 @@ public class Frame {
     private float epfDistance2(float[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
         float dist = 0;
         for (int c = 0; c < 3; c++) {
-            dist += Math.abs(basePos.mirrorCoordinate(size).get(buffer[c])
-                    - distPos.mirrorCoordinate(size).get(buffer[c]))
+            final int pX = MathHelper.mirrorCoordinate(basePos.x, size.x);
+            final int pY = MathHelper.mirrorCoordinate(basePos.y, size.y);
+            final int dX = MathHelper.mirrorCoordinate(distPos.x, size.x);
+            final int dY = MathHelper.mirrorCoordinate(distPos.y, size.y);
+            dist += Math.abs(buffer[c][pY][pX] - buffer[c][dY][dX])
                     * header.restorationFilter.epfChannelScale[c];
         }
         return dist;

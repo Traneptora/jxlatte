@@ -82,11 +82,10 @@ public class PassGroup {
             modularPassGroupInfo[c] = new ModularChannelInfo(stream.getChannelInfo(c));
     }
 
-    private void layBlock(float[][] block, float[][] buffer, IntPoint inPos, IntPoint outPos, IntPoint inSize, boolean transpose) {
-        for (IntPoint p : FlowHelper.range2D(inSize)) {
-            IntPoint pt = transpose ? p.transpose() : p;
-            outPos.plus(pt).set(buffer, inPos.plus(p).get(block));
-        }
+    private void layBlock(final float[][] block, final float[][] buffer, final IntPoint inPos,
+            final IntPoint outPos, final IntPoint inSize) {
+        for (int y = 0; y < inSize.y; y++)
+            System.arraycopy(block[y + inPos.y], inPos.x, buffer[y + outPos.y], outPos.x, inSize.x);
     }
 
     private void invertAFV(float[][] coeffs, float[][] buffer, Varblock varblock, IntPoint pixelPosInFrame, float[][][] scratchBlock) {
@@ -105,7 +104,9 @@ public class PassGroup {
             for (int ix = 0; ix < 4; ix++) {
                 float sample = 0f;
                 for (int j = 0; j < 16; j++) {
-                    sample += IntPoint.coordinates(j, 4).get(scratchBlock[0]) * AFV_BASIS[j][iy * 4 + ix];
+                    final int jx = j & 0b11;
+                    final int jy = j >> 2;
+                    sample += scratchBlock[0][jy][jx] * AFV_BASIS[j][iy * 4 + ix];
                 }
                 scratchBlock[1][iy][ix] = sample;
             }
@@ -174,6 +175,8 @@ public class PassGroup {
         float[][][][] coeffs = hfCoefficients.dequantHFCoeff;
         if (prev != null) {
             for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
+                if (hfCoefficients.varblocks[i] == null)
+                    continue;
                 for (int c : Frame.cMap) {
                     for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(coeffs[i][c]))) {
                         coeffs[i][c][p.y][p.x] += prev.hfCoefficients.dequantHFCoeff[i][c][p.y][p.x];
@@ -185,6 +188,8 @@ public class PassGroup {
         float[][][] scratchBlock = new float[4][256][256];
         for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
+            if (varblock == null)
+                continue;
             for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
@@ -262,7 +267,7 @@ public class PassGroup {
                                     + scratchBlock[0][4 * y + 1][4 * x + 1];
                             }
                         }
-                        layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, false);
+                        layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size);
                         break;
                     case TransformType.METHOD_DCT4:
                         auxDCT2(coeffs[i][c], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, 2);

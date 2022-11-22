@@ -9,7 +9,6 @@ import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -42,20 +41,21 @@ public class HFMetadata {
         hfMultiplier = new int[size.y][size.x];
         blockList = new IntPoint[nbBlocks];
         blockMap = new Varblock[size.y][size.x];
-        int[][] blockInfoBuffer = hfStreamBuffer[2];
+        final int[][] blockInfoBuffer = hfStreamBuffer[2];
         IntPoint lastBlock = new IntPoint();
         long time1 = System.nanoTime() / 1_000_000L;
-        TransformType[] tt = TransformType.values();
+        final TransformType[] tta = TransformType.values();
         for (int i = 0; i < nbBlocks; i++) {
-            int type = blockInfoBuffer[0][i];
+            final int type = blockInfoBuffer[0][i];
             if (type > 26 || type < 0)
                 throw new InvalidBitstreamException("Invalid Transform Type: " + type);
-            IntPoint pos = placeBlock(lastBlock, tt[type], 1 + blockInfoBuffer[1][i]);
+            final TransformType tt = tta[type];
+            final IntPoint pos = placeBlock(lastBlock, tt, 1 + blockInfoBuffer[1][i]);
             lastBlock = pos;
             blockList[i] = pos;
-            Varblock varblock = new Varblock(parent, pos);
-            for (IntPoint p : FlowHelper.range2D(pos, pos.plus(tt[type].getDctSelectSize())))
-                p.set(blockMap, varblock);
+            final Varblock varblock = new Varblock(parent, pos);
+            for (int y = 0; y < tt.dctSelectHeight; y++)
+                Arrays.fill(blockMap[y + pos.y], pos.x, pos.x + tt.dctSelectWidth, varblock);
         }
         long time2 = System.nanoTime() / 1_000_000L;
 
@@ -123,5 +123,10 @@ public class HFMetadata {
             }
         }
         throw new InvalidBitstreamException("Could not find place for block: " + lastBlock);
+    }
+
+    public Varblock getVarblock(int i) {
+        final IntPoint block = blockList[i];
+        return blockMap[block.y][block.x];
     }
 }
