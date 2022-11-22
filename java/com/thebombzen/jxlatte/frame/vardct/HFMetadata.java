@@ -1,11 +1,7 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.frame.Frame;
@@ -13,6 +9,7 @@ import com.thebombzen.jxlatte.frame.group.LFGroup;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -20,15 +17,18 @@ public class HFMetadata {
     public final int nbBlocks;
     public final TransformType[][] dctSelect;
     public final IntPoint[] blockList;
-    public final Map<IntPoint, IntPoint> blockMap = new HashMap<>();
+    public final Varblock[][] blockMap;
     public final int[][] hfMultiplier;
     public final int[][][] hfStreamBuffer;
+    public final LFGroup parent;
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
+        this.parent = parent;
         IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
         int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
         IntPoint aFromYSize = size.ceilDiv(8);
+        long time0 = System.nanoTime() / 1_000_000L;
         ModularChannelInfo xFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo bFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo blockInfo = new ModularChannelInfo(nbBlocks, 2, 0, 0);
@@ -40,16 +40,26 @@ public class HFMetadata {
         hfStream = null;
         dctSelect = new TransformType[size.y][size.x];
         hfMultiplier = new int[size.y][size.x];
+        blockList = new IntPoint[nbBlocks];
+        blockMap = new Varblock[size.y][size.x];
         int[][] blockInfoBuffer = hfStreamBuffer[2];
-        List<IntPoint> blocks = new ArrayList<>();
         IntPoint lastBlock = new IntPoint();
+        long time1 = System.nanoTime() / 1_000_000L;
+        TransformType[] tt = TransformType.values();
         for (int i = 0; i < nbBlocks; i++) {
             int type = blockInfoBuffer[0][i];
             if (type > 26 || type < 0)
                 throw new InvalidBitstreamException("Invalid Transform Type: " + type);
-            blocks.add(placeBlock(lastBlock, TransformType.get(type), 1 + blockInfoBuffer[1][i]));
+            IntPoint pos = placeBlock(lastBlock, tt[type], 1 + blockInfoBuffer[1][i]);
+            lastBlock = pos;
+            blockList[i] = pos;
+            Varblock varblock = new Varblock(parent, pos);
+            for (IntPoint p : FlowHelper.range2D(pos, pos.plus(tt[type].getDctSelectSize())))
+                p.set(blockMap, varblock);
         }
-        blockList = blocks.stream().toArray(IntPoint[]::new);
+        long time2 = System.nanoTime() / 1_000_000L;
+
+        System.err.format("HFMeta: %d%n    HFStream: %d%n    Place: %d%n", parent.lfGroupID, time1 - time0, time2 - time1);
     }
 
     public String getBlockMapAsciiArt() {
@@ -91,34 +101,27 @@ public class HFMetadata {
     }
 
     private IntPoint placeBlock(IntPoint lastBlock, TransformType block, int mul) throws InvalidBitstreamException {
-        for (int y = lastBlock.y; y < dctSelect.length; y++) {
+        for (int y = lastBlock.y, x = lastBlock.x; y < dctSelect.length; y++, x = 0) {
             outer:
-            for (int x = lastBlock.x; x < dctSelect[y].length; x++) {
-                // block too big, horizontally, to put here
+            for (; x < dctSelect[y].length; x++) {
+                // block too big to put here
                 if (block.dctSelectWidth + x > dctSelect[y].length)
                     continue;
-                // block too big, vertically, to put here
-                if (block.dctSelectHeight + y > dctSelect.length)
-                    continue;
                 // space occupied
-                for (int iy = 0; iy < block.dctSelectHeight; iy++) {
-                    for (int ix = 0; ix < block.dctSelectWidth; ix++) {
-                        if (dctSelect[y + iy][x + ix] != null)
-                            continue outer;
+                for (int ix = 0; ix < block.dctSelectWidth; ix++) {
+                    TransformType tt = dctSelect[y][x + ix];
+                    if (tt != null) {
+                        x += tt.dctSelectWidth - 1;
+                        continue outer;
                     }
                 }
                 IntPoint pos = new IntPoint(x, y);
-                for (int iy = 0; iy < block.dctSelectHeight; iy++) {
+                hfMultiplier[y][x] = mul;
+                for (int iy = 0; iy < block.dctSelectHeight; iy++)
                     Arrays.fill(dctSelect[y + iy], x, x + block.dctSelectWidth, block);
-                    Arrays.fill(hfMultiplier[y + iy], x, x + block.dctSelectWidth, mul);
-                    for (int ix = 0; ix < block.dctSelectWidth; ix++) {
-                        blockMap.put(pos.plus(new IntPoint(ix, iy)), pos);
-                    }
-                }
-                lastBlock = pos;
                 return pos;
             }
         }
-        throw new InvalidBitstreamException("Could not find place for block: " + block.type);
+        throw new InvalidBitstreamException("Could not find place for block: " + lastBlock);
     }
 }

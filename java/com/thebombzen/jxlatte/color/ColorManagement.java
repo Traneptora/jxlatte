@@ -10,18 +10,18 @@ public final class ColorManagement {
 
     }
 
-    private static final double[][] BRADFORD = new double[][]{
-        {0.8951D, 0.2664D, -0.1614D},
-        {-0.7502D, 1.7135D, 0.0367D},
-        {0.0389D, -0.0685D, 1.0296D}
+    private static final float[][] BRADFORD = new float[][]{
+        {0.8951f, 0.2664f, -0.1614f},
+        {-0.7502f, 1.7135f, 0.0367f},
+        {0.0389f, -0.0685f, 1.0296f}
     };
 
-    private static final double[][] BRADFORD_INVERSE = MathHelper.invertMatrix3x3(BRADFORD);
+    private static final float[][] BRADFORD_INVERSE = MathHelper.invertMatrix3x3(BRADFORD);
 
-    private static double[] getXYZ(CIEXY xy) {
+    private static float[] getXYZ(CIEXY xy) {
         validateXY(xy);
-        double invY = 1.0D / xy.y;
-        return new double[]{xy.x * invY, 1.0D, (1.0D - xy.x - xy.y) * invY};
+        float invY = 1.0f / xy.y;
+        return new float[]{xy.x * invY, 1.0f, (1.0f - xy.x - xy.y) * invY};
     }
 
     private static void validateXY(CIEXY xy) {
@@ -29,7 +29,7 @@ public final class ColorManagement {
             throw new IllegalArgumentException();
     }
 
-    private static void validateLMS(double[] lms) {
+    private static void validateLMS(float[] lms) {
         for (int i = 0; i < lms.length; i++) {
             if (Math.abs(lms[i]) < 1e-8D) {
                 throw new IllegalArgumentException();
@@ -37,43 +37,43 @@ public final class ColorManagement {
         }
     }
 
-    private static double[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
-        double[] wCurrent = getXYZ(currentWP);
-        double[] lmsCurrent = MathHelper.matrixMutliply(BRADFORD, wCurrent);
-        double[] wTarget = getXYZ(targetWP);
-        double[] lmsTarget = MathHelper.matrixMutliply(BRADFORD, wTarget);
+    private static float[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
+        float[] wCurrent = getXYZ(currentWP);
+        float[] lmsCurrent = MathHelper.matrixMutliply(BRADFORD, wCurrent);
+        float[] wTarget = getXYZ(targetWP);
+        float[] lmsTarget = MathHelper.matrixMutliply(BRADFORD, wTarget);
         validateLMS(lmsCurrent);
-        double[][] a = new double[3][3];
+        float[][] a = new float[3][3];
         for (int i = 0; i < 3; i++)
             a[i][i] = lmsTarget[i] / lmsCurrent[i];
         return MathHelper.matrixMutliply(BRADFORD_INVERSE, a, BRADFORD);
     }
 
-    private static double[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
+    private static float[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
-        double[][] primariesTr = new double[][]{
+        float[][] primariesTr = new float[][]{
             getXYZ(primaries.red),
             getXYZ(primaries.green),
             getXYZ(primaries.blue)
         };
-        double[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, new IntPoint(3));
-        double[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesMatrix);
-        double[] w = getXYZ(wp);
-        double[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
-        double[][] a = new double[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
+        float[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, new IntPoint(3));
+        float[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesMatrix);
+        float[] w = getXYZ(wp);
+        float[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
+        float[][] a = new float[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
         return MathHelper.matrixMutliply(primariesMatrix, a);
     }
 
-    public static double[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,
+    public static float[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,
             CIEPrimaries currentPrim, CIEXY currentWP) {
         if (targetPrim.matches(currentPrim) && targetWP.matches(currentWP))
             return MathHelper.matrixIdentity(3);
-        double[][] whitePointConv = null;
+        float[][] whitePointConv = null;
         if (!targetWP.matches(currentWP))
             whitePointConv = adaptWhitePoint(targetWP, currentWP);
-        double[][] forward = primariesToXYZ(currentPrim, currentWP);
-        double[][] reverse = MathHelper.invertMatrix3x3(primariesToXYZ(targetPrim, targetWP));
+        float[][] forward = primariesToXYZ(currentPrim, currentWP);
+        float[][] reverse = MathHelper.invertMatrix3x3(primariesToXYZ(targetPrim, targetWP));
         return MathHelper.matrixMutliply(reverse, whitePointConv, forward);
     }
 

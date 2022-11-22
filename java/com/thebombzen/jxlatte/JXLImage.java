@@ -14,7 +14,7 @@ import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLImage {
-    private double[][][] buffer;
+    private float[][][] buffer;
     private ImageHeader imageHeader;
     private int colorEncoding;
     private int alphaIndex;
@@ -28,7 +28,7 @@ public class JXLImage {
     private CIEPrimaries primaries1931;
     private byte[] iccProfile;
 
-    protected JXLImage(double[][][] buffer, ImageHeader header) throws IOException {
+    protected JXLImage(float[][][] buffer, ImageHeader header) throws IOException {
         this.buffer = buffer;
         this.colorEncoding = header.getColorEncoding().colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
@@ -59,11 +59,11 @@ public class JXLImage {
         this.white1931 = image.white1931;
         this.iccProfile = image.iccProfile;
         if (copyBuffer) {
-            buffer = new double[image.buffer.length][][];
+            buffer = new float[image.buffer.length][][];
             for (int c = 0; c < buffer.length; c++) {
-                buffer[c] = new double[image.buffer[c].length][];
+                buffer[c] = new float[image.buffer[c].length][];
                 for (int y = 0; y < buffer[c].length; y++) {
-                    this.buffer[c][y] = new double[image.buffer[c][y].length];
+                    this.buffer[c][y] = new float[image.buffer[c][y].length];
                     System.arraycopy(image.buffer[c][y], 0, buffer[c][y], 0, buffer[c][y].length);
                 }
             }
@@ -80,13 +80,13 @@ public class JXLImage {
     private JXLImage toneMapLinear(CIEPrimaries primaries, CIEXY whitePoint) {
         if (this.primaries1931.matches(primaries) && this.white1931.matches(whitePoint))
             return this;
-        double[][] conversionMatrix = ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
+        float[][] conversionMatrix = ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
         int width = getWidth();
         int height = getHeight();
         JXLImage image = new JXLImage(this);
         FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
-            double[] rgb = new double[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
-            double[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
+            float[] rgb = new float[]{buffer[0][y][x], buffer[1][y][x], buffer[2][y][x]};
+            float[] rgb2 = MathHelper.matrixMutliply(conversionMatrix, rgb);
             image.buffer[0][y][x] = rgb2[0];
             image.buffer[1][y][x] = rgb2[1];
             image.buffer[2][y][x] = rgb2[2];
@@ -103,7 +103,7 @@ public class JXLImage {
             return this;
         int w = getWidth();
         int h = getHeight();
-        double[][][] newBuffer = new double[buffer.length + 2][h][w];
+        float[][][] newBuffer = new float[buffer.length + 2][h][w];
         for (int c = 0; c < newBuffer.length; c++) {
             for (int y = 0; y < h; y++) {
                 System.arraycopy(buffer[c > 2 ? c - 2 : 0][y], 0, newBuffer[c][y], 0, w);
@@ -120,7 +120,7 @@ public class JXLImage {
             return this;
         int w = getWidth();
         int h = getHeight();
-        double[][][] newBuffer = new double[buffer.length - 2][h][w];
+        float[][][] newBuffer = new float[buffer.length - 2][h][w];
         for (int c = 0; c < newBuffer.length; c++) {
             for (int y = 0; y < h; y++) {
                 System.arraycopy(buffer[c > 1 ? c + 2 : 1][y], 0, newBuffer[c][y], 0, w);
@@ -186,9 +186,9 @@ public class JXLImage {
         DoubleUnaryOperator composed = inverse.andThen(forward);
         int width = getWidth();
         int height = getHeight();
-        double[][][] imBuffer = image.buffer;
+        float[][][] imBuffer = image.buffer;
         FlowHelper.parallelIterate(buffer.length, new IntPoint(width, height), (c, x, y) -> {
-            imBuffer[c][y][x] = composed.applyAsDouble(buffer[c][y][x]);
+            imBuffer[c][y][x] = (float)composed.applyAsDouble(buffer[c][y][x]);
         });
         image.transfer = transfer;
         return image;
@@ -242,7 +242,7 @@ public class JXLImage {
         return imageHeader.getOrientedHeight();
     }
 
-    public double[][][] getBuffer() {
+    public float[][][] getBuffer() {
         return buffer;
     }
 

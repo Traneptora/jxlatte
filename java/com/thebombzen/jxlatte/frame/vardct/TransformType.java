@@ -60,10 +60,6 @@ public enum TransformType {
         throw new InvalidBitstreamException("Invalid index for mode: " + index + ", " + mode);
     }
 
-    public static TransformType get(int type) {
-        return TransformType.values()[type];
-    }
-
     public final String name;
     public final int type;
     public final int parameterIndex;
@@ -75,7 +71,7 @@ public enum TransformType {
     public final int matrixHeight;
     public final int orderID;
     public final int transformMethod;
-    public final double[][] llfScale;
+    public final float[][] llfScale;
 
     public boolean isVertical() {
         return blockHeight > blockWidth;
@@ -89,9 +85,9 @@ public enum TransformType {
         return transformMethod == METHOD_DCT && this.blockWidth == this.blockHeight;
     }
 
-    private double scaleF(int c, int b) {
+    private float scaleF(int c, int b) {
         double piSize = Math.PI * c;
-        return 1D / (Math.cos(piSize / (2 * b)) * Math.cos(piSize / b) * Math.cos(2D * piSize / b));
+        return (float)(1D / (Math.cos(piSize / (2 * b)) * Math.cos(piSize / b) * Math.cos(2D * piSize / b)));
     }
 
     public IntPoint getPixelSize() {
@@ -100,6 +96,10 @@ public enum TransformType {
 
     public IntPoint getMatrixSize() {
         return new IntPoint(matrixWidth, matrixHeight);
+    }
+
+    public IntPoint getDctSelectSize() {
+        return new IntPoint(dctSelectWidth, dctSelectHeight);
     }
 
     private TransformType(String name, int type, int parameterIndex, int dctSelectHeight, int dctSelectWidth,
@@ -115,7 +115,7 @@ public enum TransformType {
         this.matrixHeight = matrixHeight;
         this.orderID = orderID;
         this.transformMethod = transformMethod;
-        this.llfScale = new double[dctSelectHeight][dctSelectWidth];
+        this.llfScale = new float[dctSelectHeight][dctSelectWidth];
         for (IntPoint p : FlowHelper.range2D(dctSelectWidth, dctSelectHeight)) {
             p.set(llfScale, scaleF(p.y, blockHeight) * scaleF(p.x, blockWidth));
         }

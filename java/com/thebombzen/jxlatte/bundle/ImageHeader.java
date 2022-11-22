@@ -144,7 +144,7 @@ public class ImageHeader {
     private float[] up2weights;
     private float[] up4weights;
     private float[] up8weights;
-    private double[][][][][] upWeights = null;
+    private float[][][][][] upWeights = null;
     private int[] alphaIndices;
     private byte[] encodedICC;
     private byte[] decodedICC = null;
@@ -367,10 +367,10 @@ public class ImageHeader {
         return up8weights;
     }
 
-    public double[][][][][] getUpWeights() {
+    public float[][][][][] getUpWeights() {
         if (upWeights != null)
             return upWeights;
-        upWeights = new double[3][][][][];
+        upWeights = new float[3][][][][];
         for (int l = 0; l < 3; l++) {
             int k = 1 << (l + 1);
             float[] upKWeights = k == 8 ? getUp8Weights() :
@@ -379,7 +379,7 @@ public class ImageHeader {
                             null;
             if (upKWeights == null)
                 throw new Error("Challenge Complete how did we get here");
-            upWeights[l] = new double[k][k][5][5];
+            upWeights[l] = new float[k][k][5][5];
             for (int ky = 0; ky < k; ky++) {
                 for (int kx = 0; kx < k; kx++) {
                     for (int ix = 0; ix < 5; ix++) {

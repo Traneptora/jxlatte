@@ -75,8 +75,8 @@ public final class FlowHelper {
         return range2D(0, 0, size.x, size.y);
     }
 
-    public static Iterable<IntPoint> range2D(IntPoint origin, IntPoint size) {
-        return range2D(origin.x, origin.y, size.x, size.y);
+    public static Iterable<IntPoint> range2D(IntPoint origin, IntPoint lowerRight) {
+        return range2D(origin.x, origin.y, lowerRight.x, lowerRight.y);
     }
 
     /**

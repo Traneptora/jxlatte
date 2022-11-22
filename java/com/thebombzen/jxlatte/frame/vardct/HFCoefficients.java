@@ -42,7 +42,7 @@ public class HFCoefficients {
     public final LFGroup lfg;
     public final int groupID;
     private int[][][] nonZeroes;
-    public final double[][][][] dequantHFCoeff;
+    public final float[][][][] dequantHFCoeff;
     public final EntropyStream stream;
     public final Frame frame;
     public final Varblock[] varblocks;
@@ -63,7 +63,7 @@ public class HFCoefficients {
         stream = new EntropyStream(hfPass.contextStream);
         List<Varblock> varBlockList = new ArrayList<>();
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
-            Varblock varblock = new Varblock(lfg, lfg.hfMetadata.blockList[i]);
+            Varblock varblock = lfg.hfMetadata.blockList[i].get(lfg.hfMetadata.blockMap);
             if (!varblock.groupPosInLFGroup.equals(frame.groupPosInLFGroup(lfg.lfGroupID, groupID)))
                 continue; // block is not in this group
             varBlockList.add(varblock);
@@ -124,11 +124,11 @@ public class HFCoefficients {
                 Varblock varblock = varblocks[i];
                 for (IntPoint pixelPosInVarblock : FlowHelper.range2D(varblock.sizeInPixels())) {
                     IntPoint factorPos = varblock.pixelPosInLFGroup.plus(pixelPosInVarblock).divide(64);
-                    double kX = lfc.baseCorrelationX + factorPos.get(xFactorHF) / (double)lfc.colorFactor;
-                    double kB = lfc.baseCorrelationB + factorPos.get(bFactorHF) / (double)lfc.colorFactor;
-                    double dequantY = pixelPosInVarblock.get(dequantHFCoeff[i][1]);
-                    double dequantX = pixelPosInVarblock.get(dequantHFCoeff[i][0]);
-                    double dequantB = pixelPosInVarblock.get(dequantHFCoeff[i][2]);
+                    float kX = lfc.baseCorrelationX + factorPos.get(xFactorHF) / (float)lfc.colorFactor;
+                    float kB = lfc.baseCorrelationB + factorPos.get(bFactorHF) / (float)lfc.colorFactor;
+                    float dequantY = pixelPosInVarblock.get(dequantHFCoeff[i][1]);
+                    float dequantX = pixelPosInVarblock.get(dequantHFCoeff[i][0]);
+                    float dequantB = pixelPosInVarblock.get(dequantHFCoeff[i][2]);
                     pixelPosInVarblock.set(dequantHFCoeff[i][0], dequantX + kX * dequantY);
                     pixelPosInVarblock.set(dequantHFCoeff[i][2], dequantB + kB * dequantY);
                 }
@@ -139,7 +139,7 @@ public class HFCoefficients {
         for (int i = 0; i < varblocks.length; i++) {
             Varblock varblock = varblocks[i];
             IntPoint size = varblock.sizeInBlocks();
-            double[][] lfCoeffs = new double[size.y][size.x];
+            float[][] lfCoeffs = new float[size.y][size.x];
             for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
@@ -147,7 +147,7 @@ public class HFCoefficients {
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
                     IntPoint.ZERO, size);
                 for (IntPoint p : FlowHelper.range2D(size)) {
-                    double llf = p.get(lfCoeffs) * p.get(varblock.transformType().llfScale);
+                    float llf = p.get(lfCoeffs) * p.get(varblock.transformType().llfScale);
                     p.set(dequantHFCoeff[i][c], llf);
                 }
             }
@@ -192,16 +192,16 @@ public class HFCoefficients {
         return (nonZeroes[c][pos.y - 1][pos.x] + nonZeroes[c][pos.y][pos.x - 1] + 1) >> 1;
     }
 
-    private double[][][][] dequantizeHFCoefficients(int[][][][] coeffs) {
+    private float[][][][] dequantizeHFCoefficients(int[][][][] coeffs) {
         OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
-        double[][][][] dequant = new double[varblocks.length][3][][];
-        double globalScale = (double)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
-        double[] scaleFactor = new double[]{
-            globalScale * Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
+        float[][][][] dequant = new float[varblocks.length][3][][];
+        float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
+        float[] scaleFactor = new float[]{
+            globalScale * (float)Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
             globalScale,
-            globalScale * Math.pow(0.8D, frame.getFrameHeader().bqmScale - 2D),
+            globalScale * (float)Math.pow(0.8D, frame.getFrameHeader().bqmScale - 2D),
         };
-        double[][][][] weights = frame.getHFGlobal().weights;
+        float[][][][] weights = frame.getHFGlobal().weights;
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         for (int i = 0; i < varblocks.length; i++) {
             Varblock varblock = varblocks[i];
@@ -209,10 +209,10 @@ public class HFCoefficients {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 int[][] co = coeffs[i][c];
-                double[][] dq = new double[co.length][co[0].length];
+                float[][] dq = new float[co.length][co[0].length];
                 for (IntPoint pos : FlowHelper.range2D(varblock.sizeInPixels())) {
                     int coeff = pos.get(co);
-                    double quant;
+                    float quant;
                     if (Math.abs(coeff) <= 1)
                         quant = coeff * matrix.quantBias[c];
                     else

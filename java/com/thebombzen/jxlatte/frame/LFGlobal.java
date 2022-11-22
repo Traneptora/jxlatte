@@ -18,7 +18,7 @@ public class LFGlobal {
     public final Patch[] patches;
     public final SplinesBundle splines;
     public final NoiseParameters noiseParameters;
-    public final double[] lfDequant = new double[]{1D / 4096D, 1D / 512D, 1D / 256D};
+    public final float[] lfDequant = new float[]{1f / 4096f, 1f / 512f, 1f / 256f};
     public final Quantizer quantizer;
     public final HFBlockContext hfBlockCtx;
     public final LFChannelCorrelation lfChanCorr;
@@ -55,7 +55,7 @@ public class LFGlobal {
         }
         if (!reader.readBool()) {
             for (int i = 0; i < 3; i++) {
-                lfDequant[i] = reader.readF16() * (1D / 128D);
+                lfDequant[i] = reader.readF16() * (1f / 128f);
             }
         }
         if (frame.getFrameHeader().encoding == FrameFlags.VARDCT) {

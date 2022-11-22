@@ -16,7 +16,7 @@ import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFCoefficients {
     public final int extraPrecision;
-    public final double[][][] dequantLFCoeff;
+    public final float[][][] dequantLFCoeff;
     public final int[][] lfIndex;
     public final Frame frame;
 
@@ -31,7 +31,7 @@ public class LFCoefficients {
         this.extraPrecision = reader.readBits(2);
         FrameHeader header = frame.getFrameHeader();
         ModularChannelInfo[] info = new ModularChannelInfo[3];
-        double[][][] dequantLFCoeff = new double[3][][];
+        float[][][] dequantLFCoeff = new float[3][][];
         boolean adaptiveSmoothing = (header.flags
             & (FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING | FrameFlags.USE_LF_FRAME)) == 0;
         IntPoint[] shift = header.jpegUpsampling;
@@ -40,13 +40,13 @@ public class LFCoefficients {
                 throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
             IntPoint channelSize = sizeInBlocks.shiftRight(shift[i]);
             info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, shift[i].x, shift[i].y);
-            dequantLFCoeff[i] = new double[channelSize.y][channelSize.x];
+            dequantLFCoeff[i] = new float[channelSize.y][channelSize.x];
         }
         ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
         lfQuantStream.decodeChannels(reader);
         int[][][] lfQuant = lfQuantStream.getDecodedBuffer();
         lfQuantStream = null;
-        double[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
+        float[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
         for (int i = 0; i < 3; i++) {
             // quant is in Y, X, B order
             int c = Frame.cMap[i];
@@ -70,28 +70,28 @@ public class LFCoefficients {
         }
     }
 
-    private double[][][] adaptiveSmooth(double[][][] coeff, double[] scaledDequant, IntPoint[] shift) {
-        double[][][] weighted = new double[3][][];
-        double[][] gap = new double[coeff[0].length][];
-        double[][][] dequantLFCoeff = new double[3][][];
+    private float[][][] adaptiveSmooth(float[][][] coeff, float[] scaledDequant, IntPoint[] shift) {
+        float[][][] weighted = new float[3][][];
+        float[][] gap = new float[coeff[0].length][];
+        float[][][] dequantLFCoeff = new float[3][][];
         for (int i = 0; i < 3; i++) {
-            weighted[i] = new double[coeff[i].length][];
+            weighted[i] = new float[coeff[i].length][];
             for (int y = 1; y < coeff[i].length - 1; y++) {
                 if (gap[y] == null) {
-                    gap[y] = new double[coeff[i][y].length];
-                    Arrays.fill(gap[y], 0.5D);
+                    gap[y] = new float[coeff[i][y].length];
+                    Arrays.fill(gap[y], 0.5f);
                 }
                 // we never use weighted[i][0] so it can stay null
-                weighted[i][y] = new double[coeff[i][y].length];
+                weighted[i][y] = new float[coeff[i][y].length];
                 for (int x = 1; x < coeff[i][y].length - 1; x++) {
-                    double sample = coeff[i][y][x];
-                    double adjacent = coeff[i][y][x - 1] + coeff[i][y][x + 1]
+                    float sample = coeff[i][y][x];
+                    float adjacent = coeff[i][y][x - 1] + coeff[i][y][x + 1]
                         + coeff[i][y - 1][x] + coeff[i][y + 1][x];
-                    double diag = coeff[i][y - 1][x - 1] + coeff[i][y - 1][x + 1]
+                    float diag = coeff[i][y - 1][x - 1] + coeff[i][y - 1][x + 1]
                         + coeff[i][y + 1][x - 1] + coeff[i][y + 1][x + 1];
-                    weighted[i][y][x] = 0.05226273532324128D * sample + 0.20345139757231578D * adjacent
-                        + 0.0334829185968739 * diag;
-                    double g = Math.abs(sample - weighted[i][y][x]) * scaledDequant[i];
+                    weighted[i][y][x] = 0.05226273532324128f * sample + 0.20345139757231578f * adjacent
+                        + 0.0334829185968739f * diag;
+                    float g = Math.abs(sample - weighted[i][y][x]) * scaledDequant[i];
                     if (g > gap[y][x])
                         gap[y][x] = g;
                 }
@@ -101,13 +101,13 @@ public class LFCoefficients {
             if (gap[y] == null)
                 continue;
             for (int x = 0; x < gap[y].length; x++) {
-                gap[y][x] = Math.max(0D, 3D - 4D * gap[y][x]);
+                gap[y][x] = Math.max(0f, 3f - 4f * gap[y][x]);
             }
         }
         for (int i = 0; i < 3; i++) {
-            dequantLFCoeff[i] = new double[coeff[i].length][];
+            dequantLFCoeff[i] = new float[coeff[i].length][];
             for (int y = 0; y < coeff[i].length; y++) {
-                dequantLFCoeff[i][y] = new double[coeff[i][y].length];
+                dequantLFCoeff[i][y] = new float[coeff[i][y].length];
                 if (y == 0 || y + 1 == coeff[i].length) {
                     System.arraycopy(coeff[i][y], 0, dequantLFCoeff[i][y], 0, coeff[i][y].length);
                     continue;
@@ -126,8 +126,8 @@ public class LFCoefficients {
         if (shift[0].plus(shift[1]).plus(shift[2]).equals(IntPoint.ZERO)) {
             LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
             // SPEC: -128, not -127
-            double kX = lfc.baseCorrelationX + (lfc.xFactorLF - 128D) / (double)lfc.colorFactor;
-            double kB = lfc.baseCorrelationB + (lfc.bFactorLF - 128D) / (double)lfc.colorFactor;
+            float kX = lfc.baseCorrelationX + (lfc.xFactorLF - 128f) / (float)lfc.colorFactor;
+            float kB = lfc.baseCorrelationB + (lfc.bFactorLF - 128f) / (float)lfc.colorFactor;
             for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(dequantLFCoeff[1]))) {
                 dequantLFCoeff[0][p.y][p.x] += kX * dequantLFCoeff[1][p.y][p.x];
                 dequantLFCoeff[2][p.y][p.x] += kB * dequantLFCoeff[1][p.y][p.x];

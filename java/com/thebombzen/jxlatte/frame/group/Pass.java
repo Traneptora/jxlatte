@@ -1,8 +1,6 @@
 package com.thebombzen.jxlatte.frame.group;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.FrameFlags;
@@ -17,7 +15,6 @@ public class Pass {
 
     public final int minShift;
     public final int maxShift;
-    public final int[] replacedChannelIndices;
     public final ModularChannelInfo[] replacedChannels;
     public final HFPass hfPass;
 
@@ -33,21 +30,17 @@ public class Pass {
         }
         minShift = n >= 0 ? MathHelper.ceilLog1p(passes.downSample[n] - 1) : maxShift;
         GlobalModular globalModular = frame.getLFGlobal().gModular;
-        List<ModularChannelInfo> channels = new ArrayList<>();
-        List<Integer> replacedChannelIndices = new ArrayList<>();
+        replacedChannels = new ModularChannelInfo[globalModular.stream.getEncodedChannelCount()];
         for (int i = 0; i < globalModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = globalModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
                 int m = Math.min(chan.hshift, chan.vshift);
                 if (minShift <= m && m < maxShift) {
-                    replacedChannelIndices.add(i);
-                    channels.add(new ModularChannelInfo(chan));
+                    replacedChannels[i] = new ModularChannelInfo(chan);
                 }
             }
         }
 
-        this.replacedChannelIndices = replacedChannelIndices.stream().mapToInt(Integer::intValue).toArray();
-        this.replacedChannels = channels.stream().toArray(ModularChannelInfo[]::new);
         if (frame.getFrameHeader().encoding == FrameFlags.VARDCT)
             hfPass = new HFPass(reader, frame, passIndex);
         else

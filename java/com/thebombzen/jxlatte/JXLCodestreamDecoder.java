@@ -29,10 +29,10 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
 
-    private static double[][] transposeBuffer(double[][] src, int orientation) {
+    private static float[][] transposeBuffer(float[][] src, int orientation) {
         IntPoint size = IntPoint.sizeOf(src);
-        double[][] dest = orientation > 4 ? new double[size.x][size.y]
-            : orientation > 1 ? new double[size.y][size.x] : null;
+        float[][] dest = orientation > 4 ? new float[size.x][size.y]
+            : orientation > 1 ? new float[size.y][size.x] : null;
         switch (orientation) {
             case 1:
                 return src;
@@ -96,9 +96,9 @@ public class JXLCodestreamDecoder {
         this.demuxer = demuxer;
     }
 
-    private void computePatches(double[][][][] references, Frame frame) throws InvalidBitstreamException {
+    private void computePatches(float[][][][] references, Frame frame) throws InvalidBitstreamException {
         FrameHeader header = frame.getFrameHeader();
-        double[][][] frameBuffer = frame.getBuffer();
+        float[][][] frameBuffer = frame.getBuffer();
         int colorChannels = imageHeader.getColorChannelCount();
         int extraChannels = imageHeader.getExtraChannelCount();
         Patch[] patches = frame.getLFGlobal().patches;
@@ -106,7 +106,7 @@ public class JXLCodestreamDecoder {
             Patch patch = patches[i];
             if (patch.ref > 3)
                 throw new InvalidBitstreamException("Patch out of range");
-            double[][][] refBuffer = references[patch.ref];
+            float[][][] refBuffer = references[patch.ref];
             // technically you can reference a nonexistent frame
             // you wouldn't but it's not against the rules
             if (refBuffer == null)
@@ -143,23 +143,23 @@ public class JXLCodestreamDecoder {
                             int oldY = y + y0;
                             int newX = x + patch.origin.x;
                             int newY = y + patch.origin.y;
-                            double oldSample = frameBuffer[d][oldY][oldX];
-                            double newSample = refBuffer[d][newY][newX];
-                            double alpha = 0D, newAlpha = 0D, oldAlpha = 0D;
+                            float oldSample = frameBuffer[d][oldY][oldX];
+                            float newSample = refBuffer[d][newY][newX];
+                            float alpha = 0f, newAlpha = 0f, oldAlpha = 0f;
                             if (c > 3) {
                                 newAlpha = imageHeader.hasAlpha()
                                 ? refBuffer[colorChannels + info.alphaChannel][newY][newX]
-                                    : 1.0;
+                                    : 1.0f;
                                 oldAlpha = imageHeader.hasAlpha()
                                     ? frameBuffer[colorChannels + info.alphaChannel][oldY][oldX]
-                                    : 1.0;
+                                    : 1.0f;
                                 if (c > 5 || isAlpha || !premult) {
                                     alpha = oldAlpha + newAlpha * (1 - oldAlpha);
                                     if (info.clamp)
-                                        alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
+                                        alpha = MathHelper.clamp(alpha, 0.0f, 1.0f);
                                 }
                             }
-                            double sample;
+                            float sample;
                             switch (info.mode) {
                                 case 0:
                                     sample = oldSample;
@@ -199,24 +199,24 @@ public class JXLCodestreamDecoder {
     }
 
     public void performColorTransforms(OpsinInverseMatrix matrix, Frame frame) {
-        double[][][] frameBuffer = frame.getBuffer();
+        float[][][] frameBuffer = frame.getBuffer();
         if (matrix != null) {
             matrix.invertXYB(frameBuffer, imageHeader.getToneMapping().intensityTarget);
         }
 
         if (frame.getFrameHeader().doYCbCr) {
             FlowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
-                double yh = frameBuffer[1][y][x] + 0.5D;
-                double cb = frameBuffer[0][y][x];
-                double cr = frameBuffer[2][y][x];
-                frameBuffer[0][y][x] = yh + 1.402D * cr;
-                frameBuffer[1][y][x] = yh - 0.344136D * cb - 0.714136D * cr;
-                frameBuffer[2][y][x] = yh + 1.772 * cb;
+                float yh = frameBuffer[1][y][x] + 0.5f;
+                float cb = frameBuffer[0][y][x];
+                float cr = frameBuffer[2][y][x];
+                frameBuffer[0][y][x] = yh + 1.402f * cr;
+                frameBuffer[1][y][x] = yh - 0.344136f * cb - 0.714136f * cr;
+                frameBuffer[2][y][x] = yh + 1.772f * cb;
             });
         }
     }
 
-    private double getSample(double[][] arr, int x, int y) {
+    private float getSample(float[][] arr, int x, int y) {
         if (y < 0 || y >= arr.length)
             return 0;
         if (x < 0 || x >= arr[y].length)
@@ -224,7 +224,7 @@ public class JXLCodestreamDecoder {
         return arr[y][x];
     }
 
-    public void blendFrame(double[][][] canvas, double[][][][] reference, Frame frame)
+    public void blendFrame(float[][][] canvas, float[][][][] reference, Frame frame)
             throws InvalidBitstreamException {
         int width = imageHeader.getSize().width;
         int height = imageHeader.getSize().height;
@@ -235,7 +235,7 @@ public class JXLCodestreamDecoder {
         int frameYEnd = Math.min(height, header.height + header.origin.y);
         int colorChannels = 3;
         for (int c = 0; c < canvas.length; c++) {
-            double[][] newBuffer = frame.getBuffer()[c];
+            float[][] newBuffer = frame.getBuffer()[c];
             BlendingInfo info;
             if (c < colorChannels)
                 info = frame.getFrameHeader().blendingInfo;
@@ -246,7 +246,7 @@ public class JXLCodestreamDecoder {
             boolean premult = imageHeader.hasAlpha()
                         ? imageHeader.getExtraChannelInfo(info.alphaChannel).alphaAssociated
                         : true;
-            double[][][] ref = reference[info.source];
+            float[][][] ref = reference[info.source];
             switch (info.mode) {
                 case FrameFlags.BLEND_ADD:
                     if (ref != null) {
@@ -270,24 +270,24 @@ public class JXLCodestreamDecoder {
                                 canvas[c][y][x] = frame.getSample(c, x, y) * getSample(ref[c], x, y);
                             }
                         } else {
-                            Arrays.fill(canvas[c][y], frameXStart, frameXEnd, 0D);
+                            Arrays.fill(canvas[c][y], frameXStart, frameXEnd, 0f);
                         }
                     }
                     break;
                 case FrameFlags.BLEND_BLEND:
                     for (int y = frameYStart; y < frameYEnd; y++) {
                         for (int x = frameXStart; x < frameXEnd; x++) {
-                            double oldAlpha = !imageHeader.hasAlpha() ? 1.0D : ref != null ?
-                                getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0D;
-                            double newAlpha = !imageHeader.hasAlpha() ? 1.0D
+                            float oldAlpha = !imageHeader.hasAlpha() ? 1.0f : ref != null ?
+                                getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0f;
+                            float newAlpha = !imageHeader.hasAlpha() ? 1.0f
                                 : frame.getSample(colorChannels + info.alphaChannel, x, y);
-                            double alpha = 1.0D;
-                            double oldSample = ref != null ? getSample(ref[c], x, y) : 0.0D;
-                            double newSample = frame.getSample(c, x, y);
+                            float alpha = 1.0f;
+                            float oldSample = ref != null ? getSample(ref[c], x, y) : 0.0f;
+                            float newSample = frame.getSample(c, x, y);
                             if (isAlpha || !premult) {
                                 alpha = oldAlpha + newAlpha * (1 - oldAlpha);
                                 if (info.clamp)
-                                    alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
+                                    alpha = MathHelper.clamp(alpha, 0.0f, 1.0f);
                             }
                             canvas[c][y][x] = isAlpha ? alpha : premult ? newSample + oldSample * (1 - newAlpha)
                             : (newSample * newAlpha + oldSample * oldAlpha * (1 - newAlpha)) / alpha;
@@ -297,15 +297,15 @@ public class JXLCodestreamDecoder {
                 case FrameFlags.BLEND_MULADD:
                     for (int y = frameYStart; y < frameYEnd; y++) {
                         for (int x = frameXStart; x < frameXEnd; x++) {
-                            double oldAlpha = !imageHeader.hasAlpha() ? 1.0D : ref != null ?
-                                getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0D;
-                            double newAlpha = !imageHeader.hasAlpha() ? 1.0D
+                            float oldAlpha = !imageHeader.hasAlpha() ? 1.0f : ref != null ?
+                                getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0f;
+                            float newAlpha = !imageHeader.hasAlpha() ? 1.0f
                                 : frame.getSample(colorChannels + info.alphaChannel, x, y);
-                            double alpha = oldAlpha + newAlpha * (1.0D - oldAlpha);
+                            float alpha = oldAlpha + newAlpha * (1.0f - oldAlpha);
                             if (info.clamp)
-                                alpha = MathHelper.clamp(alpha, 0.0D, 1.0D);
-                            double oldSample = ref != null ? getSample(ref[c], x, y) : 0.0D;
-                            double newSample = frame.getSample(c, x, y);
+                                alpha = MathHelper.clamp(alpha, 0.0f, 1.0f);
+                            float oldSample = ref != null ? getSample(ref[c], x, y) : 0.0f;
+                            float newSample = frame.getSample(c, x, y);
                             canvas[c][y][x] = isAlpha ? alpha : oldSample + alpha * newSample;
                         }
                     }
@@ -323,6 +323,7 @@ public class JXLCodestreamDecoder {
     public JXLImage decode(PrintWriter err) throws IOException {
         if (bitreader.atEnd())
             return null;
+        long time0 = System.nanoTime() / 1000000L;
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
@@ -356,8 +357,10 @@ public class JXLCodestreamDecoder {
         }
 
         List<Frame> frames = new ArrayList<>();
-        double[][][][] reference = new double[4][][][];
+        float[][][][] reference = new float[4][][][];
         FrameHeader header;
+
+        long time1 = System.nanoTime() / 1000000L;
 
         do {
             Frame frame = new Frame(bitreader, imageHeader);
@@ -380,11 +383,13 @@ public class JXLCodestreamDecoder {
             matrix = imageHeader.getOpsinInverseMatrix().getMatrix(prim, white);
         }
 
-        double[][][] canvas = new double[3 + imageHeader.getExtraChannelCount()]
+        float[][][] canvas = new float[3 + imageHeader.getExtraChannelCount()]
             [imageHeader.getSize().height][imageHeader.getSize().width];
 
         long invisibleFrames = 0;
         long visibleFrames = 0;
+
+        long time2 = System.nanoTime() / 1000000L;
 
         for (Frame frame : frames) {
             header = frame.getFrameHeader();
@@ -410,11 +415,13 @@ public class JXLCodestreamDecoder {
                 reference[header.saveAsReference] = canvas;
         }
 
+        long time3 = System.nanoTime() / 1000000L;
+
         int orientation = imageHeader.getOrientation();
 
         int cShift =  3 - imageHeader.getColorChannelCount();
 
-        double[][][] orientedCanvas = new double[canvas.length - cShift][][];
+        float[][][] orientedCanvas = new float[canvas.length - cShift][][];
 
         for (int c = 0; c < canvas.length; c++) {
             int i = cShift > 0 && c < 3 ? 0 : c - cShift;
@@ -429,6 +436,8 @@ public class JXLCodestreamDecoder {
             demuxer.pushBack(drain);
         while ((drain = in.drain()) != null)
             demuxer.pushBack(drain);
+
+        System.err.format("Image Header: %d ms%nFrames: %d ms%nRender: %d ms%n", time1 - time0, time2 - time1, time3 - time2);
 
         return image;
     }

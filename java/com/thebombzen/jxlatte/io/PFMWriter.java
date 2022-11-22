@@ -23,11 +23,11 @@ public class PFMWriter {
         int height = image.getHeight();
         String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF", image.getWidth(), image.getHeight());
         dout.writeBytes(header);
-        double[][][] buffer = image.getBuffer();
+        float[][][] buffer = image.getBuffer();
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {
                 for (int c = 0; c < (gray ? 1 : 3); c++) {
-                    dout.writeFloat((float)buffer[c][y][x]);
+                    dout.writeFloat(buffer[c][y][x]);
                 }
             }
         }

@@ -17,8 +17,8 @@ public class LFChannelCorrelation {
             colorFactor = 84;
             baseCorrelationX = 0.0f;
             baseCorrelationB = 1.0f;
-            xFactorLF = 127;
-            bFactorLF = 127;
+            xFactorLF = 128;
+            bFactorLF = 128;
         } else {
             try {
                 colorFactor = reader.readU32(84, 0, 256, 0, 2, 8, 258, 16);

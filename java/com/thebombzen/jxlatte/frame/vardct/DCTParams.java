@@ -1,25 +1,25 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 public class DCTParams {
-    public final double[][] dctParam;
-    public final double[][] param;
+    public final float[][] dctParam;
+    public final float[][] param;
     public final int mode;
-    public final double denominator;
-    public final double[][] params4x4;
+    public final float denominator;
+    public final float[][] params4x4;
 
-    public DCTParams(double[][] dctParams, double[][] params, int mode) {
-        this(dctParams, params, null, mode, 1D);
+    public DCTParams(float[][] dctParams, float[][] params, int mode) {
+        this(dctParams, params, null, mode, 1f);
     }
 
-    public DCTParams(double[][] dctParams, double[][] params, double[][] params4x4, int mode) {
-        this(dctParams, params, params4x4, mode, 1D);
+    public DCTParams(float[][] dctParams, float[][] params, float[][] params4x4, int mode) {
+        this(dctParams, params, params4x4, mode, 1f);
     }
 
-    public DCTParams(double[][] dctParams, double[][] params, int mode, double denominator) {
+    public DCTParams(float[][] dctParams, float[][] params, int mode, float denominator) {
         this(dctParams, params, null, mode, denominator);
     }
 
-    public DCTParams(double[][] dctParam, double[][] param, double[][] params4x4, int mode, double denominator) {
+    public DCTParams(float[][] dctParam, float[][] param, float[][] params4x4, int mode, float denominator) {
         this.dctParam = dctParam;
         this.param = param;
         this.mode = mode;

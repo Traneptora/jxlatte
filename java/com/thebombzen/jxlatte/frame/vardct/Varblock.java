@@ -12,10 +12,6 @@ public class Varblock {
     public final IntPoint blockPosInGroup;
     // position, in units of pixels, relative to group origin
     public final IntPoint pixelPosInGroup;
-    // position, in units of pixels, relative to frame origin
-    public final IntPoint pixelPosInFrame;
-    // position, in units of groups (rounded down), relative to frame origin
-    public final IntPoint groupPosInFrame;
     // position, int units of pixels, relative to LF Group origin
     public final IntPoint pixelPosInLFGroup;
 
@@ -24,13 +20,12 @@ public class Varblock {
     public Varblock(LFGroup lfGroup, IntPoint blockPosInLFGroup) {
         this.lfGroup = lfGroup;
         this.blockPosInLFGroup = blockPosInLFGroup;
-        int groupBlockDim = lfGroup.frame.getGroupBlockDim();
-        groupPosInLFGroup = blockPosInLFGroup.divide(groupBlockDim);
-        blockPosInGroup = blockPosInLFGroup.minus(groupPosInLFGroup.times(groupBlockDim));
-        pixelPosInGroup = blockPosInGroup.shiftLeft(3);
-        groupPosInFrame = lfGroup.frame.getLFGroupXY(lfGroup.lfGroupID).shiftLeft(3).plus(groupPosInLFGroup);
-        pixelPosInFrame = groupPosInFrame.times(lfGroup.frame.getFrameHeader().groupDim).plus(pixelPosInGroup);
-        pixelPosInLFGroup = groupPosInLFGroup.times(lfGroup.frame.getFrameHeader().groupDim).plus(pixelPosInGroup);
+        pixelPosInLFGroup = new IntPoint(blockPosInLFGroup.x << 3, blockPosInLFGroup.y << 3);
+        groupPosInLFGroup = blockPosInLFGroup.shiftRight(5);
+        int x = blockPosInLFGroup.x - (groupPosInLFGroup.x << 5);
+        int y = blockPosInLFGroup.y - (groupPosInLFGroup.y << 5);
+        blockPosInGroup = new IntPoint(x, y);
+        pixelPosInGroup = new IntPoint(x << 3, y << 3);
     }
 
     public TransformType transformType() {

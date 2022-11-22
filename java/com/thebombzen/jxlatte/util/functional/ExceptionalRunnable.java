@@ -13,6 +13,10 @@ public interface ExceptionalRunnable extends Runnable {
         }
     }
 
+    public static Runnable of(ExceptionalRunnable r) {
+        return r;
+    }
+
     public default <T> ExceptionalSupplier<T> supply() {
         return () -> {
             run();

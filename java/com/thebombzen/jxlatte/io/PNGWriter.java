@@ -20,7 +20,7 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;
-    private double[][][] buffer;
+    private float[][][] buffer;
     private DataOutputStream out;
     private int maxValue;
     private int width;

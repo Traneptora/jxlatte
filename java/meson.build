@@ -52,7 +52,7 @@ src = files(
     'com/thebombzen/jxlatte/frame/features/noise/XorShiro.java',
 
     # com.thebombzen.jxlatte.frame.features.noise.spline
-    'com/thebombzen/jxlatte/frame/features/spline/DoublePoint.java',
+    'com/thebombzen/jxlatte/frame/features/spline/FloatPoint.java',
     'com/thebombzen/jxlatte/frame/features/spline/Spline.java',
     'com/thebombzen/jxlatte/frame/features/spline/SplineArc.java',
     'com/thebombzen/jxlatte/frame/features/spline/SplinesBundle.java',
@@ -76,6 +76,7 @@ src = files(
     # com.thebombzen.jxlatte.frame.vardct
     'com/thebombzen/jxlatte/frame/vardct/DCTParams.java',
     'com/thebombzen/jxlatte/frame/vardct/HFBlockContext.java',
+    'com/thebombzen/jxlatte/frame/vardct/HFCoefficients.java',
     'com/thebombzen/jxlatte/frame/vardct/HFGlobal.java',
     'com/thebombzen/jxlatte/frame/vardct/HFMetadata.java',
     'com/thebombzen/jxlatte/frame/vardct/HFPass.java',
@@ -111,10 +112,16 @@ src = files(
     'com/thebombzen/jxlatte/util/functional/FunctionalHelper.java',
 )
 
+res = structured_sources(
+    files(
+        'resources/bt2020-d65-pq.icc',
+        'resources/natural-order.dat',
+        'resources/default-weights-float.dat',
+    ),
+)
+
 jxlatte_jar = jar('jxlatte',
     sources: src,
-    java_resources: structured_sources(
-        files('resources/bt2020-d65-pq.icc'),
-    ),
+    java_resources: res,
     main_class: 'com.thebombzen.jxlatte.JXLatte',
 )

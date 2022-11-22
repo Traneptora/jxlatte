@@ -25,10 +25,14 @@ public class LFGroup {
         this.frame = parent;
         this.size = frame.getLFGroupSize(index).shiftRight(3);
 
+        long time0 = System.nanoTime() / 1000000L;
+
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
             this.lfCoeff = new LFCoefficients(reader, this, parent);
         else
             this.lfCoeff = null;
+
+        long time1 = System.nanoTime() / 1000000L;
 
         ModularStream modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
         modularLFGroup.decodeChannels(reader);
@@ -39,9 +43,15 @@ public class LFGroup {
         // free(modularLFGroup)
         modularLFGroup = null;
 
+        long time2 = System.nanoTime() / 1000000L;
+
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
             this.hfMetadata = new HFMetadata(reader, this, parent);
         else
             this.hfMetadata = null;
+        
+        long time3 = System.nanoTime() / 1000000L;
+
+        System.err.format("LF Group: %d%n    LFCoeff: %d%n    MLF: %d%n    HFMeta: %d%n", index, time1 - time0, time2 - time1, time3 - time2);
     }
 }

@@ -16,7 +16,7 @@ public class IntPoint {
         return new IntPoint(index % rowStride, index / rowStride);
     }
 
-    public static IntPoint sizeOf(double[][] array) {
+    public static IntPoint sizeOf(float[][] array) {
         return array.length == 0 ? new IntPoint() : new IntPoint(array[0].length, array.length);
     }
 
@@ -28,7 +28,7 @@ public class IntPoint {
         return array.length == 0 ? new IntPoint() : new IntPoint(array[0].length, array.length);
     }
 
-    public static IntPoint[] sizeOf(double[][][] array) {
+    public static IntPoint[] sizeOf(float[][][] array) {
         return Stream.of(array).map(IntPoint::sizeOf).toArray(IntPoint[]::new);
     }
 
@@ -131,7 +131,7 @@ public class IntPoint {
         return array[y][x];
     }
 
-    public double get(double[][] array) {
+    public float get(float[][] array) {
         return array[y][x];
     }
 
@@ -144,7 +144,7 @@ public class IntPoint {
         return this;
     }
 
-    public IntPoint set(double[][] array, double value) {
+    public IntPoint set(float[][] array, float value) {
         array[y][x] = value;
         return this;
     }

@@ -5,20 +5,20 @@ import java.util.stream.Stream;
 
 public final class MathHelper {
 
-    public static final double SQRT_2 = StrictMath.sqrt(2.0D);
-    public static final double SQRT_H = StrictMath.sqrt(0.5D);
-    public static final double SQRT_F = StrictMath.sqrt(0.125D);
+    public static final float SQRT_2 = (float)StrictMath.sqrt(2.0D);
+    public static final float SQRT_H = (float)StrictMath.sqrt(0.5D);
+    public static final float SQRT_F = (float)StrictMath.sqrt(0.125D);
 
     // s, n, k
-    private static double[][][] cosineLut = new double[9][][];
+    private static float[][][] cosineLut = new float[9][][];
 
     static {
         for (int l = 0; l < cosineLut.length; l++) {
             int s = 1 << l;
-            cosineLut[l] = new double[s - 1][s];
+            cosineLut[l] = new float[s - 1][s];
             for (int n = 0; n < cosineLut[l].length; n++) {
                 for (int k = 0; k < cosineLut[l][n].length; k++) {
-                    cosineLut[l][n][k] = SQRT_2 * StrictMath.cos(Math.PI * (n + 1) * (k + 0.5D) / s);
+                    cosineLut[l][n][k] = (float)(SQRT_2 * StrictMath.cos(Math.PI * (n + 1) * (k + 0.5D) / s));
                 }
             }
         }
@@ -30,40 +30,40 @@ public final class MathHelper {
         return (int)((v & 1L) == 0L ? v / 2L : -(v + 1L) / 2L);
     }
 
-    public static int round(double d) {
-        return (int)(d + 0.5D);
+    public static int round(float d) {
+        return (int)(d + 0.5f);
     }
 
-    public static double erf(double z) {
-        double az = Math.abs(z);
-        double absErf;
+    public static float erf(float z) {
+        float az = Math.abs(z);
+        float absErf;
         // first method is more accurate for most z, but becomes inaccurate for very small z
         // so we fall back on the second method
-        if (az > 1e-4D) {
+        if (az > 1e-4f) {
             /*
              * William H. Press, Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery. 1992.
              * Numerical recipes in C (2nd ed.): the art of scientific computing. Cambridge University Press, USA.
              */
-            double t = 1.0D / (1.0D + 0.5D * az);
-            double u = -1.26551223D + t * (1.00002368D + t * (0.37409196D + t * (0.09678418D + t * (-0.18628806D
-                + t * (0.27886807D + t * (-1.13520398D + t * (1.48851587D + t * (-0.82215223D + t * 0.17087277D))))))));
-            absErf = 1.0D - t * Math.exp(-z * z + u);
+            float t = 1.0f / (1.0f + 0.5f * az);
+            float u = -1.26551223f + t * (1.00002368f + t * (0.37409196f + t * (0.09678418f + t * (-0.18628806f
+                + t * (0.27886807f + t * (-1.13520398f + t * (1.48851587f + t * (-0.82215223f + t * 0.17087277f))))))));
+            absErf = 1.0f - t * (float)Math.exp(-z * z + u);
         } else {
             /*
              * Milton Abramowitz and Irene A. Stegun. 1964. Handbook of Mathematical Functions with formulas,
-             * graphs, and mathematical tables, Dover Publications, USA.
+             * graphs, and mathematical tables, fover Publications, USA.
              */
-            double t = 1.0D / (1.0D + 0.47047D * az);
-            double u = t * (0.3480242D + t * (-0.0958798D + t * 0.7478556D));
-            absErf = 1.0D - u * Math.exp(-z * z);
+            float t = 1.0f / (1.0f + 0.47047f * az);
+            float u = t * (0.3480242f + t * (-0.0958798f + t * 0.7478556f));
+            absErf = 1.0f - u * (float)Math.exp(-z * z);
         }
         if (z < 0)
             return -absErf;
         return absErf;
     }
 
-    public static void inverseDCTHorizontal(double[][] src, int yIn, int xStartIn,
-            double[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
+    public static void inverseDCTHorizontal(float[][] src, int yIn, int xStartIn,
+            float[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
         for (int x = 0; x < xLength; x++) {
             dest[yOut][xStartOut + x] = src[yIn][xStartIn];
         }
@@ -74,9 +74,9 @@ public final class MathHelper {
         }
     }
 
-    public static void forwardDCTHorizontal(double[][] src, int yIn, int xStartIn,
-            double[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
-        double invLength = 1D / xLength;
+    public static void forwardDCTHorizontal(float[][] src, int yIn, int xStartIn,
+            float[][] dest, int yOut, int xStartOut, int xLogLength, int xLength) {
+        float invLength = 1f / xLength;
         dest[yOut][xStartOut] = 0;
         for (int x = 0; x < xLength; x++) {
             dest[yOut][xStartOut] += src[yIn][xStartIn + x];
@@ -91,8 +91,8 @@ public final class MathHelper {
         }
     }
 
-    public static void inverseDCTVertical(double[][] src, int xIn, int yStartIn,
-            double[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
+    public static void inverseDCTVertical(float[][] src, int xIn, int yStartIn,
+            float[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
         for (int y = 0; y < yLength; y++) {
             dest[yStartOut + y][xOut] = src[yStartIn][xIn];
         }
@@ -103,9 +103,9 @@ public final class MathHelper {
         }
     }
 
-    public static void forwardDCTVertical(double[][] src, int xIn, int yStartIn,
-        double[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
-        double invLength = 1D / yLength;
+    public static void forwardDCTVertical(float[][] src, int xIn, int yStartIn,
+        float[][] dest, int xOut, int yStartOut, int yLogLength, int yLength) {
+        float invLength = 1f / yLength;
         dest[yStartOut][xOut] = 0;
         for (int y = 0; y < yLength; y++) {
             dest[yStartOut][xOut] += src[yStartIn + y][xIn];
@@ -120,7 +120,7 @@ public final class MathHelper {
         }
     }
 
-    public static void inverseDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length, double[][] scratchSpace) {
+    public static void inverseDCT2D(float[][] src, float[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length, float[][] scratchSpace) {
         int xLogLength = ceilLog2(length.x);
         int yLogLength = ceilLog2(length.y);
         for (int x = 0; x < length.x; x++) {
@@ -131,10 +131,10 @@ public final class MathHelper {
         }
     }
 
-    public static void forwardDCT2D(double[][] src, double[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length) {
+    public static void forwardDCT2D(float[][] src, float[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length) {
         int xLogLength = ceilLog2(length.x);
         int yLogLength = ceilLog2(length.y);
-        double[][] temp = new double[length.y][length.x];
+        float[][] temp = new float[length.y][length.x];
         for (int x = 0; x < length.x; x++) {
             forwardDCTVertical(src, startIn.x + x, startIn.y, temp, x, 0, yLogLength, length.y);
         }
@@ -143,14 +143,14 @@ public final class MathHelper {
         }
     }
 
-    public static void transposeMatrixInto(double[][] src, double[][] dest, IntPoint inSize) {
+    public static void transposeMatrixInto(float[][] src, float[][] dest, IntPoint inSize) {
         for (IntPoint p : FlowHelper.range2D(inSize)) {
             dest[p.x][p.y] = src[p.y][p.x];
         }
     }
 
-    public static double[][] transposeMatrix(double[][] matrix, IntPoint inSize) {
-        double[][] dest = new double[inSize.x][inSize.y];
+    public static float[][] transposeMatrix(float[][] matrix, IntPoint inSize) {
+        float[][] dest = new float[inSize.x][inSize.y];
         transposeMatrixInto(matrix, dest, inSize);
         return dest;
     }
@@ -186,36 +186,43 @@ public final class MathHelper {
         return Arrays.stream(a).reduce(Integer.MIN_VALUE, Math::max);
     }
 
-    public static double min(double... a) {
-        return Arrays.stream(a).reduce(Double.MAX_VALUE, Math::min);
+    public static float max(float... a) {
+        float result = Float.MIN_VALUE;
+        for (float f : a) {
+            if (f < result)
+                result = f;
+        }
+        return result;
     }
 
-    public static double max(double... a) {
-        return Arrays.stream(a).reduce(Double.MIN_VALUE, Math::max);
+    public static float signedPow(float base, float exponent) {
+        return Math.signum(base) * (float)Math.pow(Math.abs(base), exponent);
     }
 
-    public static double signedPow(double base, double exponent) {
-        return Math.signum(base) * Math.pow(Math.abs(base), exponent);
-    }
-
-    public static int clamp(int v, int... a) {
-        int lower = min(a);
-        int upper = max(a);
+    public static int clamp(int v, int a, int b, int c) {
+        int lower = min(a, b, c);
+        int upper = max(a, b, c);
         return Math.min(Math.max(v, lower), upper);
     }
 
-    public static double clamp(double v, double... a) {
-        double lower = min(a);
-        double upper = max(a);
+    public static int clamp(int v, int a, int b) {
+        int lower = Math.min(a, b);
+        int upper = Math.max(a, b);
         return Math.min(Math.max(v, lower), upper);
     }
 
-    public static double[] matrixMutliply(double[][] matrix, double[] columnVector) {
+    public static float clamp(float v, float a, float b) {
+        float lower = Math.min(a, b);
+        float upper = Math.max(a, b);
+        return Math.min(Math.max(v, lower), upper);
+    }
+
+    public static float[] matrixMutliply(float[][] matrix, float[] columnVector) {
         if (matrix == null)
             return columnVector;
         if (matrix[0].length != columnVector.length || columnVector.length == 0)
             throw new IllegalArgumentException();
-        double[] total = new double[matrix.length];
+        float[] total = new float[matrix.length];
         for (int y = 0; y < total.length; y++) {
             for (int x = 0; x < columnVector.length; x++) {
                 total[y] += matrix[y][x] * columnVector[x];
@@ -224,12 +231,12 @@ public final class MathHelper {
         return total;
     }
 
-    public static double[] matrixMutliply(double[] rowVector, double[][] matrix) {
+    public static float[] matrixMutliply(float[] rowVector, float[][] matrix) {
         if (matrix == null)
             return rowVector;
         if (matrix.length != rowVector.length || rowVector.length == 0)
             throw new IllegalArgumentException();
-        double[] total = new double[matrix[0].length];
+        float[] total = new float[matrix[0].length];
         for (int x = 0; x < total.length; x++) {
             for (int y = 0; y < rowVector.length; y++) {
                 total[x] += rowVector[y] * matrix[y][x];
@@ -238,37 +245,37 @@ public final class MathHelper {
         return total;
     }
 
-    public static double[][] matrixMutliply(double[][] left, double[][] right) {
+    public static float[][] matrixMutliply(float[][] left, float[][] right) {
         if (left == null)
             return right;
         if (right == null)
             return left;
         if (left.length == 0 || left[0].length == 0 || right.length == 0 || left.length != right[0].length)
             throw new IllegalArgumentException();
-        double[][] result = new double[left.length][right[0].length];
+        float[][] result = new float[left.length][right[0].length];
         for (int y = 0; y < right.length; y++)
             result[y] = matrixMutliply(left[y], right);
         return result;
     }
 
-    public static double[][] matrixIdentity(int n) {
-        double[][] identity = new double[n][n];
+    public static float[][] matrixIdentity(int n) {
+        float[][] identity = new float[n][n];
         for (int i = 0; i < n; i++)
-            identity[i][i] = 1.0D;
+            identity[i][i] = 1.0f;
         return identity;
     }
 
-    public static double[][] matrixMutliply(double[][]... matrices) {
+    public static float[][] matrixMutliply(float[][]... matrices) {
         return Stream.of(matrices).reduce(MathHelper::matrixMutliply).orElse(null);
     }
 
     // expensive! try not to use on the fly
-    public static double[][] invertMatrix3x3(double[][] matrix) {
+    public static float[][] invertMatrix3x3(float[][] matrix) {
         if (matrix == null)
             return null;
         if (matrix.length != 3)
             throw new IllegalArgumentException();
-        double det = 0D;
+        float det = 0f;
         for (int c = 0; c < 3; c++) {
             if (matrix[c].length != 3)
                 throw new IllegalArgumentException();
@@ -276,10 +283,10 @@ public final class MathHelper {
             int c2 = (c + 2) % 3;
             det += matrix[c][0] * matrix[c1][1] * matrix[c2][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
         }
-        if (det == 0D)
+        if (det == 0f)
             return null;
-        double invDet = 1D / det;
-        double[][] inverse = new double[3][3];
+        float invDet = 1f / det;
+        float[][] inverse = new float[3][3];
         for (int x = 0; x < 3; x++) {
             for (int y = 0; y < 3; y++) {
                 int x1 = (x + 1) % 3;

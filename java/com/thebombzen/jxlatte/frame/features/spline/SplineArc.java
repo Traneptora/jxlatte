@@ -1,10 +1,10 @@
 package com.thebombzen.jxlatte.frame.features.spline;
 
 public class SplineArc {
-    public final DoublePoint location;
-    public final double arcLength;
+    public final FloatPoint location;
+    public final float arcLength;
 
-    public SplineArc(DoublePoint location, double arcLength) {
+    public SplineArc(FloatPoint location, float arcLength) {
         this.location = location;
         this.arcLength = arcLength;
     }
