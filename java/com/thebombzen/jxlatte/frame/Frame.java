@@ -349,6 +349,8 @@ public class Frame {
         int numPasses = passes.length;
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
 
+        long time0 = System.nanoTime() / 1_000_000L;
+
         for (int pass = 0; pass < numPasses; pass++) {
             for (int group = 0; group < numGroups; group++) {
                 Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
@@ -369,6 +371,8 @@ public class Frame {
             }
         }
 
+        long time1 = System.nanoTime() / 1_000_000L;
+
         for (int pass = 0; pass < numPasses; pass++) {
             int j = 0;
             for (int i = 0; i < passes[pass].replacedChannels.length; i++) {
@@ -386,6 +390,8 @@ public class Frame {
             }
         }
 
+        long time2 = System.nanoTime() / 1_000_000L;
+
         if (header.encoding == FrameFlags.VARDCT) {
             for (int pass = 0; pass < numPasses; pass++) {
                 for (int group = 0; group < numGroups; group++) {
@@ -395,6 +401,10 @@ public class Frame {
                 }
             }
         }
+
+        long time3 = System.nanoTime() / 1_000_000L;
+
+        System.err.format("PassGroups:%n  Construct: %d%n  Lay: %d%n  Invert: %d%n", time1 - time0, time2 - time1, time3 - time2);
     }
 
     public void decodeFrame() throws IOException {

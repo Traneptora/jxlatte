@@ -122,7 +122,7 @@ public class PassGroup {
                 scratchBlock[0][iy][ix] = coeffs[p.y + iy * 2][p.x + ix * 2 + 1];
             }
         }
-        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(4), scratchBlock[2]);
+        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(4), scratchBlock[2], scratchBlock[3], false);
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = 0; ix < 4; ix++) {
                  //transposed intentionally
@@ -135,7 +135,7 @@ public class PassGroup {
                 scratchBlock[0][iy][ix] = coeffs[p.y + 1 + iy * 2][p.x + ix];
             }
         }
-        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(8, 4), scratchBlock[2]);
+        MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, new IntPoint(8, 4), scratchBlock[2], scratchBlock[3], false);
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = 0; ix < 8; ix++) {
                 buffer[ps.y + (flipY == 1 ? 0 : 4) + iy][ps.x + ix] = scratchBlock[1][iy][ix];
@@ -182,7 +182,7 @@ public class PassGroup {
             }
         }
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
-        float[][][] scratchBlock = new float[3][256][256];
+        float[][][] scratchBlock = new float[4][256][256];
         for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
             for (int c = 0; c < 3; c++) {
@@ -195,7 +195,7 @@ public class PassGroup {
                 IntPoint size = varblock.sizeInPixels();
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:
-                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, scratchBlock[0]);
+                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, scratchBlock[0], scratchBlock[1], false);
                         break;
                     case TransformType.METHOD_DCT8_4:
                         coeff0 = coeffs[i][c][0][0];
@@ -209,9 +209,10 @@ public class PassGroup {
                                     scratchBlock[0][iy][ix] = coeffs[i][c][x + iy * 2][ix];
                                 }
                             }
-                            MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(0, 4 * x), new IntPoint(8, 4), scratchBlock[2]);
+                            MathHelper.inverseDCT2D(scratchBlock[0], frameBuffer[c], IntPoint.ZERO,
+                                new IntPoint(4 * x, 0).plus(pixelPosInFrame), new IntPoint(8, 4),
+                                scratchBlock[1], scratchBlock[2], true);
                         }
-                        layBlock(scratchBlock[1], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, true);
                         break;
                     case TransformType.METHOD_DCT4_8:
                         coeff0 = coeffs[i][c][0][0];
@@ -225,9 +226,8 @@ public class PassGroup {
                                     scratchBlock[0][iy][ix] = coeffs[i][c][y + iy * 2][ix];
                                 }
                             }
-                            MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, new IntPoint(0, 4 * y), new IntPoint(8, 4), scratchBlock[2]);
+                            MathHelper.inverseDCT2D(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, new IntPoint(0, 4 * y).plus(pixelPosInFrame), new IntPoint(8, 4), scratchBlock[1], scratchBlock[2], false);
                         }
-                        layBlock(scratchBlock[1], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, false);
                         break;
                     case TransformType.METHOD_AFV:
                         invertAFV(coeffs[i][c], frameBuffer[c], varblock, pixelPosInFrame, scratchBlock);
@@ -277,7 +277,7 @@ public class PassGroup {
                                 // we're already using scratchblock[1] for the auxDCT2 coordiantes
                                 // but we're putting these far away at (8, 8) so there's no overlap
                                 MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO,
-                                    new IntPoint(8), new IntPoint(4), scratchBlock[2]);
+                                    new IntPoint(8), new IntPoint(4), scratchBlock[2], scratchBlock[3], false);
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = 0; ix < 4; ix++) {
                                         frameBuffer[c][pixelPosInFrame.y + 4*y + iy][pixelPosInFrame.x + 4*x + ix]

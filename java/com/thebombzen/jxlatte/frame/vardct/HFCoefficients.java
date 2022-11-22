@@ -134,7 +134,7 @@ public class HFCoefficients {
                 }
             }
         }
-
+        float[][][] scratchBlock = new float[2][256][256];
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
             Varblock varblock = varblocks[i];
@@ -145,7 +145,7 @@ public class HFCoefficients {
                     continue;
                 MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], lfCoeffs,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
-                    IntPoint.ZERO, size);
+                    IntPoint.ZERO, size, scratchBlock[0], scratchBlock[1]);
                 for (IntPoint p : FlowHelper.range2D(size)) {
                     float llf = p.get(lfCoeffs) * p.get(varblock.transformType().llfScale);
                     p.set(dequantHFCoeff[i][c], llf);
