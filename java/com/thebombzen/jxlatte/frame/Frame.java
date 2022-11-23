@@ -24,7 +24,6 @@ import com.thebombzen.jxlatte.frame.group.PassGroup;
 import com.thebombzen.jxlatte.frame.modular.MATree;
 import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
-import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -350,31 +349,40 @@ public class Frame {
         int numPasses = passes.length;
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
 
-        long time0 = System.nanoTime() / 1_000_000L;
+        CompletableFuture<?>[][] futures = new CompletableFuture[numPasses][numGroups];
 
-        for (int pass = 0; pass < numPasses; pass++) {
-            for (int group = 0; group < numGroups; group++) {
-                Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
-                ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
+        for (int pass0 = 0; pass0 < numPasses; pass0++) {
+            final int pass = pass0;
+            for (int group0 = 0; group0 < numGroups; group0++) {
+                final int group = group0;
+                futures[pass][group] = getBitreader(2 + numLFGroups + pass * numGroups + group)
+                        .thenAcceptAsync((reader) -> {
+                    ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
                     .filter(Objects::nonNull).map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
-                for (ModularChannelInfo info : replaced) {
-                    IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                    IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
-                    int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
-                    IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
-                    IntPoint chanSize = new IntPoint(info.width, info.height);
-                    info.origin = pos;
-                    IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
-                    info.width = size.x;
-                    info.height = size.y;
-                }
-                passGroups[pass][group] = new PassGroup(reader, Frame.this, pass, group, replaced);
+                    for (ModularChannelInfo info : replaced) {
+                        IntPoint shift = new IntPoint(info.hshift, info.vshift);
+                        IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
+                        int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
+                        IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
+                        IntPoint chanSize = new IntPoint(info.width, info.height);
+                        info.origin = pos;
+                        IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
+                        info.width = size.x;
+                        info.height = size.y;
+                    }
+                    try {
+                        passGroups[pass][group] = new PassGroup(reader, Frame.this, pass, group, replaced);
+                    } catch (Throwable ex) {
+                        FunctionalHelper.sneakyThrow(ex);
+                    }
+                });
             }
         }
 
-        long time1 = System.nanoTime() / 1_000_000L;
-
         for (int pass = 0; pass < numPasses; pass++) {
+            for (int group = 0; group < numGroups; group++) {
+                futures[pass][group].join();
+            }
             int j = 0;
             for (int i = 0; i < passes[pass].replacedChannels.length; i++) {
                 if (passes[pass].replacedChannels[i] == null)
@@ -391,30 +399,29 @@ public class Frame {
             }
         }
 
-        long time2 = System.nanoTime() / 1_000_000L;
-
         if (header.encoding == FrameFlags.VARDCT) {
-            for (int pass = 0; pass < numPasses; pass++) {
+            for (int pass0 = 0; pass0 < numPasses; pass0++) {
+                final int pass = pass0;
+                for (int group0 = 0; group0 < numGroups; group0++) {
+                    final int group = group0;
+                    futures[pass][group] = CompletableFuture.runAsync(() -> {
+                        PassGroup passGroup = passGroups[pass][group];
+                        PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
+                        passGroup.invertVarDCT(buffer, prev);
+                    });
+                }
                 for (int group = 0; group < numGroups; group++) {
-                    PassGroup passGroup = passGroups[pass][group];
-                    PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
-                    passGroup.invertVarDCT(buffer, prev);
+                    futures[pass][group].join();
                 }
             }
         }
 
-        long time3 = System.nanoTime() / 1_000_000L;
-
-        System.err.format("PassGroups:%n  Construct: %d%n  Lay: %d%n  Invert: %d%n", time1 - time0, time2 - time1, time3 - time2);
-        System.err.format("        Read: %d%n        Dequant: %d%n        Recorrelate: %d%n        Overlay: %d%n", HFCoefficients.readTime, HFCoefficients.dequantTime, HFCoefficients.recorrelateTime, HFCoefficients.llfTime);
     }
 
     public void decodeFrame() throws IOException {
         if (this.decoded)
             return;
         this.decoded = true;
-
-        long time0 = System.nanoTime() / 1000000L;
 
         lfGlobal = FunctionalHelper.join(getBitreader(0)
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
@@ -424,11 +431,7 @@ public class Frame {
             + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
         TaskList<Void> tasks = new TaskList<>();
 
-        long time1 = System.nanoTime() / 1000000L;
-
         decodeLFGroups(tasks);
-
-        long time2 = System.nanoTime() / 1000000L;
 
         Bitreader hfGlobalReader = FunctionalHelper.join(getBitreader(1 + numLFGroups));
         if (header.encoding == FrameFlags.VARDCT)
@@ -436,15 +439,9 @@ public class Frame {
         else
             hfGlobal = null;
 
-        long time3 = System.nanoTime() / 1000000L;
-
         decodePasses(hfGlobalReader, tasks);
 
-        long time4 = System.nanoTime() / 1000000L;
-
         decodePassGroups(tasks);
-
-        long time5 = System.nanoTime() / 1000000L;
 
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
@@ -480,100 +477,138 @@ public class Frame {
             performEdgePreservingFilter();
         }
 
-        long time6 = System.nanoTime() / 1000000L;
-
-        System.err.format(" LFGLobal: %d ms%n LF Groups: %d ms%n HF Global: %d ms%n Pass: %d ms%n Pass Groups: %d ms%n Restoration: %d ms%n",
-            time1 - time0, time2 - time1, time3 - time2, time4 - time3, time5 - time4, time6 - time5);
     }
 
     private void performGabConvolution() {
-        float[][] normGabW = new float[3][3];
+        final TaskList<?> tasks = new TaskList<>(3);
+        final float[][] normGabW = new float[3][3];
         for (int c = 0; c < 3; c++) {
-            float gabW1 = header.restorationFilter.gab1Weights[c];
-            float gabW2 = header.restorationFilter.gab2Weights[c];
-            float mult = 1f / (1f + 4f * (gabW1 + gabW2));
+            final float gabW1 = header.restorationFilter.gab1Weights[c];
+            final float gabW2 = header.restorationFilter.gab2Weights[c];
+            final float mult = 1f / (1f + 4f * (gabW1 + gabW2));
             normGabW[0][c] = mult;
             normGabW[1][c] = gabW1 * mult;
             normGabW[2][c] = gabW2 * mult;
         }
-        for (int c : Frame.cMap) {
-            IntPoint size = IntPoint.sizeOf(buffer[c]);
-            float[][] newBuffer = new float[size.y][size.x];
-            FlowHelper.parallelIterate(size, (x, y) -> {
-                int west = MathHelper.mirrorCoordinate(x - 1, size.x);
-                int east = MathHelper.mirrorCoordinate(x + 1, size.x);
-                int north = MathHelper.mirrorCoordinate(y - 1, size.y);
-                int south = MathHelper.mirrorCoordinate(y + 1, size.y);
-                float adjacent = buffer[c][y][west] + buffer[c][y][east]
-                    + buffer[c][north][x] + buffer[c][south][x];
-                float diagonal = buffer[c][north][west] + buffer[c][north][east]
-                    + buffer[c][south][west] + buffer[c][south][east];
-                newBuffer[y][x] = normGabW[0][c] * buffer[c][y][x]
-                    + normGabW[1][c] * adjacent + normGabW[2][c] * diagonal;
-            });
+        for (int c0 = 0; c0 < 3; c0++) {
+            final int c = c0;
+            final float[][] buffC = buffer[c];
+            final int height = buffC.length;
+            final int width = buffC[0].length;
+            final float[][] newBuffer = new float[height][width];
+            for (int y0 = 0; y0 < height; y0++) {
+                final int y = y0;
+                final int north = MathHelper.mirrorCoordinate(y - 1, height);
+                final int south = MathHelper.mirrorCoordinate(y + 1, height);
+                final float[] buffR = buffC[y];
+                final float[] buffN = buffC[north];
+                final float[] buffS = buffC[south];
+                final float[] newBuffR = newBuffer[y];
+                tasks.submit(() -> {
+                    for (int x = 0; x < width; x++) {
+                        final int west = MathHelper.mirrorCoordinate(x - 1, width);
+                        final int east = MathHelper.mirrorCoordinate(x + 1, width);
+                        final float adj = buffR[west] + buffR[east] + buffN[x] + buffS[x];
+                        final float diag = buffN[west] + buffN[east] + buffS[west] + buffS[east];
+                        newBuffR[x] = normGabW[0][c] * buffR[x] + normGabW[1][c] * adj + normGabW[2][c] * diag;
+                    }
+                });
+            }
+            tasks.collect();
             buffer[c] = newBuffer;
         }
     }
 
-    private void performEdgePreservingFilter() {
-        float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
+    private void performEdgePreservingFilter() throws InvalidBitstreamException {
+        final float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
 
-        IntPoint size = getPaddedFrameSize();
-        float[][] sigma = new float[size.y >> 3][size.x >> 3];
-        
-        FlowHelper.parallelIterate(size.shiftRight(3), (bp) -> {
-            if (header.encoding == FrameFlags.VARDCT) {
-                final IntPoint lfPosInFrame = bp.shiftRight(header.logLFGroupDim - 3);
-                final IntPoint blockPosInLFGroup = bp.minus(lfPosInFrame.shiftLeft(header.logLFGroupDim - 3));
-                final LFGroup lfg = lfGroups[lfPosInFrame.unwrapCoord(lfGroupRowStride)];
-                final int hf = lfg.hfMetadata.blockMap[blockPosInLFGroup.y][blockPosInLFGroup.x].hfMult();
-                final int sharpness = lfg.hfMetadata.hfStreamBuffer[3][blockPosInLFGroup.y][blockPosInLFGroup.x];
-                if (sharpness < 0 || sharpness > 7)
-                    throw new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness);
-                sigma[bp.y][bp.x] = hf * header.restorationFilter.epfQuantMul
-                    * header.restorationFilter.epfSharpLut[sharpness];
-            } else {
-                sigma[bp.y][bp.x] = header.restorationFilter.epfSigmaForModular;
+        final IntPoint size = getPaddedFrameSize();
+        final int blockW = size.x >> 3;
+        final int blockH = size.y >> 3;
+        final float[][] inverseSigma = new float[blockH][blockW];
+
+        final int dimS = header.logLFGroupDim - 3;
+
+        CompletableFuture<?>[] futures = new CompletableFuture[size.y];
+
+        if (header.encoding == FrameFlags.MODULAR) {
+            final float inv = 1f / header.restorationFilter.epfSigmaForModular;
+            for (int y = 0; y < blockH; y++)
+                Arrays.fill(inverseSigma[y], inv);
+        } else {
+            for (int y0 = 0; y0 < blockH; y0++) {
+                final int y = y0;
+                final float[] invSY = inverseSigma[y];
+                final int lfY = y >> dimS;
+                final int bY = y - (lfY << dimS);
+                final int lfR = lfY * lfGroupRowStride;
+                futures[y] = CompletableFuture.runAsync(() -> {
+                    for (int x = 0; x < blockW; x++) {
+                        final int lfX = x >> dimS;
+                        final int bX = x - (lfX << dimS);
+                        final LFGroup lfg = lfGroups[lfR + lfX];
+                        final int hf = lfg.hfMetadata.blockMap[bY][bX].hfMult();
+                        final int sharpness = lfg.hfMetadata.hfStreamBuffer[3][bY][bX];
+                        if (sharpness < 0 || sharpness > 7)
+                            FunctionalHelper.sneakyThrow(new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness));
+                        final float sigma = hf * header.restorationFilter.epfQuantMul * header.restorationFilter.epfSharpLut[sharpness];
+                        invSY[x] = 1f / sigma;
+                    }
+                });
             }
-        });
+        }
 
-        float[][][] outputBuffer = new float[3][size.y][size.x];
+        for (int y = 0; y < blockH; y++) {
+            futures[y].join();
+        }
 
-        for (int i : FlowHelper.range(3)) {
+        final float[][][] outputBuffer = new float[3][size.y][size.x];
 
+        for (int i0 = 0; i0 < 3; i0++) {
+            final int i = i0;
             if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
-
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
 
-            float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
+            final float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
-
-            FlowHelper.parallelIterate(size, (p) -> {
-                float sumWeights = 0f;
-                float[] sumChannels = new float[3];
-                final float s = sigma[p.y >> 3][p.x >> 3];
-                if (s < 0.3) {
-                    for (int c = 0; c < 3; c++) {
-                        outputBuffer[c][p.y][p.x] = buffer[c][p.y][p.x];
+            final IntPoint[] pc = i == 0 ? epfDoubleCross : epfCross;
+            for (int y0 = 0; y0 < size.y; y0++) {
+                final int y = y0;
+                final float[] invSY = inverseSigma[y >> 3];
+                futures[y] = CompletableFuture.runAsync(() -> {
+                    for (int x = 0; x < size.x; x++) {
+                        float sumWeights = 0f;
+                        final float[] sumChannels = new float[3];
+                        final float s = invSY[x >> 3];
+                        if (s != s || s > 3.333333333f) {
+                            outputBuffer[0][y][x] = buffer[0][y][x];
+                            outputBuffer[1][y][x] = buffer[1][y][x];
+                            outputBuffer[2][y][x] = buffer[2][y][x];
+                            continue;
+                        }
+                        for (int j = 0; j < pc.length; j++) {
+                            final IntPoint ip = pc[j];
+                            final int nX = x + ip.x;
+                            final int nY = y + ip.y;
+                            final int mX = MathHelper.mirrorCoordinate(nX, size.x);
+                            final int mY = MathHelper.mirrorCoordinate(nY, size.y);
+                            final float dist = i == 2 ? epfDistance2(buffer, x, y, nX, nY, size)
+                                : epfDistance1(buffer, x, y, nX, nY, size);
+                            final float weight = epfWeight(sigmaScale, dist, s, x, y);
+                            sumWeights += weight;
+                            for (int c = 0; c < 3; c++)
+                                sumChannels[c] += buffer[c][mY][mX] * weight;
+                        }
+                        for (int c = 0; c < 3; c++)
+                            outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
                     }
-                    return;
-                }
-                for (IntPoint ip : (i == 0 ? epfDoubleCross : epfCross)) {
-                    IntPoint np = p.plus(ip).mirrorCoordinate(size);
-                    float dist = i == 2 ? epfDistance2(buffer, p, np, size) : epfDistance1(buffer, p, np, size);
-                    float weight = epfWeight(sigmaScale, dist, s, p);
-                    sumWeights += weight;
-                    for (int c = 0; c < 3; c++) {
-                        sumChannels[c] += buffer[c][np.y][np.x] * weight;
-                    }
-                }
-                for (int c = 0; c < 3; c++) {
-                    outputBuffer[c][p.y][p.x] = sumChannels[c] / sumWeights;
-                }
-            });
-
+                });
+            }
+            for (int y = 0; y < size.y; y++) {
+                futures[y].join();
+            }
             for (int c = 0; c < 3; c++) {
                 /* swapping lets us re-use the output buffer without re-allocing */
                 final float[][] tmp = buffer[c];
@@ -583,42 +618,47 @@ public class Frame {
         }
     }
 
-    private float epfDistance1(float[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
+    private float epfDistance1(final float[][][] buffer, final int basePosX, final int basePosY,
+            final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
         for (int c = 0; c < 3; c++) {
-            for (IntPoint p : epfCross) {
-                final int pX = MathHelper.mirrorCoordinate(basePos.x + p.x, size.x);
-                final int pY = MathHelper.mirrorCoordinate(basePos.y + p.y, size.y);
-                final int dX = MathHelper.mirrorCoordinate(distPos.x + p.x, size.x);
-                final int dY = MathHelper.mirrorCoordinate(distPos.y + p.y, size.y);
-                dist += Math.abs(buffer[c][pY][pX] - buffer[c][dY][dX])
-                    * header.restorationFilter.epfChannelScale[c];
+            final float[][] buffC = buffer[c];
+            final float scale = header.restorationFilter.epfChannelScale[c];
+            for (int i = 0; i < epfCross.length; i++) {
+                final IntPoint p = epfCross[i];
+                final int pX = MathHelper.mirrorCoordinate(basePosX + p.x, size.x);
+                final int pY = MathHelper.mirrorCoordinate(basePosY + p.y, size.y);
+                final int dX = MathHelper.mirrorCoordinate(distPosX + p.x, size.x);
+                final int dY = MathHelper.mirrorCoordinate(distPosY + p.y, size.y);
+                dist += Math.abs(buffC[pY][pX] - buffC[dY][dX]) * scale;
             }
         }
 
         return dist;
     }
 
-    private float epfDistance2(float[][][] buffer, IntPoint basePos, IntPoint distPos, IntPoint size) {
+    private float epfDistance2(final float[][][] buffer, final int basePosX, final int basePosY,
+    final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
         for (int c = 0; c < 3; c++) {
-            final int pX = MathHelper.mirrorCoordinate(basePos.x, size.x);
-            final int pY = MathHelper.mirrorCoordinate(basePos.y, size.y);
-            final int dX = MathHelper.mirrorCoordinate(distPos.x, size.x);
-            final int dY = MathHelper.mirrorCoordinate(distPos.y, size.y);
-            dist += Math.abs(buffer[c][pY][pX] - buffer[c][dY][dX])
-                    * header.restorationFilter.epfChannelScale[c];
+            final float[][] buffC = buffer[c];
+            final int dX = MathHelper.mirrorCoordinate(distPosX, size.x);
+            final int dY = MathHelper.mirrorCoordinate(distPosY, size.y);
+            dist += Math.abs(buffC[basePosY][basePosX] - buffC[dY][dX]) * header.restorationFilter.epfChannelScale[c];
         }
         return dist;
     }
 
-    private float epfWeight(float stepMultiplier, float distance, float sigma, IntPoint ref) {
-        int modX = ref.x & 0b111;
-        int modY = ref.y & 0b111;
-        if (modX == 0 || modX == 7 || modY == 0 || modY == 7) {
-            distance *= header.restorationFilter.epfBorderSadMul;
-        }
-        float v = 1f - distance * stepMultiplier / sigma;
+    private float epfWeight(final float stepMultiplier, final float distance,
+            final float inverseSigma, final int refX, final int refY) {
+        final int modX = refX & 0b111;
+        final int modY = refY & 0b111;
+        final float dist;
+        if (modX == 0 || modX == 7 || modY == 0 || modY == 7)
+            dist = distance * header.restorationFilter.epfBorderSadMul;
+        else
+            dist = distance;
+        final float v = 1f - dist * stepMultiplier * inverseSigma;
         if (v <= 0)
             return 0f;
 

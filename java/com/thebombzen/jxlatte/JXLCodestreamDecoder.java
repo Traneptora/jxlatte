@@ -323,7 +323,6 @@ public class JXLCodestreamDecoder {
     public JXLImage decode(PrintWriter err) throws IOException {
         if (bitreader.atEnd())
             return null;
-        long time0 = System.nanoTime() / 1000000L;
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
@@ -360,8 +359,6 @@ public class JXLCodestreamDecoder {
         float[][][][] reference = new float[4][][][];
         FrameHeader header;
 
-        long time1 = System.nanoTime() / 1000000L;
-
         do {
             Frame frame = new Frame(bitreader, imageHeader);
             frame.readHeader();
@@ -389,7 +386,6 @@ public class JXLCodestreamDecoder {
         long invisibleFrames = 0;
         long visibleFrames = 0;
 
-        long time2 = System.nanoTime() / 1000000L;
 
         for (Frame frame : frames) {
             header = frame.getFrameHeader();
@@ -415,7 +411,6 @@ public class JXLCodestreamDecoder {
                 reference[header.saveAsReference] = canvas;
         }
 
-        long time3 = System.nanoTime() / 1000000L;
 
         int orientation = imageHeader.getOrientation();
 
@@ -436,8 +431,6 @@ public class JXLCodestreamDecoder {
             demuxer.pushBack(drain);
         while ((drain = in.drain()) != null)
             demuxer.pushBack(drain);
-
-        System.err.format("Image Header: %d ms%nFrames: %d ms%nRender: %d ms%n", time1 - time0, time2 - time1, time3 - time2);
 
         return image;
     }

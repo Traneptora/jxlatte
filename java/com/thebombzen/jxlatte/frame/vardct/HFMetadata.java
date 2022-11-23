@@ -23,11 +23,10 @@ public class HFMetadata {
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
         this.parent = parent;
-        IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
+        final IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
         int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
         IntPoint aFromYSize = size.ceilDiv(8);
-        long time0 = System.nanoTime() / 1_000_000L;
         ModularChannelInfo xFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo bFromY = new ModularChannelInfo(aFromYSize.x, aFromYSize.y, 0, 0);
         ModularChannelInfo blockInfo = new ModularChannelInfo(nbBlocks, 2, 0, 0);
@@ -43,7 +42,6 @@ public class HFMetadata {
         blockMap = new Varblock[size.y][size.x];
         final int[][] blockInfoBuffer = hfStreamBuffer[2];
         IntPoint lastBlock = new IntPoint();
-        long time1 = System.nanoTime() / 1_000_000L;
         final TransformType[] tta = TransformType.values();
         for (int i = 0; i < nbBlocks; i++) {
             final int type = blockInfoBuffer[0][i];
@@ -57,9 +55,6 @@ public class HFMetadata {
             for (int y = 0; y < tt.dctSelectHeight; y++)
                 Arrays.fill(blockMap[y + pos.y], pos.x, pos.x + tt.dctSelectWidth, varblock);
         }
-        long time2 = System.nanoTime() / 1_000_000L;
-
-        System.err.format("HFMeta: %d%n    HFStream: %d%n    Place: %d%n", parent.lfGroupID, time1 - time0, time2 - time1);
     }
 
     public String getBlockMapAsciiArt() {
@@ -101,21 +96,23 @@ public class HFMetadata {
     }
 
     private IntPoint placeBlock(IntPoint lastBlock, TransformType block, int mul) throws InvalidBitstreamException {
+        outerY:
         for (int y = lastBlock.y, x = lastBlock.x; y < dctSelect.length; y++, x = 0) {
-            outer:
-            for (; x < dctSelect[y].length; x++) {
+            final TransformType[] dctY = dctSelect[y];
+            outerX:
+            for (; x < dctY.length; x++) {
                 // block too big to put here
-                if (block.dctSelectWidth + x > dctSelect[y].length)
-                    continue;
+                if (block.dctSelectWidth + x > dctY.length)
+                    continue outerY;
                 // space occupied
                 for (int ix = 0; ix < block.dctSelectWidth; ix++) {
-                    TransformType tt = dctSelect[y][x + ix];
+                    final TransformType tt = dctY[x + ix];
                     if (tt != null) {
                         x += tt.dctSelectWidth - 1;
-                        continue outer;
+                        continue outerX;
                     }
                 }
-                IntPoint pos = new IntPoint(x, y);
+                final IntPoint pos = new IntPoint(x, y);
                 hfMultiplier[y][x] = mul;
                 for (int iy = 0; iy < block.dctSelectHeight; iy++)
                     Arrays.fill(dctSelect[y + iy], x, x + block.dctSelectWidth, block);

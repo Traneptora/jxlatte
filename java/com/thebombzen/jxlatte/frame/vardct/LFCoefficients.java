@@ -166,8 +166,7 @@ public class LFCoefficients {
             final int[][] lfq = lfQuant[Frame.cMap[i]];
             final int[] hft = hfctx.lfThresholds[i];
             for (int j = 0; j < hft.length; j++) {
-                final int t = hft[j];
-                if (lfq[shifted.y][shifted.x] > t)
+                if (lfq[shifted.y][shifted.x] > hft[j])
                     index[i]++;
             }
         }
