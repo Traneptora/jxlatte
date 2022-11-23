@@ -16,7 +16,7 @@ public class Options {
     public int verbosity = 0;
     public boolean hdr = false;
     public int outputDepth = -1;
-    public int outputCompression = 1;
+    public int outputCompression = 0;
 
     public String input = null;
     public String output = null;
