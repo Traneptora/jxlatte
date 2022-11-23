@@ -38,14 +38,14 @@ public class RestorationFilter {
         epfBorderSadMul = 2f/3f;
         epfSigmaForModular = 1.0f;
         extensions = new Extensions();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; i++)
             epfSharpLut[i] *= epfQuantMul;
-        }
     }
 
     public RestorationFilter(Bitreader reader, int encoding) throws IOException {
         boolean allDefault = reader.readBool();
         gab = allDefault ? true : reader.readBool();
+        // note that this is signalled if allDefault == true
         customGab = gab ? reader.readBool() : false;
         if (customGab) {
             for (int i = 0; i < 3; i++) {
@@ -74,8 +74,7 @@ public class RestorationFilter {
         epfSigmaForModular = !allDefault && epfIterations > 0 && encoding == FrameFlags.MODULAR
             ? reader.readF16() : 1.0f;
         extensions = allDefault ? new Extensions() : new Extensions(reader);
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; i++)
             epfSharpLut[i] *= epfQuantMul;
-        }
     }
 }

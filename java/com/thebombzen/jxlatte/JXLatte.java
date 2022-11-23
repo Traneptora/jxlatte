@@ -24,15 +24,15 @@ public class JXLatte {
             writer.accept(out);
             out.flush();
         } finally {
-            if (!outputFilename.equals("-")) {
+            if (!outputFilename.equals("-"))
                 out.close();
-            }
         }
     }
 
     private static void writePNG(String outputFilename, JXLImage image, Options options) throws IOException {
-        int bitDepth = options.hdr ? 16 : options.outputDepth;
-        PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, options.hdr);
+        boolean hdr = options.hdr == Options.HDR_AUTO ? image.isHDR() : options.hdr == Options.HDR_ON;
+        int bitDepth = hdr ? 16 : options.outputDepth;
+        PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, hdr);
         writeImage(writer::write, outputFilename);
     }
 
@@ -117,13 +117,15 @@ public class JXLatte {
                     System.exit(1);
                 }
                 return true;
-            case "hdr":
-                if (Arrays.asList("", "yes", "true", "hdr").contains(valueL)) {
-                    options.hdr = true;
+            case "png-hdr":
+                if (Arrays.asList("", "auto").contains(valueL)) {
+                    options.hdr = Options.HDR_AUTO;
+                } else if (Arrays.asList("yes", "true", "hdr").contains(valueL)) {
+                    options.hdr = Options.HDR_ON;
                 } else if (Arrays.asList("no", "false", "sdr").contains(valueL)) {
-                    options.hdr = false;
+                    options.hdr = Options.HDR_OFF;
                 } else {
-                    System.err.format("jxlatte: Unknown --hdr flag: %s%n", value);
+                    System.err.format("jxlatte: Unknown --png-hdr flag: %s%n", value);
                     System.exit(1);
                 }
                 return true;

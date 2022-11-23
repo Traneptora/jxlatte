@@ -11,10 +11,14 @@ public class Options {
     public static final int VERBOSITY_VERBOSE = 16;
     public static final int VERBOSITY_TRACE = 24;
 
+    public static final int HDR_AUTO = -1;
+    public static final int HDR_ON = 1;
+    public static final int HDR_OFF = 2;
+
     public boolean debug = false;
-    public int outputFormat = -1;
-    public int verbosity = 0;
-    public boolean hdr = false;
+    public int outputFormat = OUTPUT_DEFAULT;
+    public int verbosity = VERBOSITY_BASE;
+    public int hdr = HDR_AUTO;
     public int outputDepth = -1;
     public int outputCompression = 0;
 

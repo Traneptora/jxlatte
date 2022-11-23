@@ -74,6 +74,17 @@ public class JXLImage {
         this(image, true);
     }
 
+    public boolean isHDR() {
+        ColorEncodingBundle color = imageHeader.getColorEncoding();
+        switch(color.tf) {
+            case ColorFlags.TF_PQ:
+            case ColorFlags.TF_HLG:
+            case ColorFlags.TF_LINEAR:
+                return true;
+        }
+        return color.prim != null && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB));
+    }
+
     /*
      * Assumes Linear Light
      */
