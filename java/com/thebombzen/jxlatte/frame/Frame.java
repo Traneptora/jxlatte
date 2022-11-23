@@ -551,7 +551,7 @@ public class Frame {
                         final int sharpness = lfg.hfMetadata.hfStreamBuffer[3][bY][bX];
                         if (sharpness < 0 || sharpness > 7)
                             FunctionalHelper.sneakyThrow(new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness));
-                        final float sigma = hf * header.restorationFilter.epfQuantMul * header.restorationFilter.epfSharpLut[sharpness];
+                        final float sigma = hf * header.restorationFilter.epfSharpLut[sharpness];
                         invSY[x] = 1f / sigma;
                     }
                 });

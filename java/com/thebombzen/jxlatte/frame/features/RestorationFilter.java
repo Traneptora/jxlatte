@@ -1,8 +1,6 @@
 package com.thebombzen.jxlatte.frame.features;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
 
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.frame.FrameFlags;
@@ -40,6 +38,9 @@ public class RestorationFilter {
         epfBorderSadMul = 2f/3f;
         epfSigmaForModular = 1.0f;
         extensions = new Extensions();
+        for (int i = 0; i < 8; i++) {
+            epfSharpLut[i] *= epfQuantMul;
+        }
     }
 
     public RestorationFilter(Bitreader reader, int encoding) throws IOException {
@@ -73,52 +74,8 @@ public class RestorationFilter {
         epfSigmaForModular = !allDefault && epfIterations > 0 && encoding == FrameFlags.MODULAR
             ? reader.readF16() : 1.0f;
         extensions = allDefault ? new Extensions() : new Extensions(reader);
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(gab1Weights);
-        result = prime * result + Arrays.hashCode(gab2Weights);
-        result = prime * result + Arrays.hashCode(epfSharpLut);
-        result = prime * result + Arrays.hashCode(epfChannelScale);
-        result = prime * result + Objects.hash(gab, customGab, epfIterations, epfSharpCustom, epfWeightCustom,
-                epfSigmaCustom, epfQuantMul, epfPass0SigmaScale, epfPass2SigmaScale, epfBorderSadMul,
-                epfSigmaForModular, extensions);
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        RestorationFilter other = (RestorationFilter) obj;
-        return gab == other.gab && customGab == other.customGab && Arrays.equals(gab1Weights, other.gab1Weights)
-                && Arrays.equals(gab2Weights, other.gab2Weights) && epfIterations == other.epfIterations
-                && epfSharpCustom == other.epfSharpCustom && Arrays.equals(epfSharpLut, other.epfSharpLut)
-                && epfWeightCustom == other.epfWeightCustom && Arrays.equals(epfChannelScale, other.epfChannelScale)
-                && epfSigmaCustom == other.epfSigmaCustom
-                && Float.floatToIntBits(epfQuantMul) == Float.floatToIntBits(other.epfQuantMul)
-                && Float.floatToIntBits(epfPass0SigmaScale) == Float.floatToIntBits(other.epfPass0SigmaScale)
-                && Float.floatToIntBits(epfPass2SigmaScale) == Float.floatToIntBits(other.epfPass2SigmaScale)
-                && Float.floatToIntBits(epfBorderSadMul) == Float.floatToIntBits(other.epfBorderSadMul)
-                && Float.floatToIntBits(epfSigmaForModular) == Float.floatToIntBits(other.epfSigmaForModular)
-                && Objects.equals(extensions, other.extensions);
-    }
-
-    @Override
-    public String toString() {
-        return "RestorationFilter [gab=" + gab + ", customGab=" + customGab + ", gab1Weights="
-                + Arrays.toString(gab1Weights) + ", gab2Weights=" + Arrays.toString(gab2Weights) + ", epfIterations="
-                + epfIterations + ", epfSharpCustom=" + epfSharpCustom + ", epfSharpLut=" + Arrays.toString(epfSharpLut)
-                + ", epfWeightCustom=" + epfWeightCustom + ", epfChannelScale=" + Arrays.toString(epfChannelScale)
-                + ", epfSigmaCustom=" + epfSigmaCustom + ", epfQuantMul=" + epfQuantMul + ", epfPass0SigmaScale="
-                + epfPass0SigmaScale + ", epfPass2SigmaScale=" + epfPass2SigmaScale + ", epfBorderSadMul="
-                + epfBorderSadMul + ", epfSigmaForModular=" + epfSigmaForModular + ", extensions=" + extensions + "]";
+        for (int i = 0; i < 8; i++) {
+            epfSharpLut[i] *= epfQuantMul;
+        }
     }
 }
