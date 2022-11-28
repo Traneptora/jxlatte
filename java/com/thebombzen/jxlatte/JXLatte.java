@@ -64,6 +64,8 @@ public class JXLatte {
             "    --png-hdr",
             "        output PNG files in HDR",
             "        (BT.2020 Primaries, D65 White Point, PQ Transfer)",
+            "    --draw-varblocks",
+            "        Show varblocks for VarDCT images",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };
@@ -174,6 +176,16 @@ public class JXLatte {
                     options.verbosity = Options.VERBOSITY_BASE;
                 } else {
                     System.err.format("jxlatte: Unknown --verbose flag: %s%n", value);
+                    System.exit(1);
+                }
+                return true;
+            case "draw-varblocks":
+                if (Arrays.asList("", "yes", "true").contains(valueL)) {
+                    options.renderVarblocks = true;
+                } else if (Arrays.asList("no", "false").contains(valueL)) {
+                    options.renderVarblocks = false;
+                } else {
+                    System.err.format("jxlatte: Unknown --draw-varblocks flag: %s%n", value);
                     System.exit(1);
                 }
                 return true;

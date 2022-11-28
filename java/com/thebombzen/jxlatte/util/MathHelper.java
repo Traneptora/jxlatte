@@ -8,6 +8,8 @@ public final class MathHelper {
     public static final float SQRT_2 = (float)StrictMath.sqrt(2.0D);
     public static final float SQRT_H = (float)StrictMath.sqrt(0.5D);
     public static final float SQRT_F = (float)StrictMath.sqrt(0.125D);
+    public static final float PHI_BAR = (float)((StrictMath.sqrt(5D) * 0.5D) - 0.5D);
+    public static final float PHI = (float)((StrictMath.sqrt(5D) * 0.5D) + 0.5D);
 
     // s, n, k
     private static float[][][] cosineLut = new float[9][][];
@@ -98,7 +100,7 @@ public final class MathHelper {
         final int yLogLength = ceilLog2(length.y);
         for (int y = 0; y < length.y; y++)
             inverseDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        MathHelper.transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
+        transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
         if (transposed) {
             for (int y = 0; y < length.x; y++)
                 inverseDCTHorizontal(scratchSpace2, y, 0, dest,
@@ -107,7 +109,7 @@ public final class MathHelper {
             for (int x = 0; x < length.x; x++)
                 inverseDCTHorizontal(scratchSpace2, x, 0, scratchSpace1,
                     x, 0, yLogLength, length.y);
-            MathHelper.transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());  
+            transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());  
         }
     }
 
@@ -116,22 +118,22 @@ public final class MathHelper {
         final int yLogLength = ceilLog2(length.y);
         for (int y = 0; y < length.y; y++)
             forwardDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        MathHelper.transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
+        transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
         for (int x = 0; x < length.x; x++)
             forwardDCTHorizontal(scratchSpace2, x, 0, scratchSpace1, x, 0, yLogLength, length.y);
-        MathHelper.transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());
+        transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());
     }
 
-    public static void transposeMatrixInto(float[][] src, float[][] dest, IntPoint srcStart, IntPoint destStart, IntPoint srcSize) {
+    public static void transposeMatrixInto(final float[][] src, final float[][] dest, IntPoint srcStart, IntPoint destStart, IntPoint srcSize) {
         for (int y = 0; y < srcSize.y; y++) {
-            for (int x = 0; x < srcSize.x; x++) {
-                dest[destStart.y + x][destStart.x + y] = src[srcStart.y + y][srcStart.x + x];
-            }
+            final float[] srcy = src[srcStart.y + y];
+            for (int x = 0; x < srcSize.x; x++)
+                dest[destStart.y + x][destStart.x + y] = srcy[srcStart.x + x];
         }
     }
 
     public static float[][] transposeMatrix(float[][] matrix, IntPoint inSize) {
-        float[][] dest = new float[inSize.x][inSize.y];
+        final float[][] dest = new float[inSize.x][inSize.y];
         transposeMatrixInto(matrix, dest, IntPoint.ZERO, IntPoint.ZERO, inSize);
         return dest;
     }

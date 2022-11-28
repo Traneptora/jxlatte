@@ -350,7 +350,7 @@ public class JXLCodestreamDecoder {
         }
 
         if (imageHeader.getPreviewHeader() != null) {
-            Frame frame = new Frame(bitreader, imageHeader);
+            Frame frame = new Frame(bitreader, imageHeader, options);
             frame.readHeader();
             frame.skipFrameData();
         }
@@ -360,7 +360,7 @@ public class JXLCodestreamDecoder {
         FrameHeader header;
 
         do {
-            Frame frame = new Frame(bitreader, imageHeader);
+            Frame frame = new Frame(bitreader, imageHeader, options);
             frame.readHeader();
             header = frame.getFrameHeader();
             if (options.verbosity >= Options.VERBOSITY_INFO && frames.size() == 0)
@@ -404,13 +404,15 @@ public class JXLCodestreamDecoder {
             frame.renderSplines();
             frame.synthesizeNoise();
             performColorTransforms(matrix, frame);
+            if (header.encoding == FrameFlags.VARDCT && options.renderVarblocks) {
+                frame.drawVarblocks();
+            }
             if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE) {
                 blendFrame(canvas, reference, frame);
             }
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = canvas;
         }
-
 
         int orientation = imageHeader.getOrientation();
 

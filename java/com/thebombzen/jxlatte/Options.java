@@ -21,6 +21,7 @@ public class Options {
     public int hdr = HDR_AUTO;
     public int outputDepth = -1;
     public int outputCompression = 0;
+    public boolean renderVarblocks = false;
 
     public String input = null;
     public String output = null;
@@ -36,6 +37,7 @@ public class Options {
         this.hdr = options.hdr;
         this.outputDepth = options.outputDepth;
         this.outputCompression = options.outputCompression;
+        this.renderVarblocks = options.renderVarblocks;
 
         this.input = options.input;
         this.output = options.output;

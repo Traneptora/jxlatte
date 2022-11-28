@@ -26,6 +26,8 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
 import com.thebombzen.jxlatte.frame.vardct.HFPass;
+import com.thebombzen.jxlatte.frame.vardct.TransformType;
+import com.thebombzen.jxlatte.frame.vardct.Varblock;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
@@ -75,10 +77,12 @@ public class Frame {
     private MATree globalTree;
     private int width;
     private int height;
+    private Options options;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, Options options) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
+        this.options = options;
     }
 
     public Frame(Frame frame) {
@@ -116,6 +120,7 @@ public class Frame {
             header.height = globalMetadata.getSize().height;
             header.origin = new IntPoint();
         }
+        this.options = frame.options;
     }
 
     public void readHeader() throws IOException {
@@ -476,7 +481,43 @@ public class Frame {
         if (header.restorationFilter.epfIterations > 0) {
             performEdgePreservingFilter();
         }
+    }
 
+    // do this in RGB
+    public void drawVarblocks() {
+        for (LFGroup lfg : lfGroups) {
+            IntPoint pixelPosInFrame = getLFGroupXY(lfg.lfGroupID).shiftLeft(11);
+            for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
+                Varblock varblock = lfg.hfMetadata.getVarblock(i);
+                TransformType tt = varblock.transformType();
+                float hue = (((float)tt.type * MathHelper.PHI_BAR) % 1.0f) * 2f * (float)Math.PI;
+                float rFactor = ((float)Math.cos(hue) + 0.5f) / 1.5f;
+                float gFactor = ((float)Math.cos(hue - 2f * (float)Math.PI / 3f) + 1f) / 2f;
+                float bFactor = ((float)Math.cos(hue - 4f * (float)Math.PI / 3f) + 1f) / 2f;
+                //float xFactor = 0f;
+                //float bFactor = 0f;
+                IntPoint corner = varblock.pixelPosInLFGroup.plus(pixelPosInFrame);
+                IntPoint size = varblock.sizeInPixels();
+                for (int y = 0; y < size.y; y++) {
+                    for (int x = 0; x < size.x; x++) {
+                        float sampleR = buffer[0][y + corner.y][x + corner.x];
+                        float sampleG = buffer[1][y + corner.y][x + corner.x];
+                        float sampleB = buffer[2][y + corner.y][x + corner.x];
+                        if (x == 0 || y == 0 || x + 1 == size.x || y + 1 == size.y) {
+                            buffer[1][y + corner.y][x + corner.x] = 0f;
+                            buffer[0][y + corner.y][x + corner.x] = 0f;
+                            buffer[2][y + corner.y][x + corner.x] = 0f;
+                        } else {
+                            float light = 0.25f * (sampleR + sampleB) + 0.5f * sampleG;
+                            light = 0.5f * ((float)Math.cbrt(light) - 0.5f) + 0.5f;
+                            buffer[0][y + corner.y][x + corner.x] = rFactor * 0.5f + 0.5f * sampleR / light;
+                            buffer[1][y + corner.y][x + corner.x] = gFactor * 0.5f + 0.5f * sampleG / light;
+                            buffer[2][y + corner.y][x + corner.x] = bFactor * 0.5f + 0.5f * sampleB / light;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void performGabConvolution() {
