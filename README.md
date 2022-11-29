@@ -28,69 +28,24 @@ writer.write(output);
 
 ## Features
 
-TL;DR Supported features:
-- Anything in Modular Mode
-  - All Lossless Images
+Supported features:
+
+- All static Modular images
+  - All lossless images
   - All JXL Art
-- All JPEG reconstructions
-- Most VarDCT Images
-
-Features currently implemented at this time:
-
-- Image Header: DONE
-  - Image Header parsing
-  - Orientation
-  - ICC Profile Decoding
-- Entropy decoding: DONE
-  - Prefix Coding
-  - ANS Coding
-- Frame Header: DONE
-  - Frame Header parsing
-  - TOC
-    - Permutation
-    - Parsing
-- Frame Data Sections: DONE
-  - LF Global
-  - LF Groups
-  - HFGlobal / HF Pass Data
-  - Pass Groups
-- Modular mode: DONE
-  - Prediction
-  - Transforms
-    - RCT
-    - Palette
-    - Squeeze
-- VarDCT
-  - LF Coefficients
-  - HF Coefficients
-  - Dequantization Weights
-  - Recorrelation (Chroma From Luma)
-  - Inverse Transforms
-    - Inverse DCT
-    - Hornuss
-    - AFV
-    - Small DCTs
-- Image features: DONE
-  - Non-separable upsampling
-  - Patches
-  - Splines
-  - Noise Synthesis
-- Color transforms: DONE
-  - XYB
-  - YCbCr
-  - JPEG Upsampling
-- Rendering: DONE
-  - Frame Blending
-  - Color Management
-  - PNG Output
-  - PFM Output
-- Restoration Filters: DONE
-  - Gaborish
-  - EPF
+  - All Lossy Modular images
+- All static VarDCT Images
+  - All JPEG reconstructions
+  - Other static VarDCT images
+  - Varblock Visualization
+- Output:
+  - PNG
+    - SDR
+    - HDR
+  - PFM
 
 Features not yet supported at this time:
 
-- VarDCT:
-  - LF Frames
-- Image Features:
-  - Animation
+- Progressive Decoding
+- Region-of-interest Decoding
+- Animation
