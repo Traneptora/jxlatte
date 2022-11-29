@@ -35,9 +35,8 @@ public class Pass {
             ModularChannel chan = globalModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
                 int m = Math.min(chan.hshift, chan.vshift);
-                if (minShift <= m && m < maxShift) {
+                if (minShift <= m && m < maxShift)
                     replacedChannels[i] = new ModularChannelInfo(chan);
-                }
             }
         }
 

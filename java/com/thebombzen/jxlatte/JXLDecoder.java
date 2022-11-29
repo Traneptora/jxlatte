@@ -15,19 +15,19 @@ public class JXLDecoder implements Closeable {
     private JXLCodestreamDecoder decoder;
 
     public JXLDecoder(InputStream in) {
-        this(in, new Options());
+        this(in, new JXLOptions());
     }
 
     public JXLDecoder(String filename) throws FileNotFoundException {
-        this(filename, new Options());
+        this(filename, new JXLOptions());
     }
 
-    public JXLDecoder(InputStream in, Options options) {
+    public JXLDecoder(InputStream in, JXLOptions options) {
         demuxer = new Demuxer(in);
         decoder = new JXLCodestreamDecoder(new PushbackInputStream(demuxer), options, demuxer);
     }
 
-    public JXLDecoder(String filename, Options options) throws FileNotFoundException {
+    public JXLDecoder(String filename, JXLOptions options) throws FileNotFoundException {
         this(new BufferedInputStream(new FileInputStream(filename)), options);
     }
 

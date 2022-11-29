@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.Options;
+import com.thebombzen.jxlatte.JXLOptions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.features.noise.NoiseGroup;
@@ -77,9 +77,9 @@ public class Frame {
     private MATree globalTree;
     private int width;
     private int height;
-    private Options options;
+    private JXLOptions options;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata, Options options) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, JXLOptions options) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
         this.options = options;
@@ -292,7 +292,7 @@ public class Frame {
         return newBuffer;
     }
 
-    private void decodeLFGroups(TaskList<?> tasks) throws IOException {
+    private void decodeLFGroups(float[][][] lfBuffer) throws IOException {
 
         List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
@@ -325,7 +325,7 @@ public class Frame {
                 info.height = size.y;
                 info.origin = pos;
             }
-            lfGroups[lfGroupID] = new LFGroup(reader, this, lfGroupID, replaced);
+            lfGroups[lfGroupID] = new LFGroup(reader, this, lfGroupID, replaced, lfBuffer);
         }
 
         /* populate decoded LF Groups */
@@ -342,14 +342,14 @@ public class Frame {
         }
     }
 
-    private void decodePasses(Bitreader reader, TaskList<?> tasks) throws IOException {
+    private void decodePasses(Bitreader reader) throws IOException {
         passes = new Pass[header.passes.numPasses];
         for (int pass = 0; pass < passes.length; pass++) {
             passes[pass] = new Pass(reader, this, pass, pass > 0 ? passes[pass - 1].minShift : 0);
         }
     }
 
-    private void decodePassGroups(TaskList<?> tasks) throws IOException {
+    private void decodePassGroups() throws IOException {
 
         int numPasses = passes.length;
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
@@ -423,7 +423,7 @@ public class Frame {
 
     }
 
-    public void decodeFrame() throws IOException {
+    public void decodeFrame(float[][][] lfBuffer) throws IOException {
         if (this.decoded)
             return;
         this.decoded = true;
@@ -434,19 +434,19 @@ public class Frame {
         // VarDCT always has 3 channels even in grayscale
         buffer = new float[(header.encoding == FrameFlags.VARDCT ? 3 : globalMetadata.getColorChannelCount())
             + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
-        TaskList<Void> tasks = new TaskList<>();
 
-        decodeLFGroups(tasks);
+        decodeLFGroups(lfBuffer);
 
         Bitreader hfGlobalReader = FunctionalHelper.join(getBitreader(1 + numLFGroups));
+               
         if (header.encoding == FrameFlags.VARDCT)
             hfGlobal = new HFGlobal(hfGlobalReader, this);
         else
             hfGlobal = null;
 
-        decodePasses(hfGlobalReader, tasks);
+        decodePasses(hfGlobalReader);
 
-        decodePassGroups(tasks);
+        decodePassGroups();
 
         lfGlobal.gModular.stream.applyTransforms();
         int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
@@ -503,7 +503,7 @@ public class Frame {
                         float sampleR = buffer[0][y + corner.y][x + corner.x];
                         float sampleG = buffer[1][y + corner.y][x + corner.x];
                         float sampleB = buffer[2][y + corner.y][x + corner.x];
-                        if (x == 0 || y == 0 || x + 1 == size.x || y + 1 == size.y) {
+                        if (x == 0 || y == 0) {
                             buffer[1][y + corner.y][x + corner.x] = 0f;
                             buffer[0][y + corner.y][x + corner.x] = 0f;
                             buffer[2][y + corner.y][x + corner.x] = 0f;
@@ -943,7 +943,7 @@ public class Frame {
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 
-    public void printDebugInfo(Options options, PrintWriter err) {
+    public void printDebugInfo(JXLOptions options, PrintWriter err) {
         err.println("Frame Info:");
         err.format("    Encoding: %s%n", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"

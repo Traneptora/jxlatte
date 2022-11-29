@@ -48,7 +48,7 @@ public class ModularStream {
 
     private List<ModularChannelInfo> channels = new ArrayList<>();
 
-    private Map<Integer, SqueezeParam[]> spar = new HashMap<>();
+    private Map<Integer, SqueezeParam[]> squeezeMap = new HashMap<>();
 
     public ModularStream(Bitreader reader, Frame frame,
             int streamIndex, int channelCount, int ecStart) throws IOException {
@@ -102,35 +102,35 @@ public class ModularStream {
                     channels.get(transforms[i].beginC).forceWP = true;
                 channels.add(0, new ModularChannelInfo(transforms[i].nbColors, transforms[i].numC, -1, -1));
             } else if (transforms[i].tr == TransformInfo.SQUEEZE) {
-                List<SqueezeParam> spar = new ArrayList<>();
+                List<SqueezeParam> squeezeList = new ArrayList<>();
                 if (transforms[i].sp.length == 0) {
                     int first = nbMetaChannels;
                     int count = channels.size() - first;
                     w = channels.get(first).width;
                     h = channels.get(first).height;
                     if (count > 2 && channels.get(first + 1).width == w && channels.get(first + 1).height == h) {
-                       spar.add(new SqueezeParam(true, false, first + 1, 2));
-                       spar.add(new SqueezeParam(false, false, first + 1, 2));
+                        squeezeList.add(new SqueezeParam(true, false, first + 1, 2));
+                        squeezeList.add(new SqueezeParam(false, false, first + 1, 2));
                     }
                     if (h >= w && h > 8) {
-                        spar.add(new SqueezeParam(false, true, first, count));
+                        squeezeList.add(new SqueezeParam(false, true, first, count));
                         h = (h + 1) / 2;
                     }
                     while (w > 8 || h > 8) {
                         if (w > 8) {
-                            spar.add(new SqueezeParam(true, true, first, count));
+                            squeezeList.add(new SqueezeParam(true, true, first, count));
                             w = (w + 1) / 2;
                         }
                         if (h > 8) {
-                            spar.add(new SqueezeParam(false, true, first, count));
+                            squeezeList.add(new SqueezeParam(false, true, first, count));
                             h = (h + 1) / 2;
                         }
                     }
                 } else {
-                    spar.addAll(Arrays.asList(transforms[i].sp));
+                    squeezeList.addAll(Arrays.asList(transforms[i].sp));
                 }
-                SqueezeParam[] spa = spar.stream().toArray(SqueezeParam[]::new);
-                this.spar.put(i, spa);
+                SqueezeParam[] spa = squeezeList.stream().toArray(SqueezeParam[]::new);
+                squeezeMap.put(i, spa);
                 for (int j = 0; j < spa.length; j++) {
                     int begin = spa[j].beginC;
                     int end = begin + spa[j].numC - 1;
@@ -223,7 +223,7 @@ public class ModularStream {
         transformed = true;
         for (int i = transforms.length - 1; i >= 0; i--) {
             if (transforms[i].tr == TransformInfo.SQUEEZE) {
-                SqueezeParam[] spa = spar.get(i);
+                SqueezeParam[] spa = squeezeMap.get(i);
                 for (int j = spa.length - 1; j >= 0; j--) {
                     SqueezeParam sp = spa[j];
                     int begin = sp.beginC;

@@ -29,14 +29,14 @@ public class JXLatte {
         }
     }
 
-    private static void writePNG(String outputFilename, JXLImage image, Options options) throws IOException {
-        boolean hdr = options.hdr == Options.HDR_AUTO ? image.isHDR() : options.hdr == Options.HDR_ON;
+    private static void writePNG(String outputFilename, JXLImage image, JXLOptions options) throws IOException {
+        boolean hdr = options.hdr == JXLOptions.HDR_AUTO ? image.isHDR() : options.hdr == JXLOptions.HDR_ON;
         int bitDepth = hdr ? 16 : options.outputDepth;
         PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, hdr);
         writeImage(writer::write, outputFilename);
     }
 
-    private static void writePFM(String outputFilename, JXLImage image, Options options) throws IOException {
+    private static void writePFM(String outputFilename, JXLImage image, JXLOptions options) throws IOException {
         PFMWriter writer = new PFMWriter(image);
         writeImage(writer::write, outputFilename);
     }
@@ -73,7 +73,7 @@ public class JXLatte {
         System.exit(success ? 0 : 1);
     }
 
-    private static boolean parseOption(Options options, String arg, boolean foundMM) {
+    private static boolean parseOption(JXLOptions options, String arg, boolean foundMM) {
         if (foundMM || !arg.startsWith("--")) {
             if (options.input == null) {
                 options.input = arg;
@@ -101,9 +101,9 @@ public class JXLatte {
                 return true;
             case "format":
                 if (valueL.equals("png")) {
-                    options.outputFormat = Options.OUTPUT_PNG;
+                    options.outputFormat = JXLOptions.OUTPUT_PNG;
                 } else if (valueL.equals("pfm")) {
-                    options.outputFormat = Options.OUTPUT_PFM;
+                    options.outputFormat = JXLOptions.OUTPUT_PFM;
                 } else {
                     System.err.format("jxlatte: Unknown --format: %s%n", value);
                     System.exit(1);
@@ -121,11 +121,11 @@ public class JXLatte {
                 return true;
             case "png-hdr":
                 if (Arrays.asList("", "auto").contains(valueL)) {
-                    options.hdr = Options.HDR_AUTO;
+                    options.hdr = JXLOptions.HDR_AUTO;
                 } else if (Arrays.asList("yes", "true", "hdr").contains(valueL)) {
-                    options.hdr = Options.HDR_ON;
+                    options.hdr = JXLOptions.HDR_ON;
                 } else if (Arrays.asList("no", "false", "sdr").contains(valueL)) {
-                    options.hdr = Options.HDR_OFF;
+                    options.hdr = JXLOptions.HDR_OFF;
                 } else {
                     System.err.format("jxlatte: Unknown --png-hdr flag: %s%n", value);
                     System.exit(1);
@@ -157,13 +157,13 @@ public class JXLatte {
                 return true;
             case "info":
                 if (Arrays.asList("", "info", "yes", "true").contains(valueL)) {
-                    options.verbosity = Options.VERBOSITY_INFO;
+                    options.verbosity = JXLOptions.VERBOSITY_INFO;
                 } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.verbosity = Options.VERBOSITY_BASE;
+                    options.verbosity = JXLOptions.VERBOSITY_BASE;
                 } else if (Arrays.asList("v", "verbose").contains(valueL)) {
-                    options.verbosity = Options.VERBOSITY_VERBOSE;
+                    options.verbosity = JXLOptions.VERBOSITY_VERBOSE;
                 } else if (valueL.equals("trace")) {
-                    options.verbosity = Options.VERBOSITY_TRACE;
+                    options.verbosity = JXLOptions.VERBOSITY_TRACE;
                 } else {
                     System.err.format("jxlatte: Unknown --info flag: %s%n", value);
                     System.exit(1);
@@ -171,9 +171,9 @@ public class JXLatte {
                 return true;
             case "verbose":
                 if (Arrays.asList("", "yes", "true", "v", "verbose").contains(valueL)) {
-                    options.verbosity = Options.VERBOSITY_VERBOSE;
+                    options.verbosity = JXLOptions.VERBOSITY_VERBOSE;
                 } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.verbosity = Options.VERBOSITY_BASE;
+                    options.verbosity = JXLOptions.VERBOSITY_BASE;
                 } else {
                     System.err.format("jxlatte: Unknown --verbose flag: %s%n", value);
                     System.exit(1);
@@ -196,10 +196,10 @@ public class JXLatte {
         }
     }
 
-    private static Options parseOptions(String... args) {
+    private static JXLOptions parseOptions(String... args) {
         if (args.length == 0)
             usage(false);
-        Options options = new Options();
+        JXLOptions options = new JXLOptions();
         boolean foundMM = false;
         for (String arg : args) {
             parseOption(options, arg, foundMM);
@@ -212,19 +212,19 @@ public class JXLatte {
             usage(false);
         }
 
-        if (options.output != null && options.outputFormat == Options.OUTPUT_DEFAULT) {
+        if (options.output != null && options.outputFormat == JXLOptions.OUTPUT_DEFAULT) {
             int idx = options.output.lastIndexOf('.');
             if (idx >= 0) {
                 String ext = options.output.substring(idx + 1).toLowerCase();
                 if (ext.equals("pfm")) {
-                    options.outputFormat = Options.OUTPUT_PFM;
+                    options.outputFormat = JXLOptions.OUTPUT_PFM;
                 } else if (ext.equals("png")) {
-                    options.outputFormat = Options.OUTPUT_PNG;
+                    options.outputFormat = JXLOptions.OUTPUT_PNG;
                 }
             }
         }
 
-        if (options.output != null && options.outputFormat == Options.OUTPUT_DEFAULT) {
+        if (options.output != null && options.outputFormat == JXLOptions.OUTPUT_DEFAULT) {
             System.err.println("jxlatte: Unable to determine output format from file extension.");
             System.exit(1);
         }
@@ -232,7 +232,7 @@ public class JXLatte {
         return options;
     }
 
-    private static boolean writeImage(Options options, JXLDecoder decoder) {
+    private static boolean writeImage(JXLOptions options, JXLDecoder decoder) {
         JXLImage image = null;
         try {
             image = decoder.decode();
@@ -262,10 +262,10 @@ public class JXLatte {
 
         if (options.output != null) {
             try {
-                if (options.outputFormat == Options.OUTPUT_PFM) {
+                if (options.outputFormat == JXLOptions.OUTPUT_PFM) {
                     System.err.println("Decoded to pixels, writing PFM output.");
                     writePFM(options.output, image, options);
-                } else if (options.outputFormat == Options.OUTPUT_PNG) {
+                } else if (options.outputFormat == JXLOptions.OUTPUT_PNG) {
                     System.err.println("Decoded to pixels, writing PNG output.");
                     writePNG(options.output, image, options);
                 }
@@ -288,7 +288,7 @@ public class JXLatte {
     }
 
     public static void main(String[] args) {
-        Options options = parseOptions(args);
+        JXLOptions options = parseOptions(args);
 
         JXLDecoder decoder = null;
         try {

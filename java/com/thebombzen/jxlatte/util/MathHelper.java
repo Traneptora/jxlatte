@@ -113,7 +113,7 @@ public final class MathHelper {
         }
     }
 
-    public static void forwardDCT2D(final float[][] src, final float[][] dest, IntPoint startIn, IntPoint startOut, IntPoint length,float[][] scratchSpace1, float[][] scratchSpace2) {
+    public static void forwardDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn, final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1, final float[][] scratchSpace2) {
         final int xLogLength = ceilLog2(length.x);
         final int yLogLength = ceilLog2(length.y);
         for (int y = 0; y < length.y; y++)

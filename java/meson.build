@@ -5,7 +5,7 @@ src = files(
     'com/thebombzen/jxlatte/JXLCodestreamDecoder.java',
     'com/thebombzen/jxlatte/JXLDecoder.java',
     'com/thebombzen/jxlatte/JXLImage.java',
-    'com/thebombzen/jxlatte/Options.java',
+    'com/thebombzen/jxlatte/JXLOptions.java',
 
     # com.thebombzen.jxlatte.bundle
     'com/thebombzen/jxlatte/bundle/AnimationHeader.java',

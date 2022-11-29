@@ -1,6 +1,6 @@
 package com.thebombzen.jxlatte;
 
-public class Options {
+public class JXLOptions {
 
     public static final int OUTPUT_DEFAULT = -1;
     public static final int OUTPUT_PNG = 0;
@@ -26,11 +26,11 @@ public class Options {
     public String input = null;
     public String output = null;
 
-    public Options() {
+    public JXLOptions() {
 
     }
 
-    public Options(Options options) {
+    public JXLOptions(JXLOptions options) {
         this.debug = options.debug;
         this.outputFormat = options.outputFormat;
         this.verbosity = options.verbosity;

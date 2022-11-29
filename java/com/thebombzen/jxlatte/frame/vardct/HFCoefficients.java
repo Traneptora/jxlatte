@@ -44,14 +44,7 @@ public class HFCoefficients {
     public final Frame frame;
     public final Varblock[] varblocks;
 
-    public static long readTime = 0L;
-    public static long dequantTime = 0L;
-    public static long recorrelateTime = 0L;
-    public static long llfTime = 0L;
-    public static long blockCount = 0L;
-
     public HFCoefficients(Bitreader reader, Frame frame, int pass, int group) throws IOException {
-        long time0 = System.nanoTime() / 1_000_000L;
         hfPreset = reader.readBits(MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1));
         this.groupID = group;
         this.frame = frame;
@@ -124,11 +117,7 @@ public class HFCoefficients {
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
 
-        long time1 = System.nanoTime() / 1_000_000L;
-
         this.dequantHFCoeff = dequantizeHFCoefficients(coeffs);
-
-        long time2 = System.nanoTime() / 1_000_000L;
 
         // chroma from luma
         // shifts are nonnegative so the sum equals zero iff they all equal zero
@@ -177,8 +166,6 @@ public class HFCoefficients {
             }
         }
 
-        long time3 = System.nanoTime() / 1_000_000L;
-
         final float[][][] scratchBlock = new float[2][256][256];
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
@@ -188,10 +175,11 @@ public class HFCoefficients {
             final IntPoint size = varblock.sizeInBlocks();
             final TransformType tt = varblock.transformType();
             for (int c = 0; c < 3; c++) {
+                final float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 final float[][] dq = dequantHFCoeff[i][c];
-                MathHelper.forwardDCT2D(lfg.lfCoeff.dequantLFCoeff[c], dq,
+                MathHelper.forwardDCT2D(dqlf, dq,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
                     IntPoint.ZERO, size, scratchBlock[0], scratchBlock[1]);
                 for (int y = 0; y < size.y; y++) {
@@ -203,13 +191,6 @@ public class HFCoefficients {
             }
         }
 
-        long time4 = System.nanoTime() / 1_000_000L;
-
-        llfTime += time4 - time3;
-        recorrelateTime += time3 - time2;
-        dequantTime += time2 - time1;
-        readTime += time1 - time0;
-        blockCount++;
     }
 
     private int getBlockContext(final int c, final int orderID, final int hfMult, final int lfIndex) {

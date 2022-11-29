@@ -86,10 +86,10 @@ public class JXLCodestreamDecoder {
     private Bitreader bitreader;
     private PushbackInputStream in;
     private ImageHeader imageHeader;
-    private Options options;
+    private JXLOptions options;
     private Demuxer demuxer;
 
-    public JXLCodestreamDecoder(PushbackInputStream in, Options options, Demuxer demuxer) {
+    public JXLCodestreamDecoder(PushbackInputStream in, JXLOptions options, Demuxer demuxer) {
         this.in = in;
         this.bitreader = new Bitreader(in);
         this.options = options;
@@ -326,7 +326,7 @@ public class JXLCodestreamDecoder {
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
-        if (options.verbosity >= Options.VERBOSITY_INFO) {
+        if (options.verbosity >= JXLOptions.VERBOSITY_INFO) {
             err.format("Image: %s%n", options.input != null ? options.input : "<stdin>");
             err.format("    Level: %d%n", level);
             err.format("    Size: %dx%d%n", imageHeader.getSize().width, imageHeader.getSize().height);
@@ -335,7 +335,7 @@ public class JXLCodestreamDecoder {
             err.format("    Pixel Format: %s%n",
                 gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
             err.format("    Bit Depth: %d%n", imageHeader.getBitDepthHeader().bitsPerSample);
-            if (options.verbosity >= Options.VERBOSITY_VERBOSE) {
+            if (options.verbosity >= JXLOptions.VERBOSITY_VERBOSE) {
                 err.format("    Extra Channels: %d%n", imageHeader.getExtraChannelCount());
                 err.format("    XYB Encoded: %b%n", imageHeader.isXYBEncoded());
                 ColorEncodingBundle ce = imageHeader.getColorEncoding();
@@ -358,18 +358,24 @@ public class JXLCodestreamDecoder {
         List<Frame> frames = new ArrayList<>();
         float[][][][] reference = new float[4][][][];
         FrameHeader header;
+        // last one is always null, avoids ugly branch later
+        float[][][][] lfBuffer = new float[5][][][];
 
         do {
             Frame frame = new Frame(bitreader, imageHeader, options);
             frame.readHeader();
             header = frame.getFrameHeader();
-            if (options.verbosity >= Options.VERBOSITY_INFO && frames.size() == 0)
+            if (options.verbosity >= JXLOptions.VERBOSITY_INFO && frames.size() == 0)
                 err.format("    Lossless: %s%n",
                     header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
-            if (options.verbosity >= Options.VERBOSITY_VERBOSE)
+            if (options.verbosity >= JXLOptions.VERBOSITY_VERBOSE)
                 frame.printDebugInfo(options, err);
             err.flush();
-            frame.decodeFrame();
+            if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
+                throw new InvalidBitstreamException("LF Level too large");
+            frame.decodeFrame(lfBuffer[header.lfLevel]);
+            if (header.lfLevel > 0)
+                lfBuffer[header.lfLevel - 1] = frame.getBuffer();
             frames.add(frame);
         } while (!header.isLast);
 
@@ -386,10 +392,10 @@ public class JXLCodestreamDecoder {
         long invisibleFrames = 0;
         long visibleFrames = 0;
 
-
         for (Frame frame : frames) {
             header = frame.getFrameHeader();
-            boolean save = (header.saveAsReference != 0 || header.duration == 0) && !header.isLast && header.type != FrameFlags.LF_FRAME;
+            boolean save = (header.saveAsReference != 0 || header.duration == 0)
+                && !header.isLast && header.type != FrameFlags.LF_FRAME;
             if (frame.isVisible()) {
                 visibleFrames++;
                 invisibleFrames = 0;
@@ -404,12 +410,10 @@ public class JXLCodestreamDecoder {
             frame.renderSplines();
             frame.synthesizeNoise();
             performColorTransforms(matrix, frame);
-            if (header.encoding == FrameFlags.VARDCT && options.renderVarblocks) {
+            if (header.encoding == FrameFlags.VARDCT && options.renderVarblocks)
                 frame.drawVarblocks();
-            }
-            if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE) {
+            if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE)
                 blendFrame(canvas, reference, frame);
-            }
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = canvas;
         }

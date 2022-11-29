@@ -20,13 +20,13 @@ public class LFGroup {
     public final Frame frame;
     public final IntPoint size;
 
-    public LFGroup(Bitreader reader, Frame parent, int index, ModularChannelInfo[] replaced) throws IOException {
+    public LFGroup(Bitreader reader, Frame parent, int index, ModularChannelInfo[] replaced, float[][][] lfBuffer) throws IOException {
         this.lfGroupID = index;
         this.frame = parent;
         this.size = frame.getLFGroupSize(index).shiftRight(3);
 
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
-            this.lfCoeff = new LFCoefficients(reader, this, parent);
+            this.lfCoeff = new LFCoefficients(reader, this, parent, lfBuffer);
         else
             this.lfCoeff = null;
 

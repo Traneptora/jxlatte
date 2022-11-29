@@ -14,20 +14,22 @@ import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.IntPoint;
 
 public class LFCoefficients {
-    public final int extraPrecision;
     public final float[][][] dequantLFCoeff;
     public final int[][] lfIndex;
     public final Frame frame;
 
-    public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
+    public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame, float[][][] lfBuffer) throws IOException {
         this.frame = frame;
+        this.lfIndex = new int[parent.size.y][parent.size.x];
         if ((frame.getFrameHeader().flags & FrameFlags.USE_LF_FRAME) != 0) {
-            System.err.println("TODO: Implement LF Frames");
-            throw new UnsupportedOperationException("LF Frames currently not implemented");
+            this.dequantLFCoeff = lfBuffer;
+            populateLFIndex(parent, null);
+            return;
         }
+
         final IntPoint sizeInPixels = frame.getLFGroupSize(parent.lfGroupID);
         final IntPoint sizeInBlocks = sizeInPixels.shiftRight(3);
-        this.extraPrecision = reader.readBits(2);
+        final int extraPrecision = reader.readBits(2);
         final FrameHeader header = frame.getFrameHeader();
         final ModularChannelInfo[] info = new ModularChannelInfo[3];
         final float[][][] dequantLFCoeff = new float[3][][];
@@ -61,12 +63,15 @@ public class LFCoefficients {
             this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant, header.jpegUpsampling);
         else
             this.dequantLFCoeff = dequantLFCoeff;
-        this.lfIndex = new int[parent.size.y][parent.size.x];
+        populateLFIndex(parent, lfQuant);
+    }
+
+    private void populateLFIndex(final LFGroup parent, final int[][][] lfQuant) {
         final HFBlockContext hfctx = frame.getLFGlobal().hfBlockCtx;
         for (int y = 0; y < parent.size.y; y++) {
             final int[] lfi = lfIndex[y];
             for (int x = 0; x < parent.size.x; x++)
-                lfi[x] = getLFIndex(lfQuant, hfctx, new IntPoint(x, y), shift);
+                lfi[x] = getLFIndex(lfQuant, hfctx, new IntPoint(x, y), frame.getFrameHeader().jpegUpsampling);
         }
     }
 
@@ -163,10 +168,9 @@ public class LFCoefficients {
 
         for (int i = 0; i < 3; i++) {
             final IntPoint shifted = blockPos.shiftRight(upsampling[i]);
-            final int[][] lfq = lfQuant[Frame.cMap[i]];
             final int[] hft = hfctx.lfThresholds[i];
             for (int j = 0; j < hft.length; j++) {
-                if (lfq[shifted.y][shifted.x] > hft[j])
+                if (lfQuant[Frame.cMap[i]][shifted.y][shifted.x] > hft[j])
                     index[i]++;
             }
         }

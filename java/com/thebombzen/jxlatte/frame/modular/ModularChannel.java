@@ -367,7 +367,7 @@ public class ModularChannel extends ModularChannelInfo {
             throw new IllegalStateException("Corrupted squeeze transform");
 
         ModularChannel channel = new ModularChannel(info);
-        FlowHelper.parallelIterate(new IntPoint(channel.width, res.height), (x, y) -> {
+        FlowHelper.parallelIterate(new IntPoint(res.height, channel.width), (y, x) -> {
             int avg = orig.get(x, y);
             int residu = res.get(x, y);
             int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;
