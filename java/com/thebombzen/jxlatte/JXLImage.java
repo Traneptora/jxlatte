@@ -123,6 +123,8 @@ public class JXLImage {
         JXLImage image = new JXLImage(this, false);
         image.buffer = newBuffer;
         image.colorEncoding = ColorFlags.CE_RGB;
+        if (image.alphaIndex >= 0)
+            image.alphaIndex += 2;
         return image;
     }
 
@@ -140,6 +142,8 @@ public class JXLImage {
         JXLImage image = new JXLImage(this, false);
         image.buffer = newBuffer;
         image.colorEncoding = ColorFlags.CE_GRAY;
+        if (image.alphaIndex >= 0)
+            image.alphaIndex -= 2;
         return image;
     }
 
