@@ -474,13 +474,11 @@ public class Frame {
 
         invertSubsampling();
 
-        if (header.restorationFilter.gab) {
+        if (header.restorationFilter.gab)
             performGabConvolution();
-        }
 
-        if (header.restorationFilter.epfIterations > 0) {
+        if (header.restorationFilter.epfIterations > 0)
             performEdgePreservingFilter();
-        }
     }
 
     // do this in RGB
@@ -494,8 +492,6 @@ public class Frame {
                 float rFactor = ((float)Math.cos(hue) + 0.5f) / 1.5f;
                 float gFactor = ((float)Math.cos(hue - 2f * (float)Math.PI / 3f) + 1f) / 2f;
                 float bFactor = ((float)Math.cos(hue - 4f * (float)Math.PI / 3f) + 1f) / 2f;
-                //float xFactor = 0f;
-                //float bFactor = 0f;
                 IntPoint corner = varblock.pixelPosInLFGroup.plus(pixelPosInFrame);
                 IntPoint size = varblock.sizeInPixels();
                 for (int y = 0; y < size.y; y++) {
