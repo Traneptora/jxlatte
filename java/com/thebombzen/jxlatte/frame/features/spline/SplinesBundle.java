@@ -36,12 +36,16 @@ public class SplinesBundle {
         quantAdjust = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
         controlCount = new int[numSplines];
         controlPoints = new IntPoint[numSplines][];
+        coeffX = new int[numSplines][32];
+        coeffY = new int[numSplines][32];
+        coeffB = new int[numSplines][32];
+        coeffSigma = new int[numSplines][32];
         for (int i = 0; i < numSplines; i++) {
             controlCount[i] = 1 + stream.readSymbol(reader, 3);
             controlPoints[i] = new IntPoint[controlCount[i]];
             controlPoints[i][0] = new IntPoint(splinePos[i]);
             IntPoint[] delta = new IntPoint[controlCount[i] - 1];
-            for (int j = 0; j < controlCount[i] - 1; j++) {
+            for (int j = 0; j < delta.length; j++) {
                 int x = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
                 int y = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
                 delta[j] = new IntPoint(x, y);
@@ -53,12 +57,6 @@ public class SplinesBundle {
                 current = current.plus(deltaPoint);
                 controlPoints[i][j] = new IntPoint(current);
             }
-        }
-        coeffX = new int[numSplines][32];
-        coeffY = new int[numSplines][32];
-        coeffB = new int[numSplines][32];
-        coeffSigma = new int[numSplines][32];
-        for (int i = 0; i < numSplines; i++) {
             for (int j = 0; j < 32; j++)
                 coeffX[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));
             for (int j = 0; j < 32; j++)
