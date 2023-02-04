@@ -454,15 +454,21 @@ public class Frame {
         for (int c = 0; c < modularBuffer.length; c++) {
             int cIn = c;
             float scaleFactor;
-            boolean xybM = globalMetadata.isXYBEncoded() && header.encoding == FrameFlags.MODULAR;
+            boolean isColor = header.encoding == FrameFlags.MODULAR && c < 3;
+            boolean xybM = globalMetadata.isXYBEncoded() && isColor;
             // X, Y, B is encoded as Y, X, (B - Y)
             int cOut = (xybM ? cMap[c] : c) + buffer.length - modularBuffer.length;
+            int ecIndex = isColor ? c - 3 : c;
             if (xybM)
                 scaleFactor = lfGlobal.lfDequant[cOut];
-            else if (globalMetadata.getBitDepthHeader().expBits != 0 || header.encoding == FrameFlags.VARDCT)
+            else if (isColor && globalMetadata.getBitDepthHeader().expBits != 0)
+                scaleFactor = 1.0f;
+            else if (isColor)
+                scaleFactor = 1.0f / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
+            else if (globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.expBits != 0)
                 scaleFactor = 1.0f;
             else
-                scaleFactor = 1.0f / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
+                scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
             FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
                 if (xybM && cIn == 2)
