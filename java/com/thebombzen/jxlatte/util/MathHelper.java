@@ -265,7 +265,7 @@ public final class MathHelper {
                 throw new IllegalArgumentException();
             int c1 = (c + 1) % 3;
             int c2 = (c + 2) % 3;
-            det += matrix[c][0] * matrix[c1][1] * matrix[c2][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
+            det += fma(matrix[c][0], matrix[c1][1] * matrix[c2][2],  -matrix[c][0] * matrix[c1][2] * matrix[c2][1]);
         }
         if (det == 0f)
             return null;
@@ -278,7 +278,7 @@ public final class MathHelper {
                 int y1 = (y + 1) % 3;
                 int y2 = (y + 2) % 3;
                 // because we're going cyclicly here we don't need to multiply by (-1)^(x + y)
-                inverse[y][x] = (matrix[x1][y1] * matrix[x2][y2] - matrix[x2][y1] * matrix[x1][y2]) * invDet;
+                inverse[y][x] = fma(matrix[x1][y1], matrix[x2][y2],  -matrix[x2][y1] * matrix[x1][y2]) * invDet;
             }
         }
         return inverse;
