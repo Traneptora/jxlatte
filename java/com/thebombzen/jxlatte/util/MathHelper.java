@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.util;
 
+import static java.lang.Math.fma;
+
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -35,7 +37,7 @@ public final class MathHelper {
     }
 
     public static float erf(float z) {
-        float az = Math.abs(z);
+        final float az = Math.abs(z);
         float absErf;
         // first method is more accurate for most z, but becomes inaccurate for very small z
         // so we fall back on the second method
@@ -44,18 +46,19 @@ public final class MathHelper {
              * William H. Press, Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery. 1992.
              * Numerical recipes in C (2nd ed.): the art of scientific computing. Cambridge University Press, USA.
              */
-            float t = 1.0f / (1.0f + 0.5f * az);
-            float u = -1.26551223f + t * (1.00002368f + t * (0.37409196f + t * (0.09678418f + t * (-0.18628806f
-                + t * (0.27886807f + t * (-1.13520398f + t * (1.48851587f + t * (-0.82215223f + t * 0.17087277f))))))));
+            final float t = 1.0f / fma(az, 0.5f, 1.0f);
+            final float u = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, 0.17087277f,
+                -0.82215223f), 1.48851587f), -1.13520398f), 0.27886807f), -0.18628806f), 0.09678418f),
+                0.37409196f), 1.00002368f), -1.26551223f);
             absErf = 1.0f - t * (float)Math.exp(-z * z + u);
         } else {
             /*
              * Milton Abramowitz and Irene A. Stegun. 1964. Handbook of Mathematical Functions with formulas,
              * graphs, and mathematical tables, fover Publications, USA.
              */
-            float t = 1.0f / (1.0f + 0.47047f * az);
-            float u = t * (0.3480242f + t * (-0.0958798f + t * 0.7478556f));
-            absErf = 1.0f - u * (float)Math.exp(-z * z);
+            final float t = 1.0f / fma(az, 0.47047f, 1.0f);
+            final float u = t * fma(t, fma(t, 0.7478556f, -0.0958798f), 0.3480242f);
+            absErf = fma(-u, (float)Math.exp(-z * z), 1.0f);
         }
         if (z < 0)
             return -absErf;
@@ -71,7 +74,7 @@ public final class MathHelper {
             final float[] lut = cosineLut[xLogLength][n - 1];
             final float s2 = s[xStartIn + n];
             for (int k = 0; k < xLength; k++)
-                d[xStartOut + k] += s2 * lut[k];
+                d[xStartOut + k] = fma(s2, lut[k], d[xStartOut + k]);
         }
     }
 
@@ -88,7 +91,7 @@ public final class MathHelper {
             d2 = 0f;
             final float[] lut = cosineLut[xLogLength][k - 1];
             for (int n = 0; n < xLength; ++n)
-                d2 += s[xStartIn + n] * lut[n];
+                d2 = fma(s[xStartIn + n], lut[n], d2);
             d[xStartOut + k] = d2 * invLength;
         }
     }
@@ -207,9 +210,8 @@ public final class MathHelper {
             throw new IllegalArgumentException();
         float[] total = new float[matrix.length];
         for (int y = 0; y < total.length; y++) {
-            for (int x = 0; x < columnVector.length; x++) {
-                total[y] += matrix[y][x] * columnVector[x];
-            }
+            for (int x = 0; x < columnVector.length; x++)
+                total[y] = fma(matrix[y][x], columnVector[x], total[y]);
         }
         return total;
     }
@@ -221,9 +223,8 @@ public final class MathHelper {
             throw new IllegalArgumentException();
         float[] total = new float[matrix[0].length];
         for (int x = 0; x < total.length; x++) {
-            for (int y = 0; y < rowVector.length; y++) {
-                total[x] += rowVector[y] * matrix[y][x];
-            }
+            for (int y = 0; y < rowVector.length; y++)
+                total[x] = fma(rowVector[y], matrix[y][x], total[x]);
         }
         return total;
     }
