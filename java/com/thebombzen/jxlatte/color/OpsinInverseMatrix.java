@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.color;
 
+import static java.lang.Math.fma;
+
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -90,16 +92,16 @@ public class OpsinInverseMatrix {
     public void invertXYB(float[][][] buffer, float intensityTarget) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
+        final float itScale = 255f / intensityTarget;
         FlowHelper.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
             float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
             float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
             float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-            float itScale = 255f / intensityTarget;
-            float mixL = (gammaL * gammaL * gammaL + opsinBias[0]) * itScale;
-            float mixM = (gammaM * gammaM * gammaM + opsinBias[1]) * itScale;
-            float mixS = (gammaS * gammaS * gammaS + opsinBias[2]) * itScale;
+            float mixL = fma(gammaL * gammaL, gammaL, opsinBias[0]);
+            float mixM = fma(gammaM * gammaM, gammaM, opsinBias[1]);
+            float mixS = fma(gammaS * gammaS, gammaS, opsinBias[2]);
             for (int c = 0; c < 3; c++)
-                buffer[c][y][x] = matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS;
+                buffer[c][y][x] = fma(matrix[c][0], mixL, fma(matrix[c][1], mixM, matrix[c][2] * mixS)) * itScale;
         });
     }
 }

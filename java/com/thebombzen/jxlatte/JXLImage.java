@@ -58,6 +58,7 @@ public class JXLImage {
         this.primaries1931 = image.primaries1931;
         this.white1931 = image.white1931;
         this.iccProfile = image.iccProfile;
+        this.taggedTransfer = image.taggedTransfer;
         if (copyBuffer) {
             buffer = new float[image.buffer.length][][];
             for (int c = 0; c < buffer.length; c++) {
@@ -75,14 +76,15 @@ public class JXLImage {
     }
 
     public boolean isHDR() {
-        ColorEncodingBundle color = imageHeader.getColorEncoding();
-        switch(color.tf) {
+        switch(taggedTransfer) {
             case ColorFlags.TF_PQ:
             case ColorFlags.TF_HLG:
             case ColorFlags.TF_LINEAR:
                 return true;
         }
-        return color.prim != null && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB));
+        ColorEncodingBundle color = imageHeader.getColorEncoding();
+        return color.prim != null && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB))
+                                  && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_P3));
     }
 
     /*
@@ -159,8 +161,8 @@ public class JXLImage {
         image.primaries = ColorFlags.getPrimaries(primaries);
         image.white1931 = whitePoint;
         image.whitePoint = ColorFlags.getWhitePoint(whitePoint);
-        imageHeader.getOpsinInverseMatrix().getMatrix(primaries, whitePoint)
-            .invertXYB(image.buffer, imageHeader.getToneMapping().intensityTarget);
+        float intensityTarget = image.isHDR() ? imageHeader.getToneMapping().intensityTarget : 255f;
+        imageHeader.getOpsinInverseMatrix().getMatrix(primaries, whitePoint).invertXYB(image.buffer, intensityTarget);
         image.colorEncoding = ColorFlags.CE_RGB;
         return image;
     }
@@ -189,6 +191,21 @@ public class JXLImage {
         return transform(primaries, whitePoint, this.transfer);
     }
 
+    public float detectPeak() {
+        if (transfer != ColorFlags.TF_LINEAR)
+            return this.transfer(ColorFlags.TF_LINEAR).detectPeak();
+        float max = Float.MIN_VALUE;
+        for (int c = 0; c < getColorChannelCount(); c++) {
+            for (int y = 0; y < buffer[c].length; y++) {
+                for (int x = 0; x < buffer[c][y].length; x++) {
+                    max = buffer[c][y][x] > max ? buffer[c][y][x] : max;
+                }
+            }
+        }
+
+        return max;
+    }
+
     public JXLImage transfer(int transfer) {
         JXLImage image = this;
         if (image.colorEncoding == ColorFlags.CE_XYB)
@@ -198,12 +215,25 @@ public class JXLImage {
         image = image == this ? new JXLImage(image) : image;
         DoubleUnaryOperator inverse = ColorManagement.getInverseTransferFunction(image.transfer);
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
-        DoubleUnaryOperator composed = inverse.andThen(forward);
+        DoubleUnaryOperator composed = inverse;
+        if (image.taggedTransfer == ColorFlags.TF_PQ) {
+            boolean toPQ = transfer == ColorFlags.TF_PQ || transfer == ColorFlags.TF_LINEAR;
+            boolean fromPQ = image.transfer == ColorFlags.TF_PQ || image.transfer == ColorFlags.TF_LINEAR;
+            if (fromPQ && !toPQ) {
+                final float scale = 1.0f / detectPeak();
+                composed = composed.andThen(f -> {
+                    return f * scale;
+                });
+            }
+        }
+        composed = composed.andThen(forward);
+
         int width = getWidth();
         int height = getHeight();
         float[][][] imBuffer = image.buffer;
+        final DoubleUnaryOperator transferFunction = composed;
         FlowHelper.parallelIterate(buffer.length, new IntPoint(width, height), (c, x, y) -> {
-            imBuffer[c][y][x] = (float)composed.applyAsDouble(buffer[c][y][x]);
+            imBuffer[c][y][x] = (float)transferFunction.applyAsDouble(buffer[c][y][x]);
         });
         image.transfer = transfer;
         return image;
@@ -267,5 +297,9 @@ public class JXLImage {
 
     public byte[] getICCProfile() {
         return iccProfile;
+    }
+
+    public int getColorChannelCount() {
+        return this.colorEncoding == ColorFlags.CE_GRAY ? 1 : 3;
     }
 }

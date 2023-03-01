@@ -200,9 +200,8 @@ public class JXLCodestreamDecoder {
 
     public void performColorTransforms(OpsinInverseMatrix matrix, Frame frame) {
         float[][][] frameBuffer = frame.getBuffer();
-        if (matrix != null) {
+        if (matrix != null)
             matrix.invertXYB(frameBuffer, imageHeader.getToneMapping().intensityTarget);
-        }
 
         if (frame.getFrameHeader().doYCbCr) {
             FlowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
