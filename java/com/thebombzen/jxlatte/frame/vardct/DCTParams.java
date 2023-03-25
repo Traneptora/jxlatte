@@ -1,5 +1,7 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
+import java.util.Arrays;
+
 public class DCTParams {
     public final float[][] dctParam;
     public final float[][] param;
@@ -26,4 +28,11 @@ public class DCTParams {
         this.denominator = denominator;
         this.params4x4 = params4x4;
     }
+
+    public String toString() {
+        return String.format("[%s, %s, %d, %f, %s]",
+            Arrays.deepToString(dctParam), Arrays.deepToString(param),
+            mode, denominator, Arrays.deepToString(params4x4));
+    }
+
 }
