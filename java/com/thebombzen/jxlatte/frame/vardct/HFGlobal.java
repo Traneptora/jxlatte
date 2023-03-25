@@ -226,16 +226,14 @@ public class HFGlobal {
             params = defaultParams;
         } else {
             params = new DCTParams[17];
-            for (int i = 0; i < 17; i++) {
+            for (int i = 0; i < 17; i++)
                 setupDCTParam(reader, frame, i);
-            }
         }
 
         weights = new float[17][3][][];
 
-        for (int i = 0; i < 17; i++) {
+        for (int i = 0; i < 17; i++)
             generateWeights(i);
-        }
 
         numHfPresets = 1 + reader.readBits(MathHelper.ceilLog1p(frame.getNumGroups() - 1));
     }

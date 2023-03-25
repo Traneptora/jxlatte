@@ -152,7 +152,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
                 level2Counts[0] += alphabetSize - i - 1;
                 break;
             }
-        }        
+        }
 
         if (totalCode != 32768 && level2Counts[0] < alphabetSize - 1)
             throw new InvalidBitstreamException("Invalid Level 2 Prefix Codes");

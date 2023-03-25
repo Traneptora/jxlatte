@@ -29,14 +29,12 @@ public class HFPass {
                 naturalOrderX[index] = new int[len];
                 naturalOrderY[index] = new int[len];
                 naturalOrderX[index][0] = in.read();
-                for (int j = 1; j < len; j++) {
+                for (int j = 1; j < len; j++)
                     naturalOrderX[index][j] = (in.read() + naturalOrderX[index][j - 1]) & 0xFF;
-                }
                 naturalOrderY[index][0] = in.read();
-                for (int j = 1; j < len; j++) {
+                for (int j = 1; j < len; j++)
                     naturalOrderY[index][j] = (in.read() + naturalOrderY[index][j - 1]) & 0xFF;
-                }
-            }   
+            }
         } catch (IOException ioe) {
             FunctionalHelper.sneakyThrow(ioe);
         } finally {
