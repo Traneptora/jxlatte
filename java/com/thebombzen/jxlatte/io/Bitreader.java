@@ -146,7 +146,16 @@ public class Bitreader extends InputStream {
      * @return the value of those bits
      */
     public int showBits(int bits) throws IOException {
-        int n = readBits(bits);
+        int n = 0;
+        while (bits > 0) {
+            try {
+                n = readBits(bits);
+                break;
+            } catch (EOFException eof) {
+                if (bits-- == 1)
+                    throw eof;
+            }
+        }
         bitsRead -= bits;
         cache = (cache << bits) | (n & ~(~0L << bits));
         cacheBits += bits;
