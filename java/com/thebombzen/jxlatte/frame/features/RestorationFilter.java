@@ -46,7 +46,7 @@ public class RestorationFilter {
         boolean allDefault = reader.readBool();
         gab = allDefault ? true : reader.readBool();
         // note that this is signalled if allDefault == true
-        customGab = gab ? reader.readBool() : false;
+        customGab = !allDefault && gab ? reader.readBool() : false;
         if (customGab) {
             for (int i = 0; i < 3; i++) {
                 gab1Weights[i] = reader.readF16();
