@@ -458,7 +458,7 @@ public class Frame {
             boolean xybM = globalMetadata.isXYBEncoded() && isColor;
             // X, Y, B is encoded as Y, X, (B - Y)
             int cOut = (xybM ? cMap[c] : c) + buffer.length - modularBuffer.length;
-            int ecIndex = isColor ? c - 3 : c;
+            int ecIndex = c - globalMetadata.getColorChannelCount();
             if (xybM)
                 scaleFactor = lfGlobal.lfDequant[cOut];
             else if (isColor && globalMetadata.getBitDepthHeader().expBits != 0)
