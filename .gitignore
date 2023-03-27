@@ -11,3 +11,11 @@ output.png
 # test files
 /*.png
 /*.jxl
+
+# IntelliJ IDEA files
+out/
+.idea/
+*.iml
+
+# Gradle files
+.gradle
