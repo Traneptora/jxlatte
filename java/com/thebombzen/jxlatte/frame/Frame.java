@@ -245,7 +245,7 @@ public class Frame {
 
     private float[][] performUpsampling(float[][] buffer, int c) {
         int color;
-        if (header.encoding == FrameFlags.VARDCT)
+        if (header.encoding == FrameFlags.VARDCT || globalMetadata.isXYBEncoded())
             color = 3;
         else
             color = globalMetadata.getColorChannelCount();
@@ -432,8 +432,8 @@ public class Frame {
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
         IntPoint paddedSize = getPaddedFrameSize();
         // VarDCT always has 3 channels even in grayscale
-        buffer = new float[(header.encoding == FrameFlags.VARDCT ? 3 : globalMetadata.getColorChannelCount())
-            + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
+        int colorChannels = header.encoding == FrameFlags.VARDCT || globalMetadata.isXYBEncoded() ? 3 : globalMetadata.getColorChannelCount();
+        buffer = new float[colorChannels + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
 
         decodeLFGroups(lfBuffer);
 
