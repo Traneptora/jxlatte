@@ -21,7 +21,7 @@ public class PreviewHeader extends Dimension {
             if (div8)
                 this.width = reader.readU32(16, 0, 32, 0, 1, 5, 33, 9);
             else
-                this.height = reader.readU32(1, 6, 65, 8, 321, 10, 1345, 12);
+                this.width = reader.readU32(1, 6, 65, 8, 321, 10, 1345, 12);
         }
 
         if (this.width > 4096 || this.height > 4096)
