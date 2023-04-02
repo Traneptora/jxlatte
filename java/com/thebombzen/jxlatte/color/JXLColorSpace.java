@@ -44,6 +44,7 @@ public class JXLColorSpace extends ColorSpace {
         linear[2] = (float)inverseTransferFunction.applyAsDouble(colorvalue[2]);
         float[] sRGB = MathHelper.matrixMutliply(this.primariesToSRGB, linear);
         DoubleUnaryOperator sRGBTransfer = ColorManagement.getTransferFunction(ColorFlags.TF_SRGB);
+        // clamp here because BufferedImage forbids out of gamut colors
         sRGB[0] = MathHelper.clamp((float)sRGBTransfer.applyAsDouble(sRGB[0]), 0.0f, 1.0f);
         sRGB[1] = MathHelper.clamp((float)sRGBTransfer.applyAsDouble(sRGB[1]), 0.0f, 1.0f);
         sRGB[2] = MathHelper.clamp((float)sRGBTransfer.applyAsDouble(sRGB[2]), 0.0f, 1.0f);

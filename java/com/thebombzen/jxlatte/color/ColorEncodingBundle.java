@@ -61,11 +61,10 @@ public class ColorEncodingBundle {
         }
         if (!allDefault && !useIccProfile) {
             boolean useGamma = reader.readBool();
-            if (useGamma) {
+            if (useGamma)
                 tf = reader.readBits(24);
-            } else {
+            else
                 tf = (1 << 24) + reader.readEnum();
-            }
             if (!ColorFlags.validateTransfer(tf))
                 throw new InvalidBitstreamException("Illegal transfer function");
             renderingIntent = reader.readEnum();

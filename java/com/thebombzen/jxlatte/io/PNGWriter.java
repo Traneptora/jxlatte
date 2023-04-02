@@ -154,9 +154,8 @@ public class PNGWriter {
         for (int y = 0; y < height; y++) {
             dout.writeByte(0); // filter 0
             for (int x = 0; x < width; x++) {
-                for (int c = 0; c < colorChannels; c++) {
+                for (int c = 0; c < colorChannels; c++)
                     writeSample(dout, x, y, c);
-                }
                 if (alphaIndex >= 0)
                     writeSample(dout, x, y, colorChannels + alphaIndex);
             }
@@ -174,11 +173,10 @@ public class PNGWriter {
         this.out = new DataOutputStream(outputStream);
         out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
         writeIHDR();
-        if (hdr || this.iccProfile != null) {
+        if (hdr || this.iccProfile != null)
             writeICCP();
-        } else {
+        else
             writeSRGB();
-        }
         writeIDAT();
         out.writeInt(0);
         out.writeInt(0x49_45_4E_44); // IEND

@@ -99,9 +99,9 @@ public class ColorFlags {
     }
 
     public static String transferToString(int transfer) {
-        if (transfer < (1 << 24)) {
+        if (transfer < (1 << 24))
             return String.format("Gamma: %f", transfer * 1e-7D);
-        }
+
         switch (transfer) {
             case TF_BT709:
                 return "BT.709";

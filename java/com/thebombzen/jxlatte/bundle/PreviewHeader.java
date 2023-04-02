@@ -25,7 +25,7 @@ public class PreviewHeader extends Dimension {
         }
 
         if (this.width > 4096 || this.height > 4096)
-            throw new InvalidBitstreamException(String.format("preview width or preview height too large: %d, %d",
-                this.width, this.height));
+            throw new InvalidBitstreamException(String.format(
+                "preview width or preview height too large: %d, %d", this.width, this.height));
     }
 }
