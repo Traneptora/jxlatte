@@ -22,6 +22,7 @@ public class JXLOptions {
     public int outputDepth = -1;
     public int outputCompression = 0;
     public boolean renderVarblocks = false;
+    public boolean peakDetect = false;
 
     public String input = null;
     public String output = null;
@@ -38,6 +39,7 @@ public class JXLOptions {
         this.outputDepth = options.outputDepth;
         this.outputCompression = options.outputCompression;
         this.renderVarblocks = options.renderVarblocks;
+        this.peakDetect = options.peakDetect;
 
         this.input = options.input;
         this.output = options.output;

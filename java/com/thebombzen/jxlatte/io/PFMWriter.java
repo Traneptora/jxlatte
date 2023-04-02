@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte.io;
 
+import java.awt.image.Raster;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -23,12 +24,11 @@ public class PFMWriter {
         int height = image.getHeight();
         String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF", image.getWidth(), image.getHeight());
         dout.writeBytes(header);
-        float[][][] buffer = image.getBuffer();
+        Raster raster = image.getRaster();
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {
-                for (int c = 0; c < (gray ? 1 : 3); c++) {
-                    dout.writeFloat(buffer[c][y][x]);
-                }
+                for (int c = 0; c < (gray ? 1 : 3); c++)
+                    dout.writeFloat(raster.getSampleFloat(x, y, c));
             }
         }
     }

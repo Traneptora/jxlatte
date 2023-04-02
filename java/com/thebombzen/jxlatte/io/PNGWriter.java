@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte.io;
 
+import java.awt.image.Raster;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
@@ -20,7 +21,7 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;
-    private float[][][] buffer;
+    private Raster raster;
     private DataOutputStream out;
     private int maxValue;
     private int width;
@@ -37,18 +38,18 @@ public class PNGWriter {
     private int tf;
 
     public PNGWriter(JXLImage image) {
-        this(image, false);
+        this(image, -1, false, false);
     }
 
     public PNGWriter(JXLImage image, boolean hdr) {
-        this(image, -1, hdr);
+        this(image, -1, hdr, false);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, boolean hdr) {
-        this(image, bitDepth, Deflater.DEFAULT_COMPRESSION, hdr);
+    public PNGWriter(JXLImage image, int bitDepth, boolean hdr, boolean peakDetect) {
+        this(image, bitDepth, Deflater.DEFAULT_COMPRESSION, hdr, peakDetect);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, boolean hdr) {
+    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, boolean hdr, boolean peakDetect) {
         if (bitDepth <= 0)
             bitDepth = hdr || image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8;
         if (bitDepth != 8 && bitDepth != 16)
@@ -59,8 +60,8 @@ public class PNGWriter {
         this.whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
         this.tf = hdr ? ColorFlags.TF_PQ : ColorFlags.TF_SRGB;
         this.iccProfile = image.getICCProfile();
-        image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf);
-        this.buffer = image.getBuffer();
+        image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);
+        this.raster = image.getRaster();
         this.bitDepth = bitDepth;
         this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
@@ -138,7 +139,7 @@ public class PNGWriter {
     }
 
     private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
-        int s = MathHelper.round(buffer[c][y][x] * maxValue);
+        int s = MathHelper.round(raster.getSampleFloat(x, y, c) * maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
         if (bitDepth == 8)
             dout.writeByte(s);

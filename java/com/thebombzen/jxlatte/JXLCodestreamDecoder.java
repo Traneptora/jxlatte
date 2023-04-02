@@ -10,8 +10,6 @@ import java.util.List;
 
 import com.thebombzen.jxlatte.bundle.ExtraChannelType;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.color.CIEPrimaries;
-import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorEncodingBundle;
 import com.thebombzen.jxlatte.color.ColorFlags;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
@@ -215,7 +213,7 @@ public class JXLCodestreamDecoder {
         }
     }
 
-    private float getSample(float[][] arr, int x, int y) {
+    private static float getSample(float[][] arr, int x, int y) {
         if (y < 0 || y >= arr.length)
             return 0;
         if (x < 0 || x >= arr[y].length)
@@ -378,12 +376,7 @@ public class JXLCodestreamDecoder {
             frames.add(frame);
         } while (!header.isLast);
 
-        OpsinInverseMatrix matrix = null;
-        if  (imageHeader.isXYBEncoded()) {
-            CIEPrimaries prim = imageHeader.getColorEncoding().prim;
-            CIEXY white = imageHeader.getColorEncoding().white;
-            matrix = imageHeader.getOpsinInverseMatrix().getMatrix(prim, white);
-        }
+        OpsinInverseMatrix matrix = imageHeader.getOpsinInverseMatrix();
 
         float[][][] canvas = new float[3 + imageHeader.getExtraChannelCount()]
             [imageHeader.getSize().height][imageHeader.getSize().width];

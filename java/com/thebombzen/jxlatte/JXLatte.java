@@ -32,7 +32,7 @@ public class JXLatte {
     private static void writePNG(String outputFilename, JXLImage image, JXLOptions options) throws IOException {
         boolean hdr = options.hdr == JXLOptions.HDR_AUTO ? image.isHDR() : options.hdr == JXLOptions.HDR_ON;
         int bitDepth = hdr ? 16 : options.outputDepth;
-        PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, hdr);
+        PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, hdr, options.peakDetect);
         writeImage(writer::write, outputFilename);
     }
 
@@ -66,6 +66,8 @@ public class JXLatte {
             "        (BT.2020 Primaries, D65 White Point, PQ Transfer)",
             "    --draw-varblocks",
             "        Show varblocks for VarDCT images",
+            "    --png-peak-detect",
+            "        Run peak detection when writing SDR PNGs",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };
@@ -152,6 +154,16 @@ public class JXLatte {
                 }
                 if (options.outputCompression < 0 || options.outputCompression > 9) {
                     System.err.println("jxlatte: Only compression 0-9 supported in PNG");
+                    System.exit(1);
+                }
+                return true;
+            case "png-peak-detect":
+                if (Arrays.asList("yes", "true").contains(valueL)) {
+                    options.peakDetect = true;
+                } else if (Arrays.asList("no", "false").contains(valueL)) {
+                    options.peakDetect = false;
+                } else {
+                    System.err.format("jxlatte: Unknown --png-peak-detect flag: %s%n", value);
                     System.exit(1);
                 }
                 return true;

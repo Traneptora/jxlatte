@@ -7,6 +7,7 @@ public class ColorFlags {
     public static final int PRI_BT2100 = 9;
     public static final int PRI_P3 = 11;
 
+    public static final int WP_D50 = -1;
     public static final int WP_D65 = 1;
     public static final int WP_CUSTOM = 2;
     public static final int WP_E = 10;
@@ -65,6 +66,8 @@ public class ColorFlags {
                 return "Standard Illuminant E";
             case WP_DCI:
                 return "DCI";
+            case WP_D50:
+                return "D50";
             default:
                 return "Unknown";
         }
@@ -125,13 +128,15 @@ public class ColorFlags {
                 return new CIEXY(1f/3f, 1f/3f);
             case WP_DCI:
                 return new CIEXY(0.314f, 0.351f);
+            case WP_D50:
+                return new CIEXY(0.34567f, 0.34567f);
         }
         return null;
     }
 
     public static int getWhitePoint(CIEXY wp) {
-        for (int white : new int[]{WP_D65, WP_E, WP_DCI}) {
-            if (wp.matches(getWhitePoint(white)))
+        for (int white : new int[]{WP_D65, WP_E, WP_DCI, WP_D50}) {
+            if (CIEXY.matches(wp, getWhitePoint(white)))
                 return white;
         }
         return WP_CUSTOM;
@@ -158,7 +163,7 @@ public class ColorFlags {
 
     public static int getPrimaries(CIEPrimaries primaries) {
         for (int prim : new int[]{PRI_SRGB, PRI_BT2100, PRI_P3}) {
-            if (primaries.matches(getPrimaries(prim)))
+            if (CIEPrimaries.matches(primaries, getPrimaries(prim)))
                 return prim;
         }
         return PRI_CUSTOM;

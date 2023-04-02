@@ -175,7 +175,7 @@ public final class MathHelper {
     public static float max(float... a) {
         float result = Float.MIN_VALUE;
         for (float f : a) {
-            if (f < result)
+            if (f > result)
                 result = f;
         }
         return result;

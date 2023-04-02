@@ -38,6 +38,10 @@ public final class ColorManagement {
     }
 
     private static float[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
+        if (targetWP == null)
+            targetWP = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
+        if (currentWP == null)
+            currentWP = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
         float[] wCurrent = getXYZ(currentWP);
         float[] lmsCurrent = MathHelper.matrixMutliply(BRADFORD, wCurrent);
         float[] wTarget = getXYZ(targetWP);
@@ -50,6 +54,10 @@ public final class ColorManagement {
     }
 
     private static float[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
+        if (primaries == null)
+            return null;
+        if (wp == null)
+            wp = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
         float[][] primariesTr = new float[][]{
@@ -65,12 +73,17 @@ public final class ColorManagement {
         return MathHelper.matrixMutliply(primariesMatrix, a);
     }
 
+    public static float[][] primariesToXYZD50(CIEPrimaries primaries, CIEXY wp) {
+        float[][] whitePointConv = adaptWhitePoint(null, wp);
+        return MathHelper.matrixMutliply(whitePointConv, primariesToXYZ(primaries, wp));
+    }
+
     public static float[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,
             CIEPrimaries currentPrim, CIEXY currentWP) {
-        if (targetPrim.matches(currentPrim) && targetWP.matches(currentWP))
+        if (CIEPrimaries.matches(targetPrim, currentPrim) && CIEXY.matches(targetWP, currentWP))
             return MathHelper.matrixIdentity(3);
         float[][] whitePointConv = null;
-        if (!targetWP.matches(currentWP))
+        if (!CIEXY.matches(targetWP, currentWP))
             whitePointConv = adaptWhitePoint(targetWP, currentWP);
         float[][] forward = primariesToXYZ(currentPrim, currentWP);
         float[][] reverse = MathHelper.invertMatrix3x3(primariesToXYZ(targetPrim, targetWP));

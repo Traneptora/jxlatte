@@ -23,6 +23,7 @@ src = files(
     'com/thebombzen/jxlatte/color/ColorFlags.java',
     'com/thebombzen/jxlatte/color/ColorManagement.java',
     'com/thebombzen/jxlatte/color/CustomXY.java',
+    'com/thebombzen/jxlatte/color/JXLColorSpace.java',
     'com/thebombzen/jxlatte/color/OpsinInverseMatrix.java',
     'com/thebombzen/jxlatte/color/ToneMapping.java',
 
