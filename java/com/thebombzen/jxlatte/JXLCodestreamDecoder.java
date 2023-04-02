@@ -412,12 +412,12 @@ public class JXLCodestreamDecoder {
 
         int orientation = imageHeader.getOrientation();
 
-        int cShift =  3 - imageHeader.getColorChannelCount();
+        int cShift = 3 - imageHeader.getColorChannelCount();
 
         float[][][] orientedCanvas = new float[canvas.length - cShift][][];
 
-        for (int c = 0; c < canvas.length; c++) {
-            int i = cShift > 0 && c < 3 ? 0 : c - cShift;
+        for (int i = 0; i < orientedCanvas.length; i++) {
+            int c = i < imageHeader.getColorChannelCount() ? i : i + cShift;
             orientedCanvas[i] = transposeBuffer(canvas[c], orientation);
         }
 
