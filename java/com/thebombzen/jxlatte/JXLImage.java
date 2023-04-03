@@ -57,24 +57,20 @@ public class JXLImage {
         this.buffer = new DataBufferFloat(dataArray, width * height);
         this.sampleModel = new BandedSampleModel(DataBuffer.TYPE_FLOAT, width, height, dataArray.length);
         this.raster = Raster.createWritableRaster(this.sampleModel, this.buffer, new Point());
-        this.colorEncoding = header.getColorEncoding().colorEncoding;
+        ColorEncodingBundle bundle = header.getColorEncoding();
+        this.colorEncoding = bundle.colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
         this.imageHeader = header;
-        ColorEncodingBundle bundle = header.getColorEncoding();
+        this.primaries = bundle.primaries;
+        this.whitePoint = bundle.whitePoint;
+        this.primaries1931 = bundle.prim;
+        this.white1931 = bundle.white;
         if (imageHeader.isXYBEncoded()) {
             this.transfer = ColorFlags.TF_LINEAR;
             this.iccProfile = null;
-            this.primaries = ColorFlags.PRI_SRGB;
-            this.whitePoint = ColorFlags.WP_D65;
-            this.primaries1931 = ColorFlags.getPrimaries(primaries);
-            this.white1931 = ColorFlags.getWhitePoint(whitePoint);
         } else {
             this.transfer = bundle.tf;
             this.iccProfile = header.getDecodedICC();
-            this.primaries = bundle.primaries;
-            this.whitePoint = bundle.whitePoint;
-            this.primaries1931 = bundle.prim;
-            this.white1931 = bundle.white;
         }
         this.taggedTransfer = bundle.tf;
     }

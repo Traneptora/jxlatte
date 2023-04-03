@@ -376,7 +376,11 @@ public class JXLCodestreamDecoder {
             frames.add(frame);
         } while (!header.isLast);
 
-        OpsinInverseMatrix matrix = imageHeader.isXYBEncoded() ? imageHeader.getOpsinInverseMatrix() : null;
+        OpsinInverseMatrix matrix = null;
+        if (imageHeader.isXYBEncoded()) {
+            ColorEncodingBundle bundle = imageHeader.getColorEncoding();
+            matrix = imageHeader.getOpsinInverseMatrix().getMatrix(bundle.prim, bundle.white);
+        }
 
         float[][][] canvas = new float[3 + imageHeader.getExtraChannelCount()]
             [imageHeader.getSize().height][imageHeader.getSize().width];
