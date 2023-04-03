@@ -1,7 +1,5 @@
 package com.thebombzen.jxlatte.util;
 
-import static java.lang.Math.fma;
-
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -46,19 +44,18 @@ public final class MathHelper {
              * William H. Press, Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery. 1992.
              * Numerical recipes in C (2nd ed.): the art of scientific computing. Cambridge University Press, USA.
              */
-            final float t = 1.0f / fma(az, 0.5f, 1.0f);
-            final float u = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, 0.17087277f,
-                -0.82215223f), 1.48851587f), -1.13520398f), 0.27886807f), -0.18628806f), 0.09678418f),
-                0.37409196f), 1.00002368f), -1.26551223f);
+            final float t = 1.0f / (az * 0.5f + 1.0f);
+            final float u = t * (t * (t * (t * (t * (t * (t * (t * (t * 0.17087277f - 0.82215223f) + 1.48851587f) - 1.13520398f)
+                              + 0.27886807f) - 0.18628806f) + 0.09678418f) + 0.37409196f) + 1.00002368f) - 1.26551223f;
             absErf = 1.0f - t * (float)Math.exp(-z * z + u);
         } else {
             /*
              * Milton Abramowitz and Irene A. Stegun. 1964. Handbook of Mathematical Functions with formulas,
              * graphs, and mathematical tables, fover Publications, USA.
              */
-            final float t = 1.0f / fma(az, 0.47047f, 1.0f);
-            final float u = t * fma(t, fma(t, 0.7478556f, -0.0958798f), 0.3480242f);
-            absErf = fma(-u, (float)Math.exp(-z * z), 1.0f);
+            final float t = 1.0f / (az * 0.47047f + 1.0f);
+            final float u = t * (t * (t * 0.7478556f - 0.0958798f) + 0.3480242f);
+            absErf = 1.0f - u * (float)Math.exp(-z * z);
         }
         if (z < 0)
             return -absErf;
@@ -74,7 +71,7 @@ public final class MathHelper {
             final float[] lut = cosineLut[xLogLength][n - 1];
             final float s2 = s[xStartIn + n];
             for (int k = 0; k < xLength; k++)
-                d[xStartOut + k] = fma(s2, lut[k], d[xStartOut + k]);
+                d[xStartOut + k] += s2 * lut[k];
         }
     }
 
@@ -91,7 +88,7 @@ public final class MathHelper {
             d2 = 0f;
             final float[] lut = cosineLut[xLogLength][k - 1];
             for (int n = 0; n < xLength; ++n)
-                d2 = fma(s[xStartIn + n], lut[n], d2);
+                d2 += s[xStartIn + n] * lut[n];
             d[xStartOut + k] = d2 * invLength;
         }
     }
@@ -203,28 +200,33 @@ public final class MathHelper {
         return Math.min(Math.max(v, lower), upper);
     }
 
-    public static float[] matrixMutliply(float[][] matrix, float[] columnVector) {
+    public static float[] matrixMutliply(final float[][] matrix, final float[] columnVector) {
         if (matrix == null)
             return columnVector;
-        if (matrix[0].length != columnVector.length || columnVector.length == 0)
+        if (matrix[0].length > columnVector.length || columnVector.length == 0)
             throw new IllegalArgumentException();
-        float[] total = new float[matrix.length];
-        for (int y = 0; y < total.length; y++) {
-            for (int x = 0; x < columnVector.length; x++)
-                total[y] = fma(matrix[y][x], columnVector[x], total[y]);
+        int extra = columnVector.length - matrix[0].length;
+        float[] total = new float[matrix.length + extra];
+        for (int y = 0; y < matrix.length; y++) {
+            final float[] row = matrix[y];
+            for (int x = 0; x < row.length; x++)
+                total[y] += row[x] * columnVector[x];
         }
+        if (extra != 0)
+            System.arraycopy(columnVector, columnVector.length - extra, total, total.length - extra, extra);
         return total;
     }
 
-    public static float[] matrixMutliply(float[] rowVector, float[][] matrix) {
+    public static float[] matrixMutliply(final float[] rowVector, final float[][] matrix) {
         if (matrix == null)
             return rowVector;
         if (matrix.length != rowVector.length || rowVector.length == 0)
             throw new IllegalArgumentException();
         float[] total = new float[matrix[0].length];
-        for (int x = 0; x < total.length; x++) {
-            for (int y = 0; y < rowVector.length; y++)
-                total[x] = fma(rowVector[y], matrix[y][x], total[x]);
+        for (int y = 0; y < rowVector.length; y++) {
+            final float[] row = matrix[y];
+            for (int x = 0; x < total.length; x++)
+                total[x] += rowVector[y] * row[x];
         }
         return total;
     }
@@ -265,7 +267,7 @@ public final class MathHelper {
                 throw new IllegalArgumentException();
             int c1 = (c + 1) % 3;
             int c2 = (c + 2) % 3;
-            det += fma(matrix[c][0], matrix[c1][1] * matrix[c2][2],  -matrix[c][0] * matrix[c1][2] * matrix[c2][1]);
+            det += matrix[c][0] * matrix[c1][1] * matrix[c2][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
         }
         if (det == 0f)
             return null;
@@ -278,7 +280,7 @@ public final class MathHelper {
                 int y1 = (y + 1) % 3;
                 int y2 = (y + 2) % 3;
                 // because we're going cyclicly here we don't need to multiply by (-1)^(x + y)
-                inverse[y][x] = fma(matrix[x1][y1], matrix[x2][y2],  -matrix[x2][y1] * matrix[x1][y2]) * invDet;
+                inverse[y][x] = (matrix[x1][y1] * matrix[x2][y2] - matrix[x2][y1] * matrix[x1][y2]) * invDet;
             }
         }
         return inverse;

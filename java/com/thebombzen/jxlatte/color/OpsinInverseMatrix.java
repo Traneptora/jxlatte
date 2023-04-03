@@ -1,7 +1,5 @@
 package com.thebombzen.jxlatte.color;
 
-import static java.lang.Math.fma;
-
 import java.io.IOException;
 
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -97,11 +95,11 @@ public class OpsinInverseMatrix {
             float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
             float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
             float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-            float mixL = fma(gammaL * gammaL, gammaL, opsinBias[0]);
-            float mixM = fma(gammaM * gammaM, gammaM, opsinBias[1]);
-            float mixS = fma(gammaS * gammaS, gammaS, opsinBias[2]);
+            float mixL = gammaL * gammaL * gammaL + opsinBias[0];
+            float mixM = gammaM * gammaM * gammaM + opsinBias[1];
+            float mixS = gammaS * gammaS * gammaS + opsinBias[2];
             for (int c = 0; c < 3; c++)
-                buffer[c][y][x] = fma(matrix[c][0], mixL, fma(matrix[c][1], mixM, matrix[c][2] * mixS)) * itScale;
+                buffer[c][y][x] = (matrix[c][0] * mixL + matrix[c][1] * mixM +  matrix[c][2] * mixS) * itScale;
         });
     }
 }
