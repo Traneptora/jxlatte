@@ -158,10 +158,12 @@ public class JXLatte {
                 }
                 return true;
             case "png-peak-detect":
-                if (Arrays.asList("yes", "true").contains(valueL)) {
-                    options.peakDetect = true;
+                if (Arrays.asList("", "auto").contains(valueL)) {
+                    options.peakDetect = JXLOptions.PEAK_DETECT_AUTO;
+                } else if (Arrays.asList("yes", "true").contains(valueL)) {
+                    options.peakDetect = JXLOptions.PEAK_DETECT_ON;
                 } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.peakDetect = false;
+                    options.peakDetect = JXLOptions.PEAK_DETECT_OFF;
                 } else {
                     System.err.format("jxlatte: Unknown --png-peak-detect flag: %s%n", value);
                     System.exit(1);

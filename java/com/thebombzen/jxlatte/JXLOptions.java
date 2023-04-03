@@ -15,6 +15,10 @@ public class JXLOptions {
     public static final int HDR_ON = 1;
     public static final int HDR_OFF = 2;
 
+    public static final int PEAK_DETECT_AUTO = -1;
+    public static final int PEAK_DETECT_ON = 1;
+    public static final int PEAK_DETECT_OFF = 2;
+
     public boolean debug = false;
     public int outputFormat = OUTPUT_DEFAULT;
     public int verbosity = VERBOSITY_BASE;
@@ -22,7 +26,7 @@ public class JXLOptions {
     public int outputDepth = -1;
     public int outputCompression = 0;
     public boolean renderVarblocks = false;
-    public boolean peakDetect = false;
+    public int peakDetect = PEAK_DETECT_AUTO;
 
     public String input = null;
     public String output = null;

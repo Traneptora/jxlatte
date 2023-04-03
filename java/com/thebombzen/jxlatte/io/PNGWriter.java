@@ -13,6 +13,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
 import com.thebombzen.jxlatte.JXLImage;
+import com.thebombzen.jxlatte.JXLOptions;
 import com.thebombzen.jxlatte.JXLatte;
 import com.thebombzen.jxlatte.color.CIEPrimaries;
 import com.thebombzen.jxlatte.color.CIEXY;
@@ -38,18 +39,18 @@ public class PNGWriter {
     private int tf;
 
     public PNGWriter(JXLImage image) {
-        this(image, -1, false, false);
+        this(image, -1, false, JXLOptions.PEAK_DETECT_AUTO);
     }
 
     public PNGWriter(JXLImage image, boolean hdr) {
-        this(image, -1, hdr, false);
+        this(image, -1, hdr, JXLOptions.PEAK_DETECT_AUTO);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, boolean hdr, boolean peakDetect) {
+    public PNGWriter(JXLImage image, int bitDepth, boolean hdr, int peakDetect) {
         this(image, bitDepth, Deflater.DEFAULT_COMPRESSION, hdr, peakDetect);
     }
 
-    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, boolean hdr, boolean peakDetect) {
+    public PNGWriter(JXLImage image, int bitDepth, int deflateLevel, boolean hdr, int peakDetect) {
         if (bitDepth <= 0)
             bitDepth = hdr || image.getHeader().getBitDepthHeader().bitsPerSample > 8 ? 16 : 8;
         if (bitDepth != 8 && bitDepth != 16)

@@ -152,7 +152,7 @@ public class JXLImage {
         FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
             float[] rgb = raster.getPixel(x, y, (float[])null);
             rgb = MathHelper.matrixMutliply(conversionMatrix, rgb);
-            raster.setPixel(x, y, rgb);
+            image.raster.setPixel(x, y, rgb);
         });
         image.primaries1931 = primaries;
         image.white1931 = whitePoint;
@@ -195,7 +195,7 @@ public class JXLImage {
         return image;
     }
 
-    public JXLImage transform(CIEPrimaries primaries, CIEXY whitePoint, int transfer, boolean peakDetect) {
+    public JXLImage transform(CIEPrimaries primaries, CIEXY whitePoint, int transfer, int peakDetect) {
         JXLImage image = this;
         if (CIEPrimaries.matches(primaries, this.primaries1931) && CIEXY.matches(whitePoint, this.white1931))
             return image.transfer(transfer, peakDetect);
@@ -205,24 +205,23 @@ public class JXLImage {
             .transfer(transfer, peakDetect);
     }
 
-    public JXLImage transform(int primaries, int whitePoint, int transfer, boolean peakDetect) {
+    public JXLImage transform(int primaries, int whitePoint, int transfer, int peakDetect) {
         return transform(ColorFlags.getPrimaries(primaries), ColorFlags.getWhitePoint(whitePoint),
             transfer, peakDetect);
     }
 
     public JXLImage toneMap(CIEPrimaries primaries, CIEXY whitePoint) {
-        return transform(primaries, whitePoint, this.transfer, false);
+        return transform(primaries, whitePoint, this.transfer, JXLOptions.PEAK_DETECT_OFF);
     }
 
     public JXLImage toneMap(int primaries, int whitePoint) {
-        return transform(primaries, whitePoint, this.transfer, false);
+        return transform(primaries, whitePoint, this.transfer, JXLOptions.PEAK_DETECT_OFF);
     }
 
     private float determinePeak() {
         float max = MathHelper.max(
-            transform(null, null, ColorFlags.TF_LINEAR, false)
+            transform(null, null, ColorFlags.TF_LINEAR, JXLOptions.PEAK_DETECT_OFF)
             .buffer.getData(1));
-        System.err.println(max);
         return max;
     }
 
@@ -244,18 +243,18 @@ public class JXLImage {
         return image;
     }
 
-    public JXLImage transfer(int transfer, boolean peakDetect) {
+    public JXLImage transfer(int transfer, int peakDetect) {
         if (transfer == this.transfer)
             return this;
         JXLImage image = this.linearize();
-        if (taggedTransfer == ColorFlags.TF_PQ && peakDetect) {
+        if (taggedTransfer == ColorFlags.TF_PQ &&
+                (peakDetect == JXLOptions.PEAK_DETECT_AUTO || peakDetect == JXLOptions.PEAK_DETECT_ON)) {
             boolean toPQ = transfer == ColorFlags.TF_PQ || transfer == ColorFlags.TF_LINEAR;
             boolean fromPQ = this.transfer == ColorFlags.TF_PQ || this.transfer == ColorFlags.TF_LINEAR;
             if (fromPQ && !toPQ) {
-                image = image.toneMapLinear(null, null);
                 final float scale = 1.0f / image.determinePeak();
-                image = image.transfer(f -> f * scale);
-                image = image.toneMapLinear(this.primaries1931, this.white1931);
+                if (scale > 1.0f || peakDetect == JXLOptions.PEAK_DETECT_ON)
+                    image = image.transfer(f -> f * scale);
             }
         }
         DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
