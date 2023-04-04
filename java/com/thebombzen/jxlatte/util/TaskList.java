@@ -52,12 +52,6 @@ public class TaskList<T> {
         tasks.get(bin).add(supplier.thenApplyAsync(f, threadPool));
     }
 
-    public <U> void submitNow(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        CompletableFuture<T> fut = supplier.thenApplyAsync(f, threadPool);
-        tasks.get(bin).add(fut);
-        FunctionalHelper.join(fut);
-    }
-
     public void submit(int bin, int a, int b, ExceptionalIntBiConsumer consumer) {
         submit(bin, () -> consumer.consume(a, b));
     }
