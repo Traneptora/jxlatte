@@ -24,9 +24,7 @@ public class JXLColorSpace extends ColorSpace {
         this.primariesToXYZD50 = ColorManagement.primariesToXYZD50(primaries, whitePoint);
         this.primariesFromXYZD50 = MathHelper.invertMatrix3x3(primariesToXYZD50);
         this.primariesToSRGB = ColorManagement.getConversionMatrix(
-                                ColorFlags.getPrimaries(ColorFlags.PRI_SRGB),
-                                ColorFlags.getWhitePoint(ColorFlags.WP_D65),
-                                primaries, whitePoint);
+            ColorManagement.PRI_SRGB, ColorManagement.WP_D65, primaries, whitePoint);
         this.primariesFromSRGB = MathHelper.invertMatrix3x3(primariesToSRGB);
         this.transferFunction = ColorManagement.getTransferFunction(transfer);
         this.inverseTransferFunction = ColorManagement.getInverseTransferFunction(transfer);

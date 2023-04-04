@@ -19,6 +19,7 @@ import com.thebombzen.jxlatte.JXLatte;
 import com.thebombzen.jxlatte.color.CIEPrimaries;
 import com.thebombzen.jxlatte.color.CIEXY;
 import com.thebombzen.jxlatte.color.ColorFlags;
+import com.thebombzen.jxlatte.color.ColorManagement;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
@@ -58,8 +59,8 @@ public class PNGWriter {
             throw new IllegalArgumentException("PNG only supports 8 and 16");
         this.hdr = hdr;
         boolean gray = image.getColorEncoding() == ColorFlags.CE_GRAY;
-        this.primaries = ColorFlags.getPrimaries(hdr ? ColorFlags.PRI_BT2100 : ColorFlags.PRI_SRGB);
-        this.whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        this.primaries = hdr ? ColorManagement.PRI_BT2100 : ColorManagement.PRI_SRGB;
+        this.whitePoint = ColorManagement.WP_D65;
         this.tf = hdr ? ColorFlags.TF_PQ : ColorFlags.TF_SRGB;
         this.iccProfile = image.getICCProfile();
         image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);

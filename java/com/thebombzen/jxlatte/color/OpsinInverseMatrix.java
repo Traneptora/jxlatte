@@ -34,7 +34,7 @@ public class OpsinInverseMatrix {
     public final CIEXY whitePoint;
 
     public OpsinInverseMatrix() {
-        this(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB), ColorFlags.getWhitePoint(ColorFlags.WP_D65));
+        this(ColorManagement.PRI_SRGB, ColorManagement.WP_D65);
     }
 
     private OpsinInverseMatrix(CIEPrimaries primaries, CIEXY whitePoint) {
@@ -68,8 +68,8 @@ public class OpsinInverseMatrix {
                 quantBias[i] = reader.readF16();
             quantBiasNumerator = reader.readF16();
         }
-        this.primaries = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
-        this.whitePoint = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+        this.primaries = ColorManagement.PRI_SRGB;
+        this.whitePoint = ColorManagement.WP_D65;
         bakeCbrtBias();
     }
 

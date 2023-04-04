@@ -18,6 +18,15 @@ public final class ColorManagement {
 
     private static final float[][] BRADFORD_INVERSE = MathHelper.invertMatrix3x3(BRADFORD);
 
+    public static final CIEPrimaries PRI_SRGB = ColorFlags.getPrimaries(ColorFlags.PRI_SRGB);
+    public static final CIEPrimaries PRI_BT2100 = ColorFlags.getPrimaries(ColorFlags.PRI_BT2100);
+    public static final CIEPrimaries PRI_P3 = ColorFlags.getPrimaries(ColorFlags.PRI_P3);
+
+    public static final CIEXY WP_D65 = ColorFlags.getWhitePoint(ColorFlags.WP_D65);
+    public static final CIEXY WP_D50 = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
+    public static final CIEXY WP_DCI = ColorFlags.getWhitePoint(ColorFlags.WP_DCI);
+    public static final CIEXY WP_E = ColorFlags.getWhitePoint(ColorFlags.WP_E);
+
     private static float[] getXYZ(CIEXY xy) {
         validateXY(xy);
         float invY = 1.0f / xy.y;
@@ -39,9 +48,9 @@ public final class ColorManagement {
 
     private static float[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
         if (targetWP == null)
-            targetWP = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
+            targetWP = WP_D50;
         if (currentWP == null)
-            currentWP = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
+            currentWP = WP_D50;
         float[] wCurrent = getXYZ(currentWP);
         float[] lmsCurrent = MathHelper.matrixMutliply(BRADFORD, wCurrent);
         float[] wTarget = getXYZ(targetWP);
@@ -57,7 +66,7 @@ public final class ColorManagement {
         if (primaries == null)
             return null;
         if (wp == null)
-            wp = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
+            wp = WP_D50;
         if (wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1)
             throw new IllegalArgumentException();
         float[][] primariesTr = new float[][]{

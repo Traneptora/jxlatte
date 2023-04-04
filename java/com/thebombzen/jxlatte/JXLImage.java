@@ -50,6 +50,8 @@ public class JXLImage {
     private int width;
     private int height;
 
+    private boolean alphaIsPremultiplied;
+
     protected JXLImage(float[][][] buffer, ImageHeader header, FlowHelper flowHelper) throws IOException {
         this.width = buffer[0][0].length;
         this.height = buffer[0].length;
@@ -78,6 +80,7 @@ public class JXLImage {
             this.iccProfile = header.getDecodedICC();
         }
         this.taggedTransfer = bundle.tf;
+        this.alphaIsPremultiplied = hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
@@ -98,6 +101,8 @@ public class JXLImage {
         this.width = image.width;
         this.height = image.height;
 
+        this.alphaIsPremultiplied = image.alphaIsPremultiplied;
+
         if (copyBuffer) {
             final float[][] dataBuffer = image.buffer.getBankData();
             final float[][] buf = new float[dataBuffer.length][width * height];
@@ -116,19 +121,22 @@ public class JXLImage {
         boolean alpha = this.hasAlpha();
         int transparency = alpha ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
         ColorSpace cs;
-        if (this.hasICCProfile())
-            cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
-        else
-            cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer);
-        boolean premultiplied = alpha && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
-        return new ComponentColorModel(cs, alpha, premultiplied, transparency, DataBuffer.TYPE_FLOAT);
+        if (colorEncoding == ColorFlags.CE_GRAY) {
+            // assumes linear light
+            cs = ColorSpace.getInstance(ColorSpace.CS_GRAY);
+        } else {
+            if (this.hasICCProfile())
+                cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
+            else
+                cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer);
+        }
+        return new ComponentColorModel(cs, alpha, alphaIsPremultiplied, transparency, DataBuffer.TYPE_FLOAT);
     }
 
     public BufferedImage asBufferedImage() {
-        if (this.colorEncoding == ColorFlags.CE_GRAY)
-            return fillColor().asBufferedImage();
-        boolean premultiplied = hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
-        return new BufferedImage(getColorModel(), raster, premultiplied, null);
+        if (this.colorEncoding == ColorFlags.CE_GRAY && this.transfer != ColorFlags.TF_LINEAR)
+            return linearize().asBufferedImage();
+        return new BufferedImage(getColorModel(), raster, alphaIsPremultiplied, null);
     }
 
     public boolean isHDR() {
@@ -139,8 +147,7 @@ public class JXLImage {
                 return true;
         }
         ColorEncodingBundle color = imageHeader.getColorEncoding();
-        return color.prim != null && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_SRGB))
-                                  && !color.prim.matches(ColorFlags.getPrimaries(ColorFlags.PRI_P3));
+        return !CIEPrimaries.matches(color.prim, ColorManagement.PRI_SRGB) && !CIEPrimaries.matches(color.prim, ColorManagement.PRI_P3);
     }
 
     /*
@@ -151,7 +158,9 @@ public class JXLImage {
             return this;
         float[][] conversionMatrix =
             ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
-        JXLImage image = new JXLImage(this);
+        JXLImage image = new JXLImage(this, false);
+        image.buffer = new DataBufferFloat(buffer.getSize(), buffer.getNumBanks());
+        image.raster = Raster.createWritableRaster(image.sampleModel, image.buffer, new Point());
         flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
             float[] rgb = raster.getPixel(x, y, (float[])null);
             rgb = MathHelper.matrixMutliply(conversionMatrix, rgb);
@@ -324,5 +333,9 @@ public class JXLImage {
 
     public int getColorChannelCount() {
         return this.colorEncoding == ColorFlags.CE_GRAY ? 1 : 3;
+    }
+
+    public boolean isAlphaPremultiplied() {
+        return alphaIsPremultiplied;
     }
 }
