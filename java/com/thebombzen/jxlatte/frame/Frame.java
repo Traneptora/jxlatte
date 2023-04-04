@@ -78,11 +78,13 @@ public class Frame {
     private int width;
     private int height;
     private JXLOptions options;
+    private FlowHelper flowHelper;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata, JXLOptions options) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, JXLOptions options, FlowHelper flowHelper) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
         this.options = options;
+        this.flowHelper = flowHelper;
     }
 
     public Frame(Frame frame) {
@@ -121,6 +123,11 @@ public class Frame {
             header.origin = new IntPoint();
         }
         this.options = frame.options;
+        this.flowHelper = frame.flowHelper;
+    }
+
+    public FlowHelper getFlowHelper() {
+        return flowHelper;
     }
 
     public void readHeader() throws IOException {
@@ -259,7 +266,7 @@ public class Frame {
         int l = MathHelper.ceilLog1p(k - 1) - 1;
         float[][][][] upWeights = globalMetadata.getUpWeights()[l];
         float[][] newBuffer = new float[buffer.length * k][];
-        TaskList<Void> tasks = new TaskList<>();
+        TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
         for (int y0 = 0; y0 < buffer.length; y0++) {
             tasks.submit(y0, (y) -> {
                 for (int ky = 0; ky < k; ky++) {
@@ -335,7 +342,7 @@ public class Frame {
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 int[][] newChannel = lfGroups[lfGroupID].modularLFGroupBuffer[j];
                 ModularChannelInfo newChannelInfo = lfGroups[lfGroupID].modularLFGroupInfo[j];
-                FlowHelper.parallelIterate(IntPoint.sizeOf(newChannel), (x, y) -> {
+                flowHelper.parallelIterate(IntPoint.sizeOf(newChannel), (x, y) -> {
                     channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, newChannel[y][x]);
                 });
             }
@@ -352,16 +359,12 @@ public class Frame {
     private void decodePassGroups() throws IOException {
 
         int numPasses = passes.length;
-        PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
+        PassGroup[][] passGroups = new PassGroup[numPasses][];
 
-        CompletableFuture<?>[][] futures = new CompletableFuture[numPasses][numGroups];
-
-        for (int pass0 = 0; pass0 < numPasses; pass0++) {
-            final int pass = pass0;
-            for (int group0 = 0; group0 < numGroups; group0++) {
-                final int group = group0;
-                futures[pass][group] = getBitreader(2 + numLFGroups + pass * numGroups + group)
-                        .thenAcceptAsync((reader) -> {
+        TaskList<PassGroup> taskList = new TaskList<>(flowHelper.getThreadPool(), numPasses);
+        for (final int pass : FlowHelper.range(numPasses)) {
+            for (final int group : FlowHelper.range(numGroups)) {
+                taskList.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
                     ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
                     .filter(Objects::nonNull).map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
                     for (ModularChannelInfo info : replaced) {
@@ -375,19 +378,13 @@ public class Frame {
                         info.width = size.x;
                         info.height = size.y;
                     }
-                    try {
-                        passGroups[pass][group] = new PassGroup(reader, Frame.this, pass, group, replaced);
-                    } catch (Throwable ex) {
-                        FunctionalHelper.sneakyThrow(ex);
-                    }
+                    return new PassGroup(reader, Frame.this, pass, group, replaced);
                 });
             }
         }
 
         for (int pass = 0; pass < numPasses; pass++) {
-            for (int group = 0; group < numGroups; group++) {
-                futures[pass][group].join();
-            }
+            passGroups[pass] = taskList.collect(pass).stream().toArray(PassGroup[]::new);
             int j = 0;
             for (int i = 0; i < passes[pass].replacedChannels.length; i++) {
                 if (passes[pass].replacedChannels[i] == null)
@@ -396,7 +393,7 @@ public class Frame {
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannelInfo newChannelInfo = passGroups[pass][group].modularPassGroupInfo[j];
                     int[][] buff = passGroups[pass][group].modularPassGroupBuffer[j];
-                    FlowHelper.parallelIterate(new IntPoint(newChannelInfo.width, newChannelInfo.height), (x, y) -> {
+                    flowHelper.parallelIterate(new IntPoint(newChannelInfo.width, newChannelInfo.height), (x, y) -> {
                         channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, buff[y][x]);
                     });
                 }
@@ -405,22 +402,18 @@ public class Frame {
         }
 
         if (header.encoding == FrameFlags.VARDCT) {
-            for (int pass0 = 0; pass0 < numPasses; pass0++) {
-                final int pass = pass0;
-                for (int group0 = 0; group0 < numGroups; group0++) {
-                    final int group = group0;
-                    futures[pass][group] = CompletableFuture.runAsync(() -> {
+            TaskList<Void> varDCTTaskList = new TaskList<>(flowHelper.getThreadPool(), numPasses);
+            for (final int pass : FlowHelper.range(numPasses)) {
+                for (final int group : FlowHelper.range(numGroups)) {
+                    varDCTTaskList.submit(pass, () -> {
                         PassGroup passGroup = passGroups[pass][group];
                         PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
                         passGroup.invertVarDCT(buffer, prev);
                     });
                 }
-                for (int group = 0; group < numGroups; group++) {
-                    futures[pass][group].join();
-                }
+                varDCTTaskList.collect(pass);
             }
         }
-
     }
 
     public void decodeFrame(float[][][] lfBuffer) throws IOException {
@@ -469,7 +462,7 @@ public class Frame {
                 scaleFactor = 1.0f;
             else
                 scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
-            FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
+            flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
                 if (xybM && cIn == 2)
                     buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
@@ -523,7 +516,7 @@ public class Frame {
     }
 
     private void performGabConvolution() {
-        final TaskList<?> tasks = new TaskList<>(3);
+        final TaskList<?> tasks = new TaskList<>(flowHelper.getThreadPool(), 3);
         final float[][] normGabW = new float[3][3];
         for (int c = 0; c < 3; c++) {
             final float gabW1 = header.restorationFilter.gab1Weights[c];
@@ -533,21 +526,19 @@ public class Frame {
             normGabW[1][c] = gabW1 * mult;
             normGabW[2][c] = gabW2 * mult;
         }
-        for (int c0 = 0; c0 < 3; c0++) {
-            final int c = c0;
+        for (final int c : FlowHelper.range(3)) {
             final float[][] buffC = buffer[c];
             final int height = buffC.length;
             final int width = buffC[0].length;
             final float[][] newBuffer = new float[height][width];
-            for (int y0 = 0; y0 < height; y0++) {
-                final int y = y0;
+            for (final int y : FlowHelper.range(height)) {
                 final int north = MathHelper.mirrorCoordinate(y - 1, height);
                 final int south = MathHelper.mirrorCoordinate(y + 1, height);
                 final float[] buffR = buffC[y];
                 final float[] buffN = buffC[north];
                 final float[] buffS = buffC[south];
                 final float[] newBuffR = newBuffer[y];
-                tasks.submit(() -> {
+                tasks.submit(c, () -> {
                     for (int x = 0; x < width; x++) {
                         final int west = MathHelper.mirrorCoordinate(x - 1, width);
                         final int east = MathHelper.mirrorCoordinate(x + 1, width);
@@ -557,7 +548,7 @@ public class Frame {
                     }
                 });
             }
-            tasks.collect();
+            tasks.collect(c);
             buffer[c] = newBuffer;
         }
     }
@@ -762,7 +753,7 @@ public class Frame {
         int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
         float[][][] noiseBuffer = new float[3][header.height][header.width];
         int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
-        TaskList<Void> tasks = new TaskList<>();
+        TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
         for (int group = 0; group < numGroups; group++) {
             IntPoint groupXYUp = IntPoint.coordinates(group, rowStride).times(header.upsampling);
             // SPEC: spec doesn't mention how noise groups interact with upsampling
@@ -787,7 +778,7 @@ public class Frame {
         this.noiseBuffer = new float[3][header.height][header.width];
         tasks.collect();
 
-        FlowHelper.parallelIterate(3, new IntPoint(header.width, header.height), (c, x, y) -> {
+        flowHelper.parallelIterate(3, new IntPoint(header.width, header.height), (c, x, y) -> {
             for (int iy = 0; iy < 5; iy++) {
                 for (int ix = 0; ix < 5; ix++) {
                     int cy = MathHelper.mirrorCoordinate(y + iy - 2, header.height);
@@ -796,7 +787,6 @@ public class Frame {
                 }
             }
         });
-        tasks.collect();
     }
 
     public void synthesizeNoise() {
@@ -804,7 +794,7 @@ public class Frame {
             return;
         float[] lut = lfGlobal.noiseParameters.lut;
         // header.width here to avoid upsampling
-        FlowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+        flowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
             // SPEC: spec doesn't mention the *0.5 here, it says *6
             // SPEC: spec doesn't mention clamping to 0 here
             float inScaledR = 3f * Math.max(0f, buffer[1][y][x] + buffer[0][y][x]);

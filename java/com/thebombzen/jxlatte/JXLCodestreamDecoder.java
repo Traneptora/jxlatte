@@ -27,7 +27,7 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
 
-    private static float[][] transposeBuffer(float[][] src, int orientation) {
+    private float[][] transposeBuffer(float[][] src, int orientation) {
         IntPoint size = IntPoint.sizeOf(src);
         float[][] dest = orientation > 4 ? new float[size.x][size.y]
             : orientation > 1 ? new float[size.y][size.x] : null;
@@ -36,43 +36,43 @@ public class JXLCodestreamDecoder {
                 return src;
             case 2:
                 // flip horizontally
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[p.y][size.x - 1 - p.x] = src[p.y][p.x];
                 });
                 return dest;
             case 3:
                 // rotate 180 degrees
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[size.y - 1 - p.y][size.x - 1 - p.x] = src[p.y][p.x];
                 });
                 return dest;
             case 4:
                 // flip vertically
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[size.y - 1 - p.y][p.x] = src[p.y][p.x];
                 });
                 return dest;
             case 5:
                 // transpose
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[p.x][p.y] = src[p.y][p.x];
                 });
                 return dest;
             case 6:
                 // rotate clockwise
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[p.x][size.y - 1 - p.y] = src[p.y][p.x];
                 });
                 return dest;
             case 7:
                 // skew transpose
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[size.x - 1 - p.x][size.y - 1 - p.y] = src[p.y][p.x];
                 });
                 return dest;
             case 8:
                 // rotate counterclockwise
-                FlowHelper.parallelIterate(size, p -> {
+                flowHelper.parallelIterate(size, p -> {
                     dest[size.x - 1 - p.x][p.y] = src[p.y][p.x];
                 });
                 return dest;
@@ -86,9 +86,11 @@ public class JXLCodestreamDecoder {
     private ImageHeader imageHeader;
     private JXLOptions options;
     private Demuxer demuxer;
+    private FlowHelper flowHelper;
 
-    public JXLCodestreamDecoder(PushbackInputStream in, JXLOptions options, Demuxer demuxer) {
+    public JXLCodestreamDecoder(PushbackInputStream in, JXLOptions options, Demuxer demuxer, FlowHelper flowHelper) {
         this.in = in;
+        this.flowHelper = flowHelper;
         this.bitreader = new Bitreader(in);
         this.options = options;
         this.demuxer = demuxer;
@@ -199,10 +201,10 @@ public class JXLCodestreamDecoder {
     public void performColorTransforms(OpsinInverseMatrix matrix, Frame frame) {
         float[][][] frameBuffer = frame.getBuffer();
         if (matrix != null)
-            matrix.invertXYB(frameBuffer, imageHeader.getToneMapping().intensityTarget);
+            matrix.invertXYB(frameBuffer, imageHeader.getToneMapping().intensityTarget, flowHelper);
 
         if (frame.getFrameHeader().doYCbCr) {
-            FlowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
+            flowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
                 float yh = frameBuffer[1][y][x] + 0.5f;
                 float cb = frameBuffer[0][y][x];
                 float cr = frameBuffer[2][y][x];
@@ -347,7 +349,7 @@ public class JXLCodestreamDecoder {
         }
 
         if (imageHeader.getPreviewHeader() != null) {
-            Frame frame = new Frame(bitreader, imageHeader, options);
+            Frame frame = new Frame(bitreader, imageHeader, options, flowHelper);
             frame.readHeader();
             frame.skipFrameData();
         }
@@ -359,7 +361,7 @@ public class JXLCodestreamDecoder {
         float[][][][] lfBuffer = new float[5][][][];
 
         do {
-            Frame frame = new Frame(bitreader, imageHeader, options);
+            Frame frame = new Frame(bitreader, imageHeader, options, flowHelper);
             frame.readHeader();
             header = frame.getFrameHeader();
             if (options.verbosity >= JXLOptions.VERBOSITY_INFO && frames.size() == 0)
@@ -425,7 +427,7 @@ public class JXLCodestreamDecoder {
             orientedCanvas[i] = transposeBuffer(canvas[c], orientation);
         }
 
-        JXLImage image = new JXLImage(orientedCanvas, imageHeader);
+        JXLImage image = new JXLImage(orientedCanvas, imageHeader, flowHelper);
 
         bitreader.zeroPadToByte();
         byte[] drain = bitreader.drainCache();

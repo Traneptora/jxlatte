@@ -334,14 +334,14 @@ public class ModularChannel extends ModularChannelInfo {
         return decoded;
     }
 
-    public static ModularChannel inverseHorizontalSqueeze(ModularChannelInfo info, ModularChannel orig,
+    public static ModularChannel inverseHorizontalSqueeze(FlowHelper flowHelper, ModularChannelInfo info, ModularChannel orig,
             ModularChannel res) {
         if (info.width != orig.width + res.width
                 || (orig.width != res.width && orig.width != 1 + res.width)
                 || info.height != orig.height || res.height != orig.height)
             throw new IllegalArgumentException("Corrupted squeeze transform");
         ModularChannel channel = new ModularChannel(info);
-        FlowHelper.parallelIterate(new IntPoint(res.width, channel.height), (x, y) -> {
+        flowHelper.parallelIterate(new IntPoint(res.width, channel.height), (x, y) -> {
             int avg = orig.get(x, y);
             int residu = res.get(x, y);
             int nextAvg = x + 1 < orig.width ? orig.get(x + 1, y) : avg;
@@ -359,7 +359,7 @@ public class ModularChannel extends ModularChannelInfo {
         return channel;
     }
 
-    public static ModularChannel inverseVerticalSqueeze(ModularChannelInfo info, ModularChannel orig,
+    public static ModularChannel inverseVerticalSqueeze(FlowHelper flowHelper, ModularChannelInfo info, ModularChannel orig,
             ModularChannel res) {
         if (info.height != orig.height + res.height
                 || (orig.height != res.height && orig.height != 1 + res.height)
@@ -367,7 +367,7 @@ public class ModularChannel extends ModularChannelInfo {
             throw new IllegalStateException("Corrupted squeeze transform");
 
         ModularChannel channel = new ModularChannel(info);
-        FlowHelper.parallelIterate(new IntPoint(res.height, channel.width), (y, x) -> {
+        flowHelper.parallelIterate(new IntPoint(res.height, channel.width), (y, x) -> {
             int avg = orig.get(x, y);
             int residu = res.get(x, y);
             int nextAvg = y + 1 < orig.height ? orig.get(x, y + 1) : avg;

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.frame.LFGlobal;
+import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 import com.thebombzen.jxlatte.util.TaskList;
@@ -23,7 +24,7 @@ public class Spline {
         this.controlPoints = controlPoints;
     }
 
-    private FloatPoint[] upsampleControlPoints() {
+    private FloatPoint[] upsampleControlPoints(FlowHelper flowHelper) {
         if (controlPoints.length == 1) {
             return new FloatPoint[]{new FloatPoint(controlPoints[0])};
         }
@@ -34,7 +35,7 @@ public class Spline {
         }
         extended[extended.length - 1] = controlPoints[controlPoints.length - 1].plus(controlPoints[controlPoints.length - 1]).minus(controlPoints[controlPoints.length - 2]);
         FloatPoint[] upsampled = new FloatPoint[16 * (extended.length - 3) + 1];
-        TaskList<Void> tasks = new TaskList<>();
+        TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
         for (int i = 0; i < extended.length - 3; i++) {
             final int j = i;
             tasks.submit(() -> {
@@ -128,13 +129,13 @@ public class Spline {
 
     public void renderSpline(Frame frame) {
         computeCoeffs(splineID, frame.getLFGlobal());
-        upsampled = upsampleControlPoints();
+        upsampled = upsampleControlPoints(frame.getFlowHelper());
         float renderDistance = 1.0f;
         arcs = computeIntermediarySamples(renderDistance);
         float arcLength = (arcs.length - 2f) * renderDistance + arcs[arcs.length - 1].arcLength;
         if (arcLength <= 0D)
             return;
-        TaskList<Void> tasks = new TaskList<>();
+        TaskList<Void> tasks = new TaskList<>(frame.getFlowHelper().getThreadPool());
         for (int i = 0; i < arcs.length; i++) {
             tasks.submit(i, (j) -> {
                 SplineArc arc = arcs[j];

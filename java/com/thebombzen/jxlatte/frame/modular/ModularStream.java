@@ -237,11 +237,11 @@ public class ModularStream {
                         if (sp.horizontal) {
                             ModularChannelInfo outputInfo = new ModularChannelInfo(chan.width + residu.width,
                                 chan.height, chan.hshift - 1, chan.vshift);
-                            output = ModularChannel.inverseHorizontalSqueeze(outputInfo, chan, residu);
+                            output = ModularChannel.inverseHorizontalSqueeze(frame.getFlowHelper(), outputInfo, chan, residu);
                         } else {
                             ModularChannelInfo outputInfo = new ModularChannelInfo(chan.width,
                                 chan.height + residu.height, chan.hshift, chan.vshift - 1);
-                            output = ModularChannel.inverseVerticalSqueeze(outputInfo, chan, residu);
+                            output = ModularChannel.inverseVerticalSqueeze(frame.getFlowHelper(), outputInfo, chan, residu);
                         }
                         channels.set(c, output);
                     }
@@ -304,7 +304,7 @@ public class ModularStream {
                     default:
                         throw new IllegalStateException("Challenge complete how did we get here");
                 }
-                TaskList<Void> tasks = new TaskList<Void>();
+                TaskList<Void> tasks = new TaskList<>(frame.getFlowHelper().getThreadPool());
                 for (int y0 = 0; y0 < v[0].height; y0++) {
                     tasks.submit(y0, (y) -> {
                         for (int x = 0; x < v[0].width; x++) {

@@ -87,11 +87,11 @@ public class OpsinInverseMatrix {
         return opsin;
     }
 
-    public void invertXYB(float[][][] buffer, float intensityTarget) {
+    public void invertXYB(float[][][] buffer, float intensityTarget, FlowHelper flowHelper) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         final float itScale = 255f / intensityTarget;
-        FlowHelper.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
+        flowHelper.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
             float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
             float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
             float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];

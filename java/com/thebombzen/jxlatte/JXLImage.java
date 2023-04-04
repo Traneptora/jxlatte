@@ -27,6 +27,8 @@ import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class JXLImage {
+    private FlowHelper flowHelper;
+
     private DataBufferFloat buffer;
     private WritableRaster raster;
 
@@ -46,9 +48,10 @@ public class JXLImage {
     private int width;
     private int height;
 
-    protected JXLImage(float[][][] buffer, ImageHeader header) throws IOException {
+    protected JXLImage(float[][][] buffer, ImageHeader header, FlowHelper flowHelper) throws IOException {
         this.width = buffer[0][0].length;
         this.height = buffer[0].length;
+        this.flowHelper = flowHelper;
         final float[][] dataArray  = new float[buffer.length][width * height];
         for (int c = 0; c < buffer.length; c++) {
             for (int y = 0; y < height; y++)
@@ -76,6 +79,7 @@ public class JXLImage {
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
+        this.flowHelper = image.flowHelper;
         this.sampleModel = image.sampleModel;
         this.imageHeader = image.imageHeader;
         this.colorEncoding = image.colorEncoding;
@@ -145,7 +149,7 @@ public class JXLImage {
         float[][] conversionMatrix =
             ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
         JXLImage image = new JXLImage(this);
-        FlowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
+        flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
             float[] rgb = raster.getPixel(x, y, (float[])null);
             rgb = MathHelper.matrixMutliply(conversionMatrix, rgb);
             image.raster.setPixel(x, y, rgb);
@@ -223,7 +227,7 @@ public class JXLImage {
 
     private JXLImage transfer(DoubleUnaryOperator op) {
         JXLImage image = new JXLImage(this);
-        FlowHelper.parallelIterate(buffer.getNumBanks(), new IntPoint(width, height), (c, x, y) -> {
+        flowHelper.parallelIterate(buffer.getNumBanks(), new IntPoint(width, height), (c, x, y) -> {
             image.raster.setSample(x, y, c, op.applyAsDouble(this.raster.getSampleFloat(x, y, c)));
         });
         return image;

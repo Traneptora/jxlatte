@@ -27,6 +27,7 @@ public class JXLOptions {
     public int outputCompression = 0;
     public boolean renderVarblocks = false;
     public int peakDetect = PEAK_DETECT_AUTO;
+    public int threads = 0;
 
     public String input = null;
     public String output = null;
@@ -44,6 +45,7 @@ public class JXLOptions {
         this.outputCompression = options.outputCompression;
         this.renderVarblocks = options.renderVarblocks;
         this.peakDetect = options.peakDetect;
+        this.threads = options.threads;
 
         this.input = options.input;
         this.output = options.output;

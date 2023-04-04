@@ -3,6 +3,7 @@ package com.thebombzen.jxlatte.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import com.thebombzen.jxlatte.util.functional.ExceptionalFunction;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
@@ -14,13 +15,14 @@ import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 public class TaskList<T> {
 
     private List<List<CompletableFuture<? extends T>>> tasks;
+    private ExecutorService threadPool;
 
-
-    public TaskList() {
-        this(1);
+    public TaskList(ExecutorService threadPool) {
+        this(threadPool, 1);
     }
 
-    public TaskList(int bins) {
+    public TaskList(ExecutorService threadPool, int bins) {
+        this.threadPool = threadPool;
         tasks = new ArrayList<>(bins);
         for (int i = 0; i < bins; i++)
             tasks.add(new ArrayList<>());
@@ -39,7 +41,7 @@ public class TaskList<T> {
     }
 
     public void submit(int bin, ExceptionalSupplier<? extends T> s) {
-        tasks.get(bin).add(CompletableFuture.supplyAsync(s));
+        tasks.get(bin).add(CompletableFuture.supplyAsync(s, threadPool));
     }
 
     public <U> void submit(CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
@@ -47,19 +49,17 @@ public class TaskList<T> {
     }
 
     public <U> void submit(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        tasks.get(bin).add(supplier.thenApplyAsync(f));
+        tasks.get(bin).add(supplier.thenApplyAsync(f, threadPool));
     }
 
     public <U> void submitNow(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        CompletableFuture<T> fut = supplier.thenApplyAsync(f);
+        CompletableFuture<T> fut = supplier.thenApplyAsync(f, threadPool);
         tasks.get(bin).add(fut);
         FunctionalHelper.join(fut);
     }
 
     public void submit(int bin, int a, int b, ExceptionalIntBiConsumer consumer) {
-        submit(bin, () -> {
-            consumer.consume(a, b);
-        });
+        submit(bin, () -> consumer.consume(a, b));
     }
 
     public void submit(int a, int b, ExceptionalIntBiConsumer consumer) {
@@ -67,9 +67,7 @@ public class TaskList<T> {
     }
 
     public void submit(int bin, int a, ExceptionalIntConsumer consumer) {
-        submit(bin, () -> {
-            consumer.consume(a);
-        });
+        submit(bin, () -> consumer.consume(a));
     }
 
     public void submit(int a, ExceptionalIntConsumer consumer) {
@@ -78,18 +76,16 @@ public class TaskList<T> {
 
     public List<T> collect(int bin) {
         List<T> results = new ArrayList<>();
-        for (CompletableFuture<? extends T> future : tasks.get(bin)) {
+        for (CompletableFuture<? extends T> future : tasks.get(bin))
             results.add(FunctionalHelper.join(future));
-        }
         tasks.get(bin).clear();
         return results;
     }
 
     public List<T> collect() {
         List<T> results = new ArrayList<>();
-        for (int bin = 0; bin < tasks.size(); bin++) {
+        for (int bin = 0; bin < tasks.size(); bin++)
             results.addAll(collect(bin));
-        }
         return results;
     }
 }

@@ -9,10 +9,12 @@ import java.io.InputStream;
 
 import com.thebombzen.jxlatte.io.Demuxer;
 import com.thebombzen.jxlatte.io.PushbackInputStream;
+import com.thebombzen.jxlatte.util.FlowHelper;
 
 public class JXLDecoder implements Closeable {
     private Demuxer demuxer;
     private JXLCodestreamDecoder decoder;
+    private FlowHelper flowHelper;
 
     public JXLDecoder(InputStream in) {
         this(in, new JXLOptions());
@@ -23,8 +25,9 @@ public class JXLDecoder implements Closeable {
     }
 
     public JXLDecoder(InputStream in, JXLOptions options) {
+        flowHelper = new FlowHelper(options.threads > 0 ? options.threads : Runtime.getRuntime().availableProcessors());
         demuxer = new Demuxer(in);
-        decoder = new JXLCodestreamDecoder(new PushbackInputStream(demuxer), options, demuxer);
+        decoder = new JXLCodestreamDecoder(new PushbackInputStream(demuxer), options, demuxer, flowHelper);
     }
 
     public JXLDecoder(String filename, JXLOptions options) throws FileNotFoundException {
