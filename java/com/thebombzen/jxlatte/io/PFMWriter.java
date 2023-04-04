@@ -25,7 +25,7 @@ public class PFMWriter {
         String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF",
             image.getWidth(), image.getHeight());
         dout.writeBytes(header);
-        Raster raster = image.getRaster();
+        Raster raster = image.asBufferedImage().getRaster();
         // pfm is in backwards scanline order, bottom to top
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {

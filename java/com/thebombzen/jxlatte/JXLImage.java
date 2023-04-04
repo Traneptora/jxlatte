@@ -3,6 +3,8 @@ package com.thebombzen.jxlatte;
 import java.awt.Point;
 import java.awt.Transparency;
 import java.awt.color.ColorSpace;
+import java.awt.color.ICC_ColorSpace;
+import java.awt.color.ICC_Profile;
 import java.awt.image.BandedSampleModel;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -113,18 +115,19 @@ public class JXLImage {
     private ColorModel getColorModel() {
         boolean alpha = this.hasAlpha();
         int transparency = alpha ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
-        ColorSpace cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer);
-        return new ComponentColorModel(cs, alpha, true, transparency, DataBuffer.TYPE_FLOAT);
-    }
-
-    public WritableRaster getRaster() {
-        return this.raster;
+        ColorSpace cs;
+        if (this.hasICCProfile())
+            cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
+        else
+            cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer);
+        boolean premultiplied = alpha && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
+        return new ComponentColorModel(cs, alpha, premultiplied, transparency, DataBuffer.TYPE_FLOAT);
     }
 
     public BufferedImage asBufferedImage() {
         if (this.colorEncoding == ColorFlags.CE_GRAY)
             return fillColor().asBufferedImage();
-        boolean premultiplied = hasAlpha() && imageHeader.getExtraChannelInfo(this.alphaIndex).alphaAssociated;
+        boolean premultiplied = hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
         return new BufferedImage(getColorModel(), raster, premultiplied, null);
     }
 

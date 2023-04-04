@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.io;
 
-import java.awt.image.Raster;
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
@@ -22,7 +23,7 @@ import com.thebombzen.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;
-    private Raster raster;
+    private WritableRaster raster;
     private DataOutputStream out;
     private int maxValue;
     private int width;
@@ -62,7 +63,9 @@ public class PNGWriter {
         this.tf = hdr ? ColorFlags.TF_PQ : ColorFlags.TF_SRGB;
         this.iccProfile = image.getICCProfile();
         image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);
-        this.raster = image.getRaster();
+        BufferedImage bufferedImage = image.asBufferedImage();
+        this.raster = bufferedImage.getRaster();
+        bufferedImage.getColorModel().coerceData(this.raster, false);
         this.bitDepth = bitDepth;
         this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
