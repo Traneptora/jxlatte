@@ -6,6 +6,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 
 import com.thebombzen.jxlatte.io.Demuxer;
 import com.thebombzen.jxlatte.io.PushbackInputStream;
@@ -16,22 +19,28 @@ public class JXLDecoder implements Closeable {
     private JXLCodestreamDecoder decoder;
     private FlowHelper flowHelper;
 
-    public JXLDecoder(InputStream in) {
-        this(in, new JXLOptions());
-    }
-
     public JXLDecoder(String filename) throws FileNotFoundException {
         this(filename, new JXLOptions());
     }
 
-    public JXLDecoder(InputStream in, JXLOptions options) {
-        flowHelper = new FlowHelper(options.threads > 0 ? options.threads : Runtime.getRuntime().availableProcessors());
-        demuxer = new Demuxer(in);
-        decoder = new JXLCodestreamDecoder(new PushbackInputStream(demuxer), options, demuxer, flowHelper);
+    public JXLDecoder(InputStream in) {
+        this(in, new JXLOptions());
     }
 
     public JXLDecoder(String filename, JXLOptions options) throws FileNotFoundException {
         this(new BufferedInputStream(new FileInputStream(filename)), options);
+    }
+
+    public JXLDecoder(InputStream in, JXLOptions options) {
+        this(in, options, options.threads > 0 ?
+            Executors.newWorkStealingPool(options.threads) :
+            ForkJoinPool.commonPool());
+    }
+
+    public JXLDecoder(InputStream in, JXLOptions options, ExecutorService threadPool) {
+        flowHelper = new FlowHelper(threadPool);
+        demuxer = new Demuxer(in);
+        decoder = new JXLCodestreamDecoder(new PushbackInputStream(demuxer), options, demuxer, flowHelper);
     }
 
     public JXLImage decode() throws IOException {

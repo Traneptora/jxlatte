@@ -1,7 +1,6 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -42,8 +41,8 @@ public class FlowHelper {
 
     private ExecutorService threadPool;
 
-    public FlowHelper(int threads) {
-        threadPool = Executors.newWorkStealingPool(threads);
+    public FlowHelper(ExecutorService service) {
+        threadPool = service;
     }
 
     public void parallelIterate(int c, IntPoint[] size, ExceptionalIntTriConsumer func) {
