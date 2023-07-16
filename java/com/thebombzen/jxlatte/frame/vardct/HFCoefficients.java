@@ -111,7 +111,9 @@ public class HFCoefficients {
                 }
                 // SPEC: spec doesn't mention that nonZero > 0 is illegal
                 if (nonZero != 0)
-                    throw new InvalidBitstreamException("Illegal final nonzero count: " + nonZero);
+                    throw new InvalidBitstreamException(String.format(
+                        "Illegal final nonzero count: %s, in group %d, at varblock (%d, %d, c=%d)" , nonZero, groupID,
+                            shiftedBlockPos.x, shiftedBlockPos.y, c));
             }
         }
         if (!stream.validateFinalState())
