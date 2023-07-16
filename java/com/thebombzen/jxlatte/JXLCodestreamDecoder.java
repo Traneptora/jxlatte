@@ -259,14 +259,18 @@ public class JXLCodestreamDecoder {
                 // fall through here is intentional
                 case FrameFlags.BLEND_REPLACE:
                     for (int y = frameYStart; y < frameYEnd; y++) {
-                        System.arraycopy(newBuffer[y - frameYStart], 0, canvas[c][y], frameXStart, frameXEnd - frameXStart);
+                        System.arraycopy(newBuffer[y - frameYStart], 0, canvas[c][y],
+                            frameXStart, frameXEnd - frameXStart);
                     }
                     break;
                 case FrameFlags.BLEND_MULT:
                     for (int y = frameYStart; y < frameYEnd; y++) {
                         if (ref != null) {
                             for (int x = frameXStart; x < frameXEnd; x++) {
-                                canvas[c][y][x] = frame.getSample(c, x, y) * getSample(ref[c], x, y);
+                                float newSample = frame.getSample(c, x, y);
+                                if (info.clamp)
+                                    newSample = MathHelper.clamp(newSample, 0.0f, 1.0f);
+                                canvas[c][y][x] = newSample * getSample(ref[c], x, y);
                             }
                         } else {
                             Arrays.fill(canvas[c][y], frameXStart, frameXEnd, 0f);
@@ -280,14 +284,13 @@ public class JXLCodestreamDecoder {
                                 getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0f;
                             float newAlpha = !imageHeader.hasAlpha() ? 1.0f
                                 : frame.getSample(colorChannels + info.alphaChannel, x, y);
+                            if (info.clamp)
+                                newAlpha = MathHelper.clamp(newAlpha, 0.0f, 1.0f);
                             float alpha = 1.0f;
                             float oldSample = ref != null ? getSample(ref[c], x, y) : 0.0f;
                             float newSample = frame.getSample(c, x, y);
-                            if (isAlpha || !premult) {
+                            if (isAlpha || !premult)
                                 alpha = oldAlpha + newAlpha * (1 - oldAlpha);
-                                if (info.clamp)
-                                    alpha = MathHelper.clamp(alpha, 0.0f, 1.0f);
-                            }
                             canvas[c][y][x] = isAlpha ? alpha : premult ? newSample + oldSample * (1 - newAlpha)
                             : (newSample * newAlpha + oldSample * oldAlpha * (1 - newAlpha)) / alpha;
                         }
@@ -300,12 +303,11 @@ public class JXLCodestreamDecoder {
                                 getSample(ref[colorChannels + info.alphaChannel], x, y) : 0.0f;
                             float newAlpha = !imageHeader.hasAlpha() ? 1.0f
                                 : frame.getSample(colorChannels + info.alphaChannel, x, y);
-                            float alpha = oldAlpha + newAlpha * (1.0f - oldAlpha);
                             if (info.clamp)
-                                alpha = MathHelper.clamp(alpha, 0.0f, 1.0f);
+                                newAlpha = MathHelper.clamp(newAlpha, 0.0f, 1.0f);
                             float oldSample = ref != null ? getSample(ref[c], x, y) : 0.0f;
                             float newSample = frame.getSample(c, x, y);
-                            canvas[c][y][x] = isAlpha ? alpha : oldSample + alpha * newSample;
+                            canvas[c][y][x] = isAlpha ? oldAlpha : oldSample + newAlpha * newSample;
                         }
                     }
                     break;
