@@ -251,11 +251,7 @@ public class Frame {
     }
 
     private float[][] performUpsampling(float[][] buffer, int c) {
-        int color;
-        if (header.encoding == FrameFlags.VARDCT || globalMetadata.isXYBEncoded())
-            color = 3;
-        else
-            color = globalMetadata.getColorChannelCount();
+        int color = getColorChannelCount();
         int k;
         if (c < color)
             k = header.upsampling;
@@ -324,7 +320,7 @@ public class Frame {
             IntPoint frameSize = getPaddedFrameSize();
             for (ModularChannelInfo info : replaced) {
                 IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                IntPoint lfSize = frameSize.ceilDiv(IntPoint.ONE.shiftLeft(shift));
+                IntPoint lfSize = frameSize.shiftRight(shift);
                 IntPoint chanSize = new IntPoint(info.width, info.height);
                 IntPoint pos = lfGroupPos.times(chanSize);
                 IntPoint size = chanSize.min(lfSize.minus(pos));
@@ -424,9 +420,8 @@ public class Frame {
         lfGlobal = FunctionalHelper.join(getBitreader(0)
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
         IntPoint paddedSize = getPaddedFrameSize();
-        // VarDCT always has 3 channels even in grayscale
-        int colorChannels = header.encoding == FrameFlags.VARDCT || globalMetadata.isXYBEncoded() ? 3 : globalMetadata.getColorChannelCount();
-        buffer = new float[colorChannels + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
+
+        buffer = new float[getColorChannelCount() + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
 
         decodeLFGroups(lfBuffer);
 
@@ -447,16 +442,16 @@ public class Frame {
         for (int c = 0; c < modularBuffer.length; c++) {
             int cIn = c;
             float scaleFactor;
-            boolean isColor = header.encoding == FrameFlags.MODULAR && c < 3;
-            boolean xybM = globalMetadata.isXYBEncoded() && isColor;
+            boolean isModularColor = header.encoding == FrameFlags.MODULAR && c < getColorChannelCount();
+            boolean isModularXYB = globalMetadata.isXYBEncoded() && isModularColor;
             // X, Y, B is encoded as Y, X, (B - Y)
-            int cOut = (xybM ? cMap[c] : c) + buffer.length - modularBuffer.length;
+            int cOut = (isModularXYB ? cMap[c] : c) + buffer.length - modularBuffer.length;
             int ecIndex = c - (header.encoding == FrameFlags.MODULAR ? globalMetadata.getColorChannelCount() : 0);
-            if (xybM)
+            if (isModularXYB)
                 scaleFactor = lfGlobal.lfDequant[cOut];
-            else if (isColor && globalMetadata.getBitDepthHeader().expBits != 0)
+            else if (isModularColor && globalMetadata.getBitDepthHeader().expBits != 0)
                 scaleFactor = 1.0f;
-            else if (isColor)
+            else if (isModularColor)
                 scaleFactor = 1.0f / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
             else if (globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.expBits != 0)
                 scaleFactor = 1.0f;
@@ -464,7 +459,7 @@ public class Frame {
                 scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
             flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
                 // X, Y, B is encoded as Y, X, (B - Y)
-                if (xybM && cIn == 2)
+                if (isModularXYB && cIn == 2)
                     buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
                 else
                     buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
@@ -517,8 +512,8 @@ public class Frame {
 
     private void performGabConvolution() {
         final TaskList<?> tasks = new TaskList<>(flowHelper.getThreadPool(), 3);
-        final float[][] normGabW = new float[3][3];
-        for (int c = 0; c < 3; c++) {
+        final float[][] normGabW = new float[3][buffer.length];
+        for (int c = 0; c < buffer.length; c++) {
             final float gabW1 = header.restorationFilter.gab1Weights[c];
             final float gabW2 = header.restorationFilter.gab2Weights[c];
             final float mult = 1f / (1f + 4f * (gabW1 + gabW2));
@@ -526,7 +521,7 @@ public class Frame {
             normGabW[1][c] = gabW1 * mult;
             normGabW[2][c] = gabW2 * mult;
         }
-        for (final int c : FlowHelper.range(3)) {
+        for (final int c : FlowHelper.range(buffer.length)) {
             final float[][] buffC = buffer[c];
             final int height = buffC.length;
             final int width = buffC[0].length;
@@ -557,10 +552,9 @@ public class Frame {
         final float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
 
         final IntPoint size = getPaddedFrameSize();
-        final int blockW = size.x >> 3;
-        final int blockH = size.y >> 3;
+        final int blockW = MathHelper.ceilDiv(size.x, 8);
+        final int blockH = MathHelper.ceilDiv(size.y, 8);
         final float[][] inverseSigma = new float[blockH][blockW];
-
         final int dimS = header.logLFGroupDim - 3;
 
         CompletableFuture<?>[] futures = new CompletableFuture[size.y];
@@ -590,16 +584,13 @@ public class Frame {
                     }
                 });
             }
+            for (int y = 0; y < blockH; y++)
+                futures[y].join();
         }
 
-        for (int y = 0; y < blockH; y++) {
-            futures[y].join();
-        }
+        final float[][][] outputBuffer = new float[buffer.length][size.y][size.x];
 
-        final float[][][] outputBuffer = new float[3][size.y][size.x];
-
-        for (int i0 = 0; i0 < 3; i0++) {
-            final int i = i0;
+        for (final int i : FlowHelper.range(buffer.length)) {
             if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
             if (i == 2 && header.restorationFilter.epfIterations < 2)
@@ -608,8 +599,7 @@ public class Frame {
             final float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
             final IntPoint[] pc = i == 0 ? epfDoubleCross : epfCross;
-            for (int y0 = 0; y0 < size.y; y0++) {
-                final int y = y0;
+            for (final int y : FlowHelper.range(size.y)) {
                 final float[] invSY = inverseSigma[y >> 3];
                 futures[y] = CompletableFuture.runAsync(() -> {
                     for (int x = 0; x < size.x; x++) {
@@ -632,18 +622,17 @@ public class Frame {
                                 : epfDistance1(buffer, x, y, nX, nY, size);
                             final float weight = epfWeight(sigmaScale, dist, s, x, y);
                             sumWeights += weight;
-                            for (int c = 0; c < 3; c++)
+                            for (int c = 0; c < buffer.length; c++)
                                 sumChannels[c] += buffer[c][mY][mX] * weight;
                         }
-                        for (int c = 0; c < 3; c++)
+                        for (int c = 0; c < buffer.length; c++)
                             outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
                     }
                 });
             }
-            for (int y = 0; y < size.y; y++) {
+            for (int y = 0; y < size.y; y++)
                 futures[y].join();
-            }
-            for (int c = 0; c < 3; c++) {
+            for (int c = 0; c < buffer.length; c++) {
                 /* swapping lets us re-use the output buffer without re-allocing */
                 final float[][] tmp = buffer[c];
                 buffer[c] = outputBuffer[c];
@@ -655,7 +644,7 @@ public class Frame {
     private float epfDistance1(final float[][][] buffer, final int basePosX, final int basePosY,
             final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
-        for (int c = 0; c < 3; c++) {
+        for (int c = 0; c < buffer.length; c++) {
             final float[][] buffC = buffer[c];
             final float scale = header.restorationFilter.epfChannelScale[c];
             for (int i = 0; i < epfCross.length; i++) {
@@ -674,7 +663,7 @@ public class Frame {
     private float epfDistance2(final float[][][] buffer, final int basePosX, final int basePosY,
     final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
-        for (int c = 0; c < 3; c++) {
+        for (int c = 0; c < buffer.length; c++) {
             final float[][] buffC = buffer[c];
             final int dX = MathHelper.mirrorCoordinate(distPosX, size.x);
             final int dY = MathHelper.mirrorCoordinate(distPosY, size.y);
@@ -864,6 +853,11 @@ public class Frame {
 
     public float[][][] getBuffer() {
         return buffer;
+    }
+
+    public int getColorChannelCount() {
+        return globalMetadata.isXYBEncoded() || header.encoding == FrameFlags.VARDCT
+            ? 3 : globalMetadata.getColorChannelCount();
     }
 
     public boolean isDecoded() {

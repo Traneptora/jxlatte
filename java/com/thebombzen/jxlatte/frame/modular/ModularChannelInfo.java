@@ -30,4 +30,10 @@ public class ModularChannelInfo {
     public ModularChannelInfo(ModularChannelInfo info) {
         this(info.width, info.height, info.hshift, info.vshift, info.origin, info.forceWP);
     }
+
+    @Override
+    public String toString() {
+        return String.format("ModularChannelInfo [width=%s, height=%s, hshift=%s, vshift=%s, origin=%s, forceWP=%s]",
+                width, height, hshift, vshift, origin, forceWP);
+    }
 }

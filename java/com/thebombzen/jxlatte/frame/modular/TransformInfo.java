@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.modular;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 
@@ -44,5 +45,12 @@ public class TransformInfo {
         } else {
             sp = null;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "TransformInfo [tr=%s, beginC=%s, rctType=%s, numC=%s, nbColors=%s, nbDeltas=%s, dPred=%s, sp=%s]", tr,
+                beginC, rctType, numC, nbColors, nbDeltas, dPred, Arrays.toString(sp));
     }
 }

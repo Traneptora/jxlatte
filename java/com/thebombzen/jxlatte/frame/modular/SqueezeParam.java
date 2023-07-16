@@ -23,4 +23,10 @@ public class SqueezeParam {
         this.beginC = beginC;
         this.numC = numC;
     }
+
+    @Override
+    public String toString() {
+        return String.format("SqueezeParam [horizontal=%s, inPlace=%s, beginC=%s, numC=%s]", horizontal, inPlace,
+                beginC, numC);
+    }
 }

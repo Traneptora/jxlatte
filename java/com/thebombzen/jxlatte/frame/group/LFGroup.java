@@ -30,7 +30,8 @@ public class LFGroup {
         else
             this.lfCoeff = null;
 
-        ModularStream modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID, replaced);
+        ModularStream modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() + lfGroupID,
+            replaced);
         modularLFGroup.decodeChannels(reader);
         modularLFGroupBuffer = modularLFGroup.getDecodedBuffer();
         modularLFGroupInfo = new ModularChannelInfo[this.modularLFGroupBuffer.length];

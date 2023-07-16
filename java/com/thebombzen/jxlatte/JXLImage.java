@@ -121,21 +121,15 @@ public class JXLImage {
         boolean alpha = this.hasAlpha();
         int transparency = alpha ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
         ColorSpace cs;
-        if (colorEncoding == ColorFlags.CE_GRAY) {
-            // assumes linear light
-            cs = ColorSpace.getInstance(ColorSpace.CS_GRAY);
-        } else {
-            if (this.hasICCProfile())
-                cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
-            else
-                cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer);
-        }
+        if (this.hasICCProfile())
+            cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
+        else
+            cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer,
+                imageHeader.getColorChannelCount());
         return new ComponentColorModel(cs, alpha, alphaIsPremultiplied, transparency, DataBuffer.TYPE_FLOAT);
     }
 
     public BufferedImage asBufferedImage() {
-        if (this.colorEncoding == ColorFlags.CE_GRAY && this.transfer != ColorFlags.TF_LINEAR)
-            return linearize().asBufferedImage();
         return new BufferedImage(getColorModel(), raster, alphaIsPremultiplied, null);
     }
 

@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.color;
 
 import java.awt.color.ColorSpace;
+import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;
 
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -16,8 +17,8 @@ public class JXLColorSpace extends ColorSpace {
     private float[][] primariesToSRGB;
     private float[][] primariesFromSRGB;
 
-    public JXLColorSpace(CIEPrimaries primaries, CIEXY whitePoint, int transfer) {
-        super(primaries.hashCode() + whitePoint.hashCode() + transfer, 3);
+    public JXLColorSpace(CIEPrimaries primaries, CIEXY whitePoint, int transfer, int numComponents) {
+        super(Objects.hash(primaries, whitePoint, transfer), numComponents);
         this.primaries = primaries;
         this.whitePoint = whitePoint;
         this.transfer = transfer;
@@ -31,15 +32,32 @@ public class JXLColorSpace extends ColorSpace {
     }
 
     public JXLColorSpace(int primaries, int whitePoint, int transfer) {
-        this(ColorFlags.getPrimaries(primaries), ColorFlags.getWhitePoint(whitePoint), transfer);
+        this(ColorFlags.getPrimaries(primaries), ColorFlags.getWhitePoint(whitePoint), transfer, 3);
+    }
+
+    private float[] transfer(float[] thisSpace) {
+        thisSpace[1] = (float)transferFunction.applyAsDouble(thisSpace[1]);
+        if (getNumComponents() < 3) {
+            thisSpace[0] = thisSpace[1];
+        } else {
+            thisSpace[0] = (float)transferFunction.applyAsDouble(thisSpace[0]);
+            thisSpace[2] = (float)transferFunction.applyAsDouble(thisSpace[2]);
+        }
+        return thisSpace;
+    }
+
+    private float[] linearize(float[] colorvalue) {
+        float[] linear = new float[3];
+        for (int i = 0; i < getNumComponents(); i++)
+            linear[i] = (float)inverseTransferFunction.applyAsDouble(colorvalue[i]);
+        if (getNumComponents() < 3)
+            linear[1] = linear[2] = linear[0];
+        return linear;
     }
 
     @Override
     public float[] toRGB(float[] colorvalue) {
-        float[] linear = new float[3];
-        linear[0] = (float)inverseTransferFunction.applyAsDouble(colorvalue[0]);
-        linear[1] = (float)inverseTransferFunction.applyAsDouble(colorvalue[1]);
-        linear[2] = (float)inverseTransferFunction.applyAsDouble(colorvalue[2]);
+        float[] linear = linearize(colorvalue);
         float[] sRGB = MathHelper.matrixMutliply(this.primariesToSRGB, linear);
         DoubleUnaryOperator sRGBTransfer = ColorManagement.getTransferFunction(ColorFlags.TF_SRGB);
         // clamp here because BufferedImage forbids out of gamut colors
@@ -57,18 +75,12 @@ public class JXLColorSpace extends ColorSpace {
         linear[1] = (float)inverseSRGB.applyAsDouble(rgbvalue[1]);
         linear[2] = (float)inverseSRGB.applyAsDouble(rgbvalue[2]);
         float[] thisSpace = MathHelper.matrixMutliply(this.primariesFromSRGB, linear);
-        thisSpace[0] = (float)transferFunction.applyAsDouble(thisSpace[0]);
-        thisSpace[1] = (float)transferFunction.applyAsDouble(thisSpace[1]);
-        thisSpace[2] = (float)transferFunction.applyAsDouble(thisSpace[2]);
-        return thisSpace;
+        return transfer(thisSpace);
     }
 
     @Override
     public float[] toCIEXYZ(float[] colorvalue) {
-        float[] linear = new float[3];
-        linear[0] = (float)inverseTransferFunction.applyAsDouble(colorvalue[0]);
-        linear[1] = (float)inverseTransferFunction.applyAsDouble(colorvalue[1]);
-        linear[2] = (float)inverseTransferFunction.applyAsDouble(colorvalue[2]);
+        float[] linear = linearize(colorvalue);
         float[] linearXYZ = MathHelper.matrixMutliply(this.primariesToXYZD50, linear);
         return linearXYZ;
     }
@@ -76,9 +88,6 @@ public class JXLColorSpace extends ColorSpace {
     @Override
     public float[] fromCIEXYZ(float[] colorvalue) {
         float[] thisSpace = MathHelper.matrixMutliply(this.primariesFromXYZD50, colorvalue);
-        thisSpace[0] = (float)transferFunction.applyAsDouble(thisSpace[0]);
-        thisSpace[1] = (float)transferFunction.applyAsDouble(thisSpace[1]);
-        thisSpace[2] = (float)transferFunction.applyAsDouble(thisSpace[2]);
-        return thisSpace;
+        return transfer(thisSpace);
     }
 }
