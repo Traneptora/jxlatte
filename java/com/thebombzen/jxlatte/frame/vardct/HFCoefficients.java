@@ -112,8 +112,8 @@ public class HFCoefficients {
                 // SPEC: spec doesn't mention that nonZero > 0 is illegal
                 if (nonZero != 0)
                     throw new InvalidBitstreamException(String.format(
-                        "Illegal final nonzero count: %s, in group %d, at varblock (%d, %d, c=%d)" , nonZero, groupID,
-                            shiftedBlockPos.x, shiftedBlockPos.y, c));
+                        "Illegal final nonzero count: %s, in group %d, at varblock (%d, %d, c=%d)" ,
+                        nonZero, groupID, shiftedBlockPos.x, shiftedBlockPos.y, c));
             }
         }
         if (!stream.validateFinalState())
@@ -247,9 +247,9 @@ public class HFCoefficients {
             if (varblock == null)
                 continue;
             final TransformType tt = varblock.transformType();
-            final boolean flip = tt.isVertical();
+            final boolean flip = tt.isVertical() || tt.flip();
             final float[][][] w2 = weights[tt.parameterIndex];
-            for (final int c : Frame.cMap) {
+            for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 final float[][] w3 = w2[c];

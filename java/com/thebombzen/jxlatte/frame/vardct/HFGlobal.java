@@ -290,8 +290,10 @@ public class HFGlobal {
                 m = new float[3][tt.matrixWidth * tt.matrixHeight];
                 int[][][] b = stream.getDecodedBuffer();
                 for (int c = 0; c < 3; c++) {
-                    for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(b[c]))) {
-                        m[c][p.y * tt.matrixWidth + p.x] = b[c][p.y][p.x];
+                    for (int y = 0; y < b[c].length; y++) {
+                        for (int x = 0; x < b[c][y].length; x++) {
+                            m[c][y * tt.matrixWidth + x] = b[c][y][x];
+                        }
                     }
                 }
                 params[index] = new DCTParams(null, m, encodingMode, den);

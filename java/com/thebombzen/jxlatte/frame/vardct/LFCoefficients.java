@@ -49,13 +49,13 @@ public class LFCoefficients {
         lfQuantStream = null;
         final float[] scaledDequant = frame.getLFGlobal().quantizer.scaledDequant;
         for (int i = 0; i < 3; i++) {
-            // quant is in Y, X, B order
+            // lfQuant is in Y, X, B order
             final int c = Frame.cMap[i];
-            final float sd = scaledDequant[c] / (1 << extraPrecision);
-            for (int y = 0; y < lfQuant[i].length; y++) {
-                final float[] dq = dequantLFCoeff[c][y];
-                final int[] q = lfQuant[i][y];
-                for (int x = 0; x < lfQuant[i][y].length; x++)
+            final float sd = scaledDequant[i] / (1 << extraPrecision);
+            for (int y = 0; y < lfQuant[c].length; y++) {
+                final float[] dq = dequantLFCoeff[i][y];
+                final int[] q = lfQuant[c][y];
+                for (int x = 0; x < lfQuant[c][y].length; x++)
                     dq[x] = q[x] * sd;
             }
         }
