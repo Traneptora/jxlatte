@@ -182,10 +182,10 @@ public class JXLCodestreamDecoder {
                                         : (oldSample * newAlpha + newSample * oldAlpha * (1 - newAlpha)) / alpha;
                                     break;
                                 case 6:
-                                    sample = isAlpha ? alpha : oldSample + alpha * newSample;
+                                    sample = isAlpha ? oldAlpha : oldSample + alpha * newSample;
                                     break;
                                 case 7:
-                                    sample = isAlpha ? alpha : newSample + alpha * oldSample;
+                                    sample = isAlpha ? oldAlpha : newSample + alpha * oldSample;
                                     break;
                                 default:
                                     throw new IllegalStateException("Challenge complete how did we get here");
@@ -387,7 +387,6 @@ public class JXLCodestreamDecoder {
             ColorEncodingBundle bundle = imageHeader.getColorEncoding();
             matrix = imageHeader.getOpsinInverseMatrix().getMatrix(bundle.prim, bundle.white);
         }
-        System.err.println(matrix);
 
         float[][][] canvas = new float[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()]
             [imageHeader.getSize().height][imageHeader.getSize().width];

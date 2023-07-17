@@ -69,10 +69,6 @@ public class LFCoefficients {
                     dq[x] = q[x] * sd;
             }
         }
-        if (adaptiveSmoothing)
-            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant);
-        else
-            this.dequantLFCoeff = dequantLFCoeff;
 
         // chroma from luma
         if (shift[0].x + shift[1].x + shift[2].x + shift[0].y + shift[1].y + shift[2].y == 0) {
@@ -93,6 +89,11 @@ public class LFCoefficients {
                 }
             }
         }
+
+        if (adaptiveSmoothing)
+            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant);
+        else
+            this.dequantLFCoeff = dequantLFCoeff;
 
         populateLFIndex(parent, lfQuant);
     }
