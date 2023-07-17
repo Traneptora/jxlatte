@@ -295,4 +295,21 @@ public final class MathHelper {
             return mirrorCoordinate(2 * size - coordinate - 1, size);
         return coordinate;
     }
+
+    public static float[][][] deepCopyOf(float[][][] array) {
+        if (array == null)
+            return null;
+        float[][][] copy = new float[array.length][][];
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == null)
+                continue;
+            copy[i] = new float[array[i].length][];
+            for (int j = 0; j < array[i].length; j++) {
+                if (array[i][j] == null)
+                    continue;
+                copy[i][j] = Arrays.copyOf(array[i][j], array[i][j].length);
+            }
+        }
+        return copy;
+    }
 }

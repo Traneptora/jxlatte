@@ -56,8 +56,9 @@ public class JXLImage {
         this.width = buffer[0][0].length;
         this.height = buffer[0].length;
         this.flowHelper = flowHelper;
-        final float[][] dataArray  = new float[buffer.length][width * height];
-        for (int c = 0; c < buffer.length; c++) {
+        int channels = header.getColorChannelCount() + (header.hasAlpha() ? 1 : 0);
+        final float[][] dataArray  = new float[channels][width * height];
+        for (int c = 0; c < channels; c++) {
             for (int y = 0; y < height; y++)
                 System.arraycopy(buffer[c][y], 0, dataArray[c], y * width, width);
         }

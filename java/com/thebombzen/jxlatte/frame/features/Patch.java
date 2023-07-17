@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.features;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
@@ -61,5 +62,11 @@ public class Patch {
                 blendingInfos[j][k] = new BlendingInfo(mode, alpha, clamp, 0);
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Patch [width=%s, height=%s, ref=%s, origin=%s, positions=%s, blendingInfos=%s]",
+             width, height, ref, origin, Arrays.toString(positions), Arrays.deepToString(blendingInfos));
     }
 }

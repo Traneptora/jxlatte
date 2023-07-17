@@ -512,8 +512,8 @@ public class Frame {
 
     private void performGabConvolution() {
         final TaskList<?> tasks = new TaskList<>(flowHelper.getThreadPool(), 3);
-        final float[][] normGabW = new float[3][buffer.length];
-        for (int c = 0; c < buffer.length; c++) {
+        final float[][] normGabW = new float[3][getColorChannelCount()];
+        for (int c = 0; c < getColorChannelCount(); c++) {
             final float gabW1 = header.restorationFilter.gab1Weights[c];
             final float gabW2 = header.restorationFilter.gab2Weights[c];
             final float mult = 1f / (1f + 4f * (gabW1 + gabW2));
@@ -521,7 +521,7 @@ public class Frame {
             normGabW[1][c] = gabW1 * mult;
             normGabW[2][c] = gabW2 * mult;
         }
-        for (final int c : FlowHelper.range(buffer.length)) {
+        for (final int c : FlowHelper.range(getColorChannelCount())) {
             final float[][] buffC = buffer[c];
             final int height = buffC.length;
             final int width = buffC[0].length;
@@ -588,14 +588,13 @@ public class Frame {
                 futures[y].join();
         }
 
-        final float[][][] outputBuffer = new float[buffer.length][size.y][size.x];
+        final float[][][] outputBuffer = new float[getColorChannelCount()][size.y][size.x];
 
-        for (final int i : FlowHelper.range(buffer.length)) {
+        for (final int i : FlowHelper.range(3)) {
             if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
-
             final float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
             final IntPoint[] pc = i == 0 ? epfDoubleCross : epfCross;
@@ -604,12 +603,11 @@ public class Frame {
                 futures[y] = CompletableFuture.runAsync(() -> {
                     for (int x = 0; x < size.x; x++) {
                         float sumWeights = 0f;
-                        final float[] sumChannels = new float[3];
+                        final float[] sumChannels = new float[outputBuffer.length];
                         final float s = invSY[x >> 3];
                         if (s != s || s > 3.333333333f) {
-                            outputBuffer[0][y][x] = buffer[0][y][x];
-                            outputBuffer[1][y][x] = buffer[1][y][x];
-                            outputBuffer[2][y][x] = buffer[2][y][x];
+                            for (int c = 0; c < outputBuffer.length; c++)
+                                outputBuffer[c][y][x] = buffer[c][y][x];
                             continue;
                         }
                         for (int j = 0; j < pc.length; j++) {
@@ -618,21 +616,21 @@ public class Frame {
                             final int nY = y + ip.y;
                             final int mX = MathHelper.mirrorCoordinate(nX, size.x);
                             final int mY = MathHelper.mirrorCoordinate(nY, size.y);
-                            final float dist = i == 2 ? epfDistance2(buffer, x, y, nX, nY, size)
-                                : epfDistance1(buffer, x, y, nX, nY, size);
+                            final float dist = i == 2 ? epfDistance2(buffer, outputBuffer.length, x, y, nX, nY, size)
+                                : epfDistance1(buffer, outputBuffer.length, x, y, nX, nY, size);
                             final float weight = epfWeight(sigmaScale, dist, s, x, y);
                             sumWeights += weight;
-                            for (int c = 0; c < buffer.length; c++)
+                            for (int c = 0; c < outputBuffer.length; c++)
                                 sumChannels[c] += buffer[c][mY][mX] * weight;
                         }
-                        for (int c = 0; c < buffer.length; c++)
+                        for (int c = 0; c < outputBuffer.length; c++)
                             outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
                     }
                 });
             }
             for (int y = 0; y < size.y; y++)
                 futures[y].join();
-            for (int c = 0; c < buffer.length; c++) {
+            for (int c = 0; c < outputBuffer.length; c++) {
                 /* swapping lets us re-use the output buffer without re-allocing */
                 final float[][] tmp = buffer[c];
                 buffer[c] = outputBuffer[c];
@@ -641,10 +639,10 @@ public class Frame {
         }
     }
 
-    private float epfDistance1(final float[][][] buffer, final int basePosX, final int basePosY,
+    private float epfDistance1(final float[][][] buffer, final int colors, final int basePosX, final int basePosY,
             final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
-        for (int c = 0; c < buffer.length; c++) {
+        for (int c = 0; c < colors; c++) {
             final float[][] buffC = buffer[c];
             final float scale = header.restorationFilter.epfChannelScale[c];
             for (int i = 0; i < epfCross.length; i++) {
@@ -660,10 +658,10 @@ public class Frame {
         return dist;
     }
 
-    private float epfDistance2(final float[][][] buffer, final int basePosX, final int basePosY,
+    private float epfDistance2(final float[][][] buffer, final int colors, final int basePosX, final int basePosY,
     final int distPosX, final int distPosY, final IntPoint size) {
         float dist = 0;
-        for (int c = 0; c < buffer.length; c++) {
+        for (int c = 0; c < colors; c++) {
             final float[][] buffC = buffer[c];
             final int dX = MathHelper.mirrorCoordinate(distPosX, size.x);
             final int dY = MathHelper.mirrorCoordinate(distPosY, size.y);
