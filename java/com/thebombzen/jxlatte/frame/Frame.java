@@ -707,7 +707,8 @@ public class Frame {
             while (yShift-- > 0) {
                 float[][] newBuffer = new float[2 * buffer[c].length][];
                 for (int y = 0; y < buffer[c].length; y++) {
-                    newBuffer[y] = new float[buffer[c][y].length];
+                    newBuffer[2*y] = new float[buffer[c][y].length];
+                    newBuffer[2*y + 1] = new float[buffer[c][y].length];
                     for (int x = 0; x < buffer[c][y].length; x++) {
                         float b75 = 0.75f * buffer[c][y][x];
                         newBuffer[2*y][x] = b75 + 0.25f * buffer[c][Math.max(0, y - 1)][x];
