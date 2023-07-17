@@ -264,14 +264,13 @@ public class HFCoefficients {
                         final int coeff = co2[x];
                         final float quant;
                         if (coeff == 0) {
-                            quant = 0;
+                            quant = 0f;
                         } else if (coeff == 1) {
                             quant = qbc;
                         } else if (coeff == -1) {
                             quant = -qbc;
                         } else {
-                            final float f = coeff;
-                            quant = f - matrix.quantBiasNumerator / f;
+                            quant = coeff - matrix.quantBiasNumerator / coeff;
                         }
                         final int wx = flip ? y : x;
                         final int wy = flip ? x : y;

@@ -387,6 +387,7 @@ public class JXLCodestreamDecoder {
             ColorEncodingBundle bundle = imageHeader.getColorEncoding();
             matrix = imageHeader.getOpsinInverseMatrix().getMatrix(bundle.prim, bundle.white);
         }
+        System.err.println(matrix);
 
         float[][][] canvas = new float[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()]
             [imageHeader.getSize().height][imageHeader.getSize().width];

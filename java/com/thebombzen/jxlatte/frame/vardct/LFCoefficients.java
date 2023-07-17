@@ -44,11 +44,8 @@ public class LFCoefficients {
             this.dequantLFCoeff = dequantLFCoeff;
             for (int c = 0; c < 3; c++) {
                 for (int y = 0; y < sizeInBlocks.y; y++) {
-                    // System.arraycopy(lfBuffer[c][y + blockPos.y], blockPos.x,
-                    //     dequantLFCoeff[c][y], 0, sizeInBlocks.x);
-                    for (int x = 0; x < sizeInBlocks.x; x++) {
-                        lfBuffer[c][y + blockPos.y][x + blockPos.x] = dequantLFCoeff[c][y][x] * frame.getLFGlobal().lfDequant[c];
-                    }
+                    System.arraycopy(lfBuffer[c][y + blockPos.y], blockPos.x,
+                        dequantLFCoeff[c][y], 0, sizeInBlocks.x);
                 }
             }
             populateLFIndex(parent, null);
