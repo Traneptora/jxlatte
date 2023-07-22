@@ -203,11 +203,11 @@ public class JXLCodestreamDecoder {
 
         if (frame.getFrameHeader().doYCbCr) {
             flowHelper.parallelIterate(frame.getPaddedFrameSize(), (x, y) -> {
-                float yh = frameBuffer[1][y][x] + 0.5f;
+                float yh = frameBuffer[1][y][x] + 0.50196078431372549019f;
                 float cb = frameBuffer[0][y][x];
                 float cr = frameBuffer[2][y][x];
                 frameBuffer[0][y][x] = yh + 1.402f * cr;
-                frameBuffer[1][y][x] = yh - 0.344136f * cb - 0.714136f * cr;
+                frameBuffer[1][y][x] = yh - 0.34413628620102214650f * cb - 0.71413628620102214650f * cr;
                 frameBuffer[2][y][x] = yh + 1.772f * cb;
             });
         }

@@ -691,29 +691,38 @@ public class Frame {
             int xShift = header.jpegUpsampling[c].x;
             int yShift = header.jpegUpsampling[c].y;
             while (xShift-- > 0) {
-                float[][] newBuffer = new float[buffer[c].length][];
-                for (int y = 0; y < buffer[c].length; y++) {
-                    newBuffer[y] = new float[2 * buffer[c][y].length];
-                    for (int x = 0; x < buffer[c][y].length; x++) {
-                        float b75 = 0.75f * buffer[c][y][x];
-                        newBuffer[y][2*x] = b75 + 0.25f * buffer[c][y][Math.max(0, x - 1)];
-                        newBuffer[y][2*x + 1] = b75 + 0.25f * buffer[c][y][Math.min(buffer[c][y].length - 1, x + 1)];
+                final float[][] oldChannel = buffer[c];
+                final float[][] newChannel = new float[oldChannel.length][];
+                for (int y = 0; y < oldChannel.length; y++) {
+                    final float[] oldRow = oldChannel[y];
+                    final float[] newRow = new float[oldRow.length * 2];
+                    for (int x = 0; x < oldRow.length; x++) {
+                        final float b75 = 0.75f * oldRow[x];
+                        newRow[2*x] = b75 + 0.25f * oldRow[x == 0 ? 0 : x - 1];
+                        newRow[2*x + 1] = b75 + 0.25f * oldRow[x + 1 == oldRow.length ? oldRow.length - 1 : x + 1];
                     }
+                    newChannel[y] = newRow;
                 }
-                buffer[c] = newBuffer;
+                buffer[c] = newChannel;
             }
             while (yShift-- > 0) {
-                float[][] newBuffer = new float[2 * buffer[c].length][];
-                for (int y = 0; y < buffer[c].length; y++) {
-                    newBuffer[2*y] = new float[buffer[c][y].length];
-                    newBuffer[2*y + 1] = new float[buffer[c][y].length];
-                    for (int x = 0; x < buffer[c][y].length; x++) {
-                        float b75 = 0.75f * buffer[c][y][x];
-                        newBuffer[2*y][x] = b75 + 0.25f * buffer[c][Math.max(0, y - 1)][x];
-                        newBuffer[2*y + 1][x] = b75 + 0.25f * buffer[c][Math.min(buffer[c].length - 1, y + 1)][x];
+                final float[][] oldChannel = buffer[c];
+                final float[][] newChannel = new float[oldChannel.length * 2][];
+                for (int y = 0; y < oldChannel.length; y++) {
+                    final float[] oldRow = oldChannel[y];
+                    final float[] oldRowPrev = oldChannel[y == 0 ? 0 : y - 1];
+                    final float[] oldRowNext = oldChannel[y + 1 == oldChannel.length ? oldChannel.length - 1 : y + 1];
+                    final float[] firstNewRow = new float[oldRow.length];
+                    final float[] secondNewRow = new float[oldRow.length];
+                    for (int x = 0; x < oldRow.length; x++) {
+                        final float b75 = 0.75f * oldRow[x];
+                        firstNewRow[x] = b75 + 0.25f * oldRowPrev[x];
+                        secondNewRow[x] = b75 + 0.25f * oldRowNext[x];
                     }
+                    newChannel[2*y] = firstNewRow;
+                    newChannel[2*y+1] = secondNewRow;
                 }
-                buffer[c] = newBuffer;
+                buffer[c] = newChannel;
             }
         }
     }
