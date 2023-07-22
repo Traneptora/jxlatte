@@ -91,6 +91,7 @@ src = files(
     'com/thebombzen/jxlatte/io/Bitreader.java',
     'com/thebombzen/jxlatte/io/Demuxer.java',
     'com/thebombzen/jxlatte/io/IOHelper.java',
+    'com/thebombzen/jxlatte/io/Loggers.java',
     'com/thebombzen/jxlatte/io/PFMWriter.java',
     'com/thebombzen/jxlatte/io/PNGWriter.java',
     'com/thebombzen/jxlatte/io/PushbackInputStream.java',

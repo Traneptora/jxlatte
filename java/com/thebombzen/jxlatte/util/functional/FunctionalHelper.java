@@ -1,5 +1,6 @@
 package com.thebombzen.jxlatte.util.functional;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -23,7 +24,7 @@ public final class FunctionalHelper {
 
     public static <E> E sneakyThrow(Throwable e) {
         Throwable ex = e;
-        while (ex instanceof CompletionException) {
+        while (ex instanceof CompletionException || ex instanceof InvocationTargetException) {
             Throwable cause = ex.getCause();
             if (cause != null)
                 ex = cause;

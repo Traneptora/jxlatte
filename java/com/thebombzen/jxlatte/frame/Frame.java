@@ -3,7 +3,6 @@ package com.thebombzen.jxlatte.frame;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -29,6 +28,7 @@ import com.thebombzen.jxlatte.frame.vardct.HFPass;
 import com.thebombzen.jxlatte.frame.vardct.TransformType;
 import com.thebombzen.jxlatte.frame.vardct.Varblock;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -77,13 +77,13 @@ public class Frame {
     private MATree globalTree;
     private int width;
     private int height;
-    private JXLOptions options;
+    private Loggers loggers;
     private FlowHelper flowHelper;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata, JXLOptions options, FlowHelper flowHelper) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, FlowHelper flowHelper, Loggers loggers) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
-        this.options = options;
+        this.loggers = loggers;
         this.flowHelper = flowHelper;
     }
 
@@ -122,7 +122,7 @@ public class Frame {
             header.height = globalMetadata.getSize().height;
             header.origin = new IntPoint();
         }
-        this.options = frame.options;
+        this.loggers = frame.loggers;
         this.flowHelper = frame.flowHelper;
     }
 
@@ -928,17 +928,21 @@ public class Frame {
             ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
     }
 
-    public void printDebugInfo(JXLOptions options, PrintWriter err) {
-        err.println("Frame Info:");
-        err.format("    Encoding: %s%n", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
+    public void printDebugInfo() {
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "Frame Info:");
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Encoding: %s", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
                     : header.type == FrameFlags.LF_FRAME ? "LF Frame"
                     : header.type == FrameFlags.REFERENCE_ONLY ? "Reference Only"
                     : header.type == FrameFlags.SKIP_PROGRESSIVE ? "Skip Progressive"
                     : "????";
-        err.format("    Type: %s%n", type);
-        err.format("    Size: %dx%d%n", width, height);
-        err.format("    Origin: (%d, %d)%n", header.origin.x, header.origin.y);
-        err.format("    YCbCr: %b%n", header.doYCbCr);
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Type: %s", type);
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Size: %dx%d", width, height);
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Origin: (%d, %d)", header.origin.x, header.origin.y);
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    YCbCr: %b", header.doYCbCr);
+    }
+
+    public Loggers getLoggers() {
+        return loggers;
     }
 }

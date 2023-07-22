@@ -20,6 +20,7 @@ import com.thebombzen.jxlatte.frame.FrameHeader;
 import com.thebombzen.jxlatte.frame.features.Patch;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.Demuxer;
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.io.PushbackInputStream;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
@@ -323,34 +324,30 @@ public class JXLCodestreamDecoder {
     public JXLImage decode(PrintWriter err) throws IOException {
         if (bitreader.atEnd())
             return null;
+        Loggers loggers = new Loggers(options, err);
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
         this.imageHeader = ImageHeader.parse(bitreader, level);
-        if (options.verbosity >= JXLOptions.VERBOSITY_INFO) {
-            err.format("Image: %s%n", options.input != null ? options.input : "<stdin>");
-            err.format("    Level: %d%n", level);
-            err.format("    Size: %dx%d%n", imageHeader.getSize().width, imageHeader.getSize().height);
-            boolean gray = imageHeader.getColorChannelCount() < 3;
-            boolean alpha = imageHeader.hasAlpha();
-            err.format("    Pixel Format: %s%n",
-                gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
-            err.format("    Bit Depth: %d%n", imageHeader.getBitDepthHeader().bitsPerSample);
-            if (options.verbosity >= JXLOptions.VERBOSITY_VERBOSE) {
-                err.format("    Extra Channels: %d%n", imageHeader.getExtraChannelCount());
-                err.format("    XYB Encoded: %b%n", imageHeader.isXYBEncoded());
-                ColorEncodingBundle ce = imageHeader.getColorEncoding();
-                if (!gray)
-                    err.format("    Primaries: %s%n", ColorFlags.primariesToString(ce.primaries));
-                err.format("    White Point: %s%n", ColorFlags.whitePointToString(ce.whitePoint));
-                err.format("    Transfer Function: %s%n", ColorFlags.transferToString(ce.tf));
-            }
-            if (imageHeader.getAnimationHeader() != null)
-                err.format("    Animated: true%n");
-            err.flush();
-        }
+        loggers.log(JXLOptions.VERBOSITY_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
+        loggers.log(JXLOptions.VERBOSITY_INFO, "    Level: %d", level);
+        loggers.log(JXLOptions.VERBOSITY_INFO, "    Size: %dx%d", imageHeader.getSize().width, imageHeader.getSize().height);
+        boolean gray = imageHeader.getColorChannelCount() < 3;
+        boolean alpha = imageHeader.hasAlpha();
+        loggers.log(JXLOptions.VERBOSITY_INFO, "    Pixel Format: %s",
+            gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
+        loggers.log(JXLOptions.VERBOSITY_INFO, "    Bit Depth: %d", imageHeader.getBitDepthHeader().bitsPerSample);
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
+        ColorEncodingBundle ce = imageHeader.getColorEncoding();
+        if (!gray)
+            loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Primaries: %s", ColorFlags.primariesToString(ce.primaries));
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
+        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
+        if (imageHeader.getAnimationHeader() != null)
+            loggers.log(JXLOptions.VERBOSITY_INFO, "    Animated: true");
 
         if (imageHeader.getPreviewHeader() != null) {
-            Frame frame = new Frame(bitreader, imageHeader, options, flowHelper);
+            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
             frame.readHeader();
             frame.skipFrameData();
         }
@@ -362,17 +359,15 @@ public class JXLCodestreamDecoder {
         float[][][][] lfBuffer = new float[5][][][];
 
         do {
-            Frame frame = new Frame(bitreader, imageHeader, options, flowHelper);
+            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
             frame.readHeader();
             header = frame.getFrameHeader();
-            if (options.verbosity >= JXLOptions.VERBOSITY_INFO && frames.size() == 0)
-                err.format("    Lossless: %s%n",
+            if (frames.size() == 0) {
+                loggers.log(JXLOptions.VERBOSITY_INFO, "    Lossless: %s",
                     header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
-            if (options.verbosity >= JXLOptions.VERBOSITY_VERBOSE)
-                frame.printDebugInfo(options, err);
-            if (options.verbosity >= JXLOptions.VERBOSITY_TRACE)
-                err.println(header.toString());
-            err.flush();
+            }
+            frame.printDebugInfo();
+            loggers.log(JXLOptions.VERBOSITY_TRACE, "%s", header);
             if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
                 throw new InvalidBitstreamException("LF Level too large");
             frame.decodeFrame(lfBuffer[header.lfLevel]);
