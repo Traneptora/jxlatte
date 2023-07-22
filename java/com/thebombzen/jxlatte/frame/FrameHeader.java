@@ -182,4 +182,15 @@ public class FrameHeader {
             jpegUpsampling[i] = new IntPoint(maxJPX, maxJPY).minus(jpegUpsampling[i]);
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "FrameHeader [type=%s, encoding=%s, flags=%s, doYCbCr=%s, jpegUpsampling=%s, upsampling=%s, ecUpsampling=%s, groupSizeShift=%s, groupDim=%s, lfGroupDim=%s, logGroupDim=%s, logLFGroupDim=%s, xqmScale=%s, bqmScale=%s, passes=%s, lfLevel=%s, haveCrop=%s, origin=%s, width=%s, height=%s, blendingInfo=%s, ecBlendingInfo=%s, duration=%s, timecode=%s, isLast=%s, saveAsReference=%s, saveBeforeCT=%s, name=%s, restorationFilter=%s, extensions=%s]",
+                type, encoding, flags, doYCbCr, Arrays.toString(jpegUpsampling), upsampling,
+                Arrays.toString(ecUpsampling), groupSizeShift, groupDim, lfGroupDim, logGroupDim, logLFGroupDim,
+                xqmScale, bqmScale, passes, lfLevel, haveCrop, origin, width, height, blendingInfo,
+                Arrays.toString(ecBlendingInfo), duration, timecode, isLast, saveAsReference, saveBeforeCT, name,
+                restorationFilter, extensions);
+    }
 }

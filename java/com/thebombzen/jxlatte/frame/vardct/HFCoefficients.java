@@ -40,6 +40,7 @@ public class HFCoefficients {
     public final int groupID;
     private final int[][][] nonZeroes;
     public final float[][][][] dequantHFCoeff;
+    public final int[][][][] quantizedCoeffs;
     public final EntropyStream stream;
     public final Frame frame;
     public final Varblock[] varblocks;
@@ -57,7 +58,7 @@ public class HFCoefficients {
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
         final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         stream = new EntropyStream(hfPass.contextStream);
-        final int[][][][] coeffs = new int[lfg.hfMetadata.blockList.length][][][];
+        quantizedCoeffs = new int[lfg.hfMetadata.blockList.length][][][];
         varblocks = new Varblock[lfg.hfMetadata.blockList.length];
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
             final Varblock varblock = lfg.hfMetadata.getVarblock(i);
@@ -66,7 +67,7 @@ public class HFCoefficients {
             varblocks[i] = varblock;
             final TransformType tt = varblock.transformType();
             final int[][][] co = new int[3][tt.blockHeight][tt.blockWidth];
-            coeffs[i] = co;
+            quantizedCoeffs[i] = co;
             final boolean flip = varblock.flip() || tt.isVertical();
             final int hfMult = varblock.hfMult();
             final int lfIndex = lfg.lfCoeff.lfIndex[varblock.blockPosInLFGroup.y][varblock.blockPosInLFGroup.x];
@@ -119,8 +120,12 @@ public class HFCoefficients {
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
 
-        this.dequantHFCoeff = dequantizeHFCoefficients(coeffs);
+        this.dequantHFCoeff =  new float[varblocks.length][3][][];
+    }
 
+    public void bakeDequantizedCoeffs() {
+        dequantizeHFCoefficients();
+        final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         // chroma from luma
         // shifts are nonnegative so the sum equals zero iff they all equal zero
         if (shift[0].x + shift[1].x + shift[2].x + shift[0].y + shift[1].y + shift[2].y == 0) {
@@ -167,8 +172,11 @@ public class HFCoefficients {
                 }
             }
         }
+    }
 
+    public void finalizeLLF() {
         final float[][][] scratchBlock = new float[2][256][256];
+        final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         // put the LF coefficients into the HF coefficent array
         for (int i = 0; i < varblocks.length; i++) {
             final Varblock varblock = varblocks[i];
@@ -192,7 +200,6 @@ public class HFCoefficients {
                 }
             }
         }
-
     }
 
     private int getBlockContext(final int c, final int orderID, final int hfMult, final int lfIndex) {
@@ -231,9 +238,10 @@ public class HFCoefficients {
         return (nonZeroes[c][pos.y - 1][pos.x] + nonZeroes[c][pos.y][pos.x - 1] + 1) >> 1;
     }
 
-    private float[][][][] dequantizeHFCoefficients(final int[][][][] coeffs) {
+    private void dequantizeHFCoefficients() {
+        final float[][][][] dequant = this.dequantHFCoeff;
+        final int[][][][] coeffs = this.quantizedCoeffs;
         final OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
-        final float[][][][] dequant = new float[varblocks.length][3][][];
         final float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
         final float[] scaleFactor = new float[]{
             globalScale * (float)Math.pow(0.8D, frame.getFrameHeader().xqmScale - 2D),
@@ -280,6 +288,5 @@ public class HFCoefficients {
                 dequant[i][c] = dq;
             }
         }
-        return dequant;
     }
 }

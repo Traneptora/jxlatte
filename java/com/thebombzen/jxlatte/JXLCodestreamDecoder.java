@@ -370,6 +370,8 @@ public class JXLCodestreamDecoder {
                     header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
             if (options.verbosity >= JXLOptions.VERBOSITY_VERBOSE)
                 frame.printDebugInfo(options, err);
+            if (options.verbosity >= JXLOptions.VERBOSITY_TRACE)
+                err.println(header.toString());
             err.flush();
             if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
                 throw new InvalidBitstreamException("LF Level too large");

@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.features;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.bundle.Extensions;
 import com.thebombzen.jxlatte.frame.FrameFlags;
@@ -76,5 +77,15 @@ public class RestorationFilter {
         extensions = allDefault ? new Extensions() : new Extensions(reader);
         for (int i = 0; i < 8; i++)
             epfSharpLut[i] *= epfQuantMul;
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "RestorationFilter [gab=%s, customGab=%s, gab1Weights=%s, gab2Weights=%s, epfIterations=%s, epfSharpCustom=%s, epfSharpLut=%s, epfWeightCustom=%s, epfChannelScale=%s, epfSigmaCustom=%s, epfQuantMul=%s, epfPass0SigmaScale=%s, epfPass2SigmaScale=%s, epfBorderSadMul=%s, epfSigmaForModular=%s, extensions=%s]",
+                gab, customGab, Arrays.toString(gab1Weights), Arrays.toString(gab2Weights), epfIterations,
+                epfSharpCustom, Arrays.toString(epfSharpLut), epfWeightCustom, Arrays.toString(epfChannelScale),
+                epfSigmaCustom, epfQuantMul, epfPass0SigmaScale, epfPass2SigmaScale, epfBorderSadMul,
+                epfSigmaForModular, extensions);
     }
 }

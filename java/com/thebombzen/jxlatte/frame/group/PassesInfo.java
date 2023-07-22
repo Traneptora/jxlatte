@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.group;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.io.Bitreader;
@@ -36,5 +37,11 @@ public class PassesInfo {
             lastPass[i] = reader.readU32(0, 0, 1, 0, 2, 0, 0, 3);
         downSample[numDS] = 1;
         lastPass[numDS] = numPasses - 1;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("PassesInfo [numPasses=%s, numDS=%s, shift=%s, downSample=%s, lastPass=%s]", numPasses,
+                numDS, Arrays.toString(shift), Arrays.toString(downSample), Arrays.toString(lastPass));
     }
 }

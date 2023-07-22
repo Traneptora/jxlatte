@@ -60,6 +60,6 @@ public class Extensions {
 
     @Override
     public String toString() {
-        return "Extensions [extensionsKey=" + extensionsKey + ", payloads=" + Arrays.toString(payloads) + "]";
+        return "Extensions [extensionsKey=" + extensionsKey + "]";
     }
 }

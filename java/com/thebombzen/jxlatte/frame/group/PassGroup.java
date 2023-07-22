@@ -10,7 +10,6 @@ import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
 import com.thebombzen.jxlatte.frame.vardct.TransformType;
 import com.thebombzen.jxlatte.frame.vardct.Varblock;
 import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
@@ -172,19 +171,27 @@ public class PassGroup {
     }
 
     public void invertVarDCT(float[][][] frameBuffer, PassGroup prev) {
-        float[][][][] coeffs = hfCoefficients.dequantHFCoeff;
+        IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         if (prev != null) {
             for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
                 if (hfCoefficients.varblocks[i] == null)
                     continue;
-                for (int c : Frame.cMap) {
-                    for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(coeffs[i][c]))) {
-                        coeffs[i][c][p.y][p.x] += prev.hfCoefficients.dequantHFCoeff[i][c][p.y][p.x];
+                for (int c = 0; c < 3; c++) {
+                    if (!hfCoefficients.varblocks[i].isCorner(shift[c]))
+                        continue;
+                    IntPoint size = IntPoint.sizeOf(hfCoefficients.quantizedCoeffs[i][c]);
+                    for (int y = 0; y < size.y; y++) {
+                        for (int x = 0; x < size.x; x++) {
+                            hfCoefficients.quantizedCoeffs[i][c][y][x] +=
+                                prev.hfCoefficients.quantizedCoeffs[i][c][y][x];
+                        }
                     }
                 }
             }
         }
-        IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        hfCoefficients.bakeDequantizedCoeffs();
+        hfCoefficients.finalizeLLF();
+        float[][][][] coeffs = hfCoefficients.dequantHFCoeff;
         float[][][] scratchBlock = new float[4][256][256];
         for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
@@ -200,7 +207,8 @@ public class PassGroup {
                 IntPoint size = varblock.sizeInPixels();
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:
-                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size, scratchBlock[0], scratchBlock[1], false);
+                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame,
+                            size, scratchBlock[0], scratchBlock[1], false);
                         break;
                     case TransformType.METHOD_DCT8_4:
                         coeff0 = coeffs[i][c][0][0];
