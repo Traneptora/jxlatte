@@ -106,7 +106,13 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
             level1Symbols[index] = i;
         }
 
-        VLCTable leve11Table = new VLCTable(5, level1LengthsScrambled, level1Symbols);
+        VLCTable leve11Table;
+
+        if (numCodes == 1) {
+            leve11Table = new VLCTable(0, new int[][]{{level1Symbols[17], 0}});
+        } else {
+            leve11Table = new VLCTable(5, level1LengthsScrambled, level1Symbols);
+        }
 
         totalCode = 0;
         int prevRepeatCount = 0;
