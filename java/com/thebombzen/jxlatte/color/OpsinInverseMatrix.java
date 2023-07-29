@@ -5,7 +5,6 @@ import java.util.Arrays;
 
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class OpsinInverseMatrix {
@@ -102,15 +101,17 @@ public class OpsinInverseMatrix {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         final float itScale = 255f / intensityTarget;
-        flowHelper.parallelIterate(IntPoint.sizeOf(buffer[0]), (x, y) -> {
-            float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
-            float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
-            float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-            float mixL = gammaL * gammaL * gammaL + opsinBias[0];
-            float mixM = gammaM * gammaM * gammaM + opsinBias[1];
-            float mixS = gammaS * gammaS * gammaS + opsinBias[2];
-            for (int c = 0; c < 3; c++)
-                buffer[c][y][x] = (matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS) * itScale;
-        });
+        for (int y = 0; y < buffer[0].length; y++) {
+            for (int x = 0; x < buffer[0][y].length; y++) {
+                float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
+                float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
+                float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
+                float mixL = gammaL * gammaL * gammaL + opsinBias[0];
+                float mixM = gammaM * gammaM * gammaM + opsinBias[1];
+                float mixS = gammaS * gammaS * gammaS + opsinBias[2];
+                for (int c = 0; c < 3; c++)
+                    buffer[c][y][x] = (matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS) * itScale;
+            }
+        }
     }
 }
