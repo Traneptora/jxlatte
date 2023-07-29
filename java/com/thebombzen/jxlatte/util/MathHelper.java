@@ -162,11 +162,21 @@ public final class MathHelper {
     }
 
     public static int min(int... a) {
-        return Arrays.stream(a).reduce(Integer.MAX_VALUE, Math::min);
+        int result = Integer.MAX_VALUE;
+        for (int i : a) {
+            if (i < result)
+                result = i;
+        }
+        return result;
     }
 
     public static int max(int... a) {
-        return Arrays.stream(a).reduce(Integer.MIN_VALUE, Math::max);
+        int result = Integer.MIN_VALUE;
+        for (int i : a) {
+            if (i > result)
+                result = i;
+        }
+        return result;
     }
 
     public static float max(float... a) {
