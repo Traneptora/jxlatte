@@ -14,7 +14,7 @@ import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class TaskList<T> {
 
-    private List<List<CompletableFuture<? extends T>>> tasks;
+    private List<CompletableFuture<? extends T>>[] tasks;
     private ExecutorService threadPool;
 
     public TaskList(ExecutorService threadPool) {
@@ -23,9 +23,11 @@ public class TaskList<T> {
 
     public TaskList(ExecutorService threadPool, int bins) {
         this.threadPool = threadPool;
-        tasks = new ArrayList<>(bins);
+        @SuppressWarnings("unchecked")
+        List<CompletableFuture<? extends T>>[] tasks = new List[bins];
+        this.tasks = tasks;
         for (int i = 0; i < bins; i++)
-            tasks.add(new ArrayList<>());
+            tasks[i] = new ArrayList<>();
     }
 
     public void submit(ExceptionalRunnable r) {
@@ -41,7 +43,7 @@ public class TaskList<T> {
     }
 
     public void submit(int bin, ExceptionalSupplier<? extends T> s) {
-        tasks.get(bin).add(CompletableFuture.supplyAsync(s, threadPool));
+        tasks[bin].add(CompletableFuture.supplyAsync(s, threadPool));
     }
 
     public <U> void submit(CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
@@ -49,7 +51,7 @@ public class TaskList<T> {
     }
 
     public <U> void submit(int bin, CompletableFuture<? extends U> supplier, ExceptionalFunction<? super U, ? extends T> f) {
-        tasks.get(bin).add(supplier.thenApplyAsync(f, threadPool));
+        tasks[bin].add(supplier.thenApplyAsync(f, threadPool));
     }
 
     public void submit(int bin, int a, int b, ExceptionalIntBiConsumer consumer) {
@@ -70,15 +72,15 @@ public class TaskList<T> {
 
     public List<T> collect(int bin) {
         List<T> results = new ArrayList<>();
-        for (CompletableFuture<? extends T> future : tasks.get(bin))
+        for (CompletableFuture<? extends T> future : tasks[bin])
             results.add(FunctionalHelper.join(future));
-        tasks.get(bin).clear();
+        tasks[bin].clear();
         return results;
     }
 
     public List<T> collect() {
         List<T> results = new ArrayList<>();
-        for (int bin = 0; bin < tasks.size(); bin++)
+        for (int bin = 0; bin < tasks.length; bin++)
             results.addAll(collect(bin));
         return results;
     }
