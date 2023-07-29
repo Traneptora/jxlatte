@@ -36,7 +36,8 @@ public final class FunctionalHelper {
     }
 
     public static <T, U> Supplier<U> constant(Function<T, U> func, T input) {
-        return () -> func.apply(input);
+        final U result = func.apply(input);
+        return () -> result;
     }
 
     public static <T> T join(CompletableFuture<T> future) {

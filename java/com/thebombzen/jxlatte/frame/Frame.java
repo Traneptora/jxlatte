@@ -337,9 +337,10 @@ public class Frame {
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
                 int[][] newChannel = lfGroups[lfGroupID].modularLFGroupBuffer[j];
                 ModularChannelInfo newChannelInfo = lfGroups[lfGroupID].modularLFGroupInfo[j];
-                flowHelper.parallelIterate(IntPoint.sizeOf(newChannel), (x, y) -> {
-                    channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, newChannel[y][x]);
-                });
+                for (int y = 0; y < newChannel.length; y++) {
+                    System.arraycopy(newChannel[y], 0, channel.buffer[y + newChannelInfo.origin.y],
+                        newChannelInfo.origin.x, newChannel[y].length);
+                }
             }
         }
     }
@@ -388,9 +389,10 @@ public class Frame {
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannelInfo newChannelInfo = passGroups[pass][group].modularPassGroupInfo[j];
                     int[][] buff = passGroups[pass][group].modularPassGroupBuffer[j];
-                    flowHelper.parallelIterate(new IntPoint(newChannelInfo.width, newChannelInfo.height), (x, y) -> {
-                        channel.set(x + newChannelInfo.origin.x, y + newChannelInfo.origin.y, buff[y][x]);
-                    });
+                    for (int y = 0; y < newChannelInfo.height; y++) {
+                        System.arraycopy(buff[y], 0, channel.buffer[y + newChannelInfo.origin.y],
+                            newChannelInfo.origin.x, newChannelInfo.width);
+                    }
                 }
                 j++;
             }
@@ -456,13 +458,17 @@ public class Frame {
                 scaleFactor = 1.0f;
             else
                 scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
-            flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
-                // X, Y, B is encoded as Y, X, (B - Y)
-                if (isModularXYB && cIn == 2)
-                    buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
-                else
-                    buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
-            });
+            if (isModularXYB && cIn == 2) {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++)
+                        buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
+                }
+            } else {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++)
+                        buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
+                }
+            }
         }
 
         invertSubsampling();
@@ -747,7 +753,7 @@ public class Frame {
         if (lfGlobal.noiseParameters == null)
             return;
         int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
-        float[][][] noiseBuffer = new float[3][header.height][header.width];
+        float[][][] localNoiseBuffer = new float[3][header.height][header.width];
         int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
         TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
         for (int group = 0; group < numGroups; group++) {
@@ -757,7 +763,7 @@ public class Frame {
                 for (int ix = 0; ix < header.upsampling; ix++) {
                     int x0 = (groupXYUp.x + ix) * header.groupDim;
                     int y0 = (groupXYUp.y + iy) * header.groupDim;
-                    tasks.submit(() -> new NoiseGroup(header, seed0, noiseBuffer, x0, y0));
+                    tasks.submit(() -> new NoiseGroup(header, seed0, localNoiseBuffer, x0, y0));
                 }
             }
         }
@@ -771,18 +777,22 @@ public class Frame {
             }
         }
 
-        this.noiseBuffer = new float[3][header.height][header.width];
+        noiseBuffer = new float[3][header.height][header.width];
         tasks.collect();
 
-        flowHelper.parallelIterate(3, new IntPoint(header.width, header.height), (c, x, y) -> {
-            for (int iy = 0; iy < 5; iy++) {
-                for (int ix = 0; ix < 5; ix++) {
-                    int cy = MathHelper.mirrorCoordinate(y + iy - 2, header.height);
-                    int cx = MathHelper.mirrorCoordinate(x + ix - 2, header.width);
-                    this.noiseBuffer[c][y][x] += noiseBuffer[c][cy][cx] * laplacian[iy][ix];
+        for (int c = 0; c < 3; c++) {
+            for (int y = 0; y < header.height; y++) {
+                for (int x = 0; x < header.width; x++) {
+                    for (int iy = 0; iy < 5; iy++) {
+                        for (int ix = 0; ix < 5; ix++) {
+                            int cy = MathHelper.mirrorCoordinate(y + iy - 2, header.height);
+                            int cx = MathHelper.mirrorCoordinate(x + ix - 2, header.width);
+                            noiseBuffer[c][y][x] += localNoiseBuffer[c][cy][cx] * laplacian[iy][ix];
+                        }
+                    }
                 }
             }
-        });
+        }
     }
 
     public void synthesizeNoise() {
@@ -790,7 +800,8 @@ public class Frame {
             return;
         float[] lut = lfGlobal.noiseParameters.lut;
         // header.width here to avoid upsampling
-        flowHelper.parallelIterate(new IntPoint(header.width, header.height), (x, y) -> {
+        for (IntPoint p : FlowHelper.range2D(header.width, header.height)) {
+            int x = p.x, y = p.y;
             // SPEC: spec doesn't mention the *0.5 here, it says *6
             // SPEC: spec doesn't mention clamping to 0 here
             float inScaledR = 3f * Math.max(0f, buffer[1][y][x] + buffer[0][y][x]);
@@ -823,7 +834,7 @@ public class Frame {
             buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
             buffer[1][y][x] += nrg;
             buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
-        });
+        }
     }
 
     public LFGlobal getLFGlobal() {

@@ -63,7 +63,8 @@ public final class MathHelper {
     }
 
     public static void inverseDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
+            final float[][] dest, final int yOut, final int xStartOut,
+            final int xLogLength, final int xLength) {
         final float[] d = dest[yOut];
         final float[] s = src[yIn];
         Arrays.fill(d, xStartOut, xStartOut + xLength, s[xStartIn]);
@@ -76,7 +77,8 @@ public final class MathHelper {
     }
 
     public static void forwardDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
+            final float[][] dest, final int yOut, final int xStartOut,
+            final int xLogLength, final int xLength) {
         final float invLength = 1f / xLength;
         final float[] d = dest[yOut];
         final float[] s = src[yIn];
@@ -113,7 +115,9 @@ public final class MathHelper {
         }
     }
 
-    public static void forwardDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn, final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1, final float[][] scratchSpace2) {
+    public static void forwardDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn,
+            final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1,
+            final float[][] scratchSpace2) {
         final int xLogLength = ceilLog2(length.x);
         final int yLogLength = ceilLog2(length.y);
         for (int y = 0; y < length.y; y++)

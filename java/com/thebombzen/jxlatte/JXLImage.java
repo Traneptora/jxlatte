@@ -157,11 +157,11 @@ public class JXLImage {
         JXLImage image = new JXLImage(this, false);
         image.buffer = new DataBufferFloat(buffer.getSize(), buffer.getNumBanks());
         image.raster = Raster.createWritableRaster(image.sampleModel, image.buffer, new Point());
-        flowHelper.parallelIterate(new IntPoint(width, height), (x, y) -> {
-            float[] rgb = raster.getPixel(x, y, (float[])null);
-            rgb = MathHelper.matrixMutliply(conversionMatrix, rgb);
-            image.raster.setPixel(x, y, rgb);
-        });
+        final float[] rgb = raster.getPixel(0, 0, (float[])null);
+        for (IntPoint p : FlowHelper.range2D(width, height)) {
+            raster.getPixel(p.x, p.y, rgb);
+            image.raster.setPixel(p.x, p.y, MathHelper.matrixMutliply(conversionMatrix, rgb));
+        }
         image.primaries1931 = primaries;
         image.white1931 = whitePoint;
         image.primaries = ColorFlags.getPrimaries(primaries);
@@ -235,9 +235,13 @@ public class JXLImage {
 
     private JXLImage transfer(DoubleUnaryOperator op) {
         JXLImage image = new JXLImage(this);
-        flowHelper.parallelIterate(imageHeader.getColorChannelCount(), new IntPoint(width, height), (c, x, y) -> {
-            image.raster.setSample(x, y, c, op.applyAsDouble(this.raster.getSampleFloat(x, y, c)));
-        });
+        for (int c = 0; c < imageHeader.getColorChannelCount(); c++) {
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                     image.raster.setSample(x, y, c, op.applyAsDouble(this.raster.getSampleFloat(x, y, c)));
+                }
+            }
+        }
         return image;
     }
 

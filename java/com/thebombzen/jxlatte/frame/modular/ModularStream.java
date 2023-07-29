@@ -265,57 +265,54 @@ public class ModularStream {
                         break;
                     case 1:
                         rct = (x, y) -> {
-                            v[2].set(x, y, v[0].get(x, y) + v[2].get(x, y));
+                            v[2].buffer[y][x] = v[0].buffer[y][x] + v[2].buffer[y][x];
                         };
                         break;
                     case 2:
                         rct = (x, y) -> {
-                            v[1].set(x, y, v[0].get(x, y) + v[1].get(x, y));
+                            v[1].buffer[y][x] = v[0].buffer[y][x] + v[1].buffer[y][x];
                         };
                         break;
                     case 3:
                         rct = (x, y) -> {
-                            int a = v[0].get(x, y);
-                            v[2].set(x, y, a + v[2].get(x, y));
-                            v[1].set(x, y, a + v[1].get(x, y));
+                            final int a = v[0].buffer[y][x];
+                            v[2].buffer[y][x] = a + v[2].buffer[y][x];
+                            v[1].buffer[y][x] = a + v[1].buffer[y][x];
                         };
                         break;
                     case 4:
                         rct = (x, y) -> {
-                            v[1].set(x, y, v[1].get(x, y) + ((v[0].get(x, y) + v[2].get(x, y)) >> 1));
+                            v[1].buffer[y][x] = v[1].buffer[y][x] + (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1;
                         };
                         break;
                     case 5:
                         rct = (x, y) -> {
-                            int a = v[0].get(x, y);
-                            int c = v[2].get(x, y);
-                            v[1].set(x, y, v[1].get(x, y) + a + (c >> 1));
-                            v[2].set(x, y, c + a);
+                            final int a = v[0].buffer[y][x];
+                            final int c = v[2].buffer[y][x];
+                            v[1].buffer[y][x] = v[1].buffer[y][x] + a + (c >> 1);
+                            v[2].buffer[y][x] = a + c;
                         };
                         break;
                     case 6:
                         rct = (x, y) -> {
-                            int b = v[1].get(x, y);
-                            int c = v[2].get(x, y);
-                            int tmp = v[0].get(x, y) - (c >> 1);
-                            int f = tmp - (b >> 1);
-                            v[0].set(x, y, f + b);
-                            v[1].set(x, y, c + tmp);
-                            v[2].set(x, y, f);
+                            final int b = v[1].buffer[y][x];
+                            final int c = v[2].buffer[y][x];
+                            final int tmp = v[0].buffer[y][x] - (c >> 1);
+                            final int f = tmp - (b >> 1);
+                            v[0].buffer[y][x] = f + b;
+                            v[1].buffer[y][x] = c + tmp;
+                            v[2].buffer[y][x] = f;
                         };
                         break;
                     default:
                         throw new IllegalStateException("Challenge complete how did we get here");
                 }
                 TaskList<Void> tasks = new TaskList<>(frame.getFlowHelper().getThreadPool());
-                for (int y0 = 0; y0 < v[0].height; y0++) {
-                    tasks.submit(y0, (y) -> {
-                        for (int x = 0; x < v[0].width; x++) {
-                            rct.consume(x, y);
-                        }
-                    });
+                for (int y = 0; y < v[0].height; y++) {
+                    for (int x = 0; x < v[0].width; x++) {
+                        rct.consume(x, y);
+                    }
                 }
-                tasks.collect();
                 for (int j = 0; j < 3; j++)
                     channels.set(start + permutationLut[permutation][j], v[j]);
             } else if (transforms[i].tr == TransformInfo.PALETTE) {
@@ -324,6 +321,7 @@ public class ModularStream {
                 int last = endC + 1;
                 int bitDepth = frame.globalMetadata.getBitDepthHeader().bitsPerSample;
                 ModularChannel firstChannel = getChannel(first);
+                ModularChannel c0 = getChannel(0);
                 for (int j = first + 1; j <= last; j++) {
                     channels.add(j, new ModularChannel(firstChannel));
                 }
@@ -331,11 +329,11 @@ public class ModularStream {
                     ModularChannel chan = getChannel(first + c);
                     for (int y = 0; y < firstChannel.height; y++) {
                         for (int x = 0; x < firstChannel.width; x++) {
-                            int index = chan.get(x, y);
+                            int index = chan.buffer[y][x];
                             boolean isDelta = index < transforms[i].nbDeltas;
                             int value;
                             if (index >= 0 && index < transforms[i].nbColors) {
-                                value = getChannel(0).get(index, c);
+                                value = c0.buffer[c][index];
                             } else if (index >= transforms[i].nbColors) {
                                 index -= transforms[i].nbColors;
                                 if (index < 64) {
@@ -357,9 +355,9 @@ public class ModularStream {
                             } else {
                                 value = 0;
                             }
-                            chan.set(x, y, value);
+                            chan.buffer[y][x] = value;
                             if (isDelta)
-                                chan.set(x, y, chan.get(x, y) + chan.prediction(x, y, transforms[i].dPred));
+                                chan.buffer[y][x] += chan.prediction(x, y, transforms[i].dPred);
                         }
                     }
                 }

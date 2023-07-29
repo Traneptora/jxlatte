@@ -37,45 +37,38 @@ public class JXLCodestreamDecoder {
                 return src;
             case 2:
                 // flip horizontally
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[p.y][size.x - 1 - p.x] = src[p.y][p.x];
-                });
                 return dest;
             case 3:
                 // rotate 180 degrees
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[size.y - 1 - p.y][size.x - 1 - p.x] = src[p.y][p.x];
-                });
                 return dest;
             case 4:
                 // flip vertically
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[size.y - 1 - p.y][p.x] = src[p.y][p.x];
-                });
                 return dest;
             case 5:
                 // transpose
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[p.x][p.y] = src[p.y][p.x];
-                });
                 return dest;
             case 6:
                 // rotate clockwise
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[p.x][size.y - 1 - p.y] = src[p.y][p.x];
-                });
                 return dest;
             case 7:
                 // skew transpose
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[size.x - 1 - p.x][size.y - 1 - p.y] = src[p.y][p.x];
-                });
                 return dest;
             case 8:
                 // rotate counterclockwise
-                flowHelper.parallelIterate(size, p -> {
+                for (IntPoint p : FlowHelper.range2D(size))
                     dest[size.x - 1 - p.x][p.y] = src[p.y][p.x];
-                });
                 return dest;
             default:
                 throw new IllegalStateException("Challenge complete how did we get here");
