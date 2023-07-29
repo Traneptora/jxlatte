@@ -1,7 +1,6 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.Arrays;
-import java.util.stream.Stream;
 
 public final class MathHelper {
 
@@ -46,7 +45,7 @@ public final class MathHelper {
              */
             final float t = 1.0f / (az * 0.5f + 1.0f);
             final float u = t * (t * (t * (t * (t * (t * (t * (t * (t * 0.17087277f - 0.82215223f) + 1.48851587f) - 1.13520398f)
-                              + 0.27886807f) - 0.18628806f) + 0.09678418f) + 0.37409196f) + 1.00002368f) - 1.26551223f;
+                    + 0.27886807f) - 0.18628806f) + 0.09678418f) + 0.37409196f) + 1.00002368f) - 1.26551223f;
             absErf = 1.0f - t * (float)Math.exp(-z * z + u);
         } else {
             /*
@@ -63,7 +62,7 @@ public final class MathHelper {
     }
 
     public static void inverseDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
+                                            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
         final float[] d = dest[yOut];
         final float[] s = src[yIn];
         Arrays.fill(d, xStartOut, xStartOut + xLength, s[xStartIn]);
@@ -76,7 +75,7 @@ public final class MathHelper {
     }
 
     public static void forwardDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
+                                            final float[][] dest, final int yOut, final int xStartOut, final int xLogLength, final int xLength) {
         final float invLength = 1f / xLength;
         final float[] d = dest[yOut];
         final float[] s = src[yIn];
@@ -94,8 +93,8 @@ public final class MathHelper {
     }
 
     public static void inverseDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn,
-            final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1,
-            final float[][] scratchSpace2, boolean transposed) {
+                                    final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1,
+                                    final float[][] scratchSpace2, boolean transposed) {
         final int xLogLength = ceilLog2(length.x);
         final int yLogLength = ceilLog2(length.y);
         for (int y = 0; y < length.y; y++)
@@ -104,12 +103,12 @@ public final class MathHelper {
         if (transposed) {
             for (int y = 0; y < length.x; y++)
                 inverseDCTHorizontal(scratchSpace2, y, 0, dest,
-                    startOut.y + y, startOut.x, yLogLength, length.y);
+                        startOut.y + y, startOut.x, yLogLength, length.y);
         } else {
             for (int x = 0; x < length.x; x++)
                 inverseDCTHorizontal(scratchSpace2, x, 0, scratchSpace1,
-                    x, 0, yLogLength, length.y);
-            transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());  
+                        x, 0, yLogLength, length.y);
+            transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());
         }
     }
 
@@ -262,7 +261,17 @@ public final class MathHelper {
     }
 
     public static float[][] matrixMutliply(float[][]... matrices) {
-        return Stream.of(matrices).reduce(MathHelper::matrixMutliply).orElse(null);
+        boolean foundAny = false;
+        float[][] result = null;
+        for (float[][] element : matrices) {
+            if (!foundAny) {
+                foundAny = true;
+                result = element;
+            }
+            else
+                result = MathHelper.matrixMutliply(result, element);
+        }
+        return foundAny ? result : null;
     }
 
     // expensive! try not to use on the fly
