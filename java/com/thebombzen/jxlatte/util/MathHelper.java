@@ -163,42 +163,48 @@ public final class MathHelper {
     }
 
     public static int min(int... a) {
-        return Arrays.stream(a).reduce(Integer.MAX_VALUE, Math::min);
+        int result = a[0];
+        for (int i = 1; i < a.length; i++)
+            result = a[i] < result ? a[i] : result; // jit compiles to cmov on x86
+        return result;
     }
 
     public static int max(int... a) {
-        return Arrays.stream(a).reduce(Integer.MIN_VALUE, Math::max);
+        int result = a[0];
+        for (int i = 1; i < a.length; i++)
+            result = a[i] > result ? a[i] : result; // jit compiles to cmov on x86
+        return result;
     }
 
     public static float max(float... a) {
-        float result = Float.MIN_VALUE;
-        for (float f : a) {
-            if (f > result)
-                result = f;
-        }
+        float result = a[0];
+        for (int i = 1; i < a.length; i++)
+            result = a[i] < result ? a[i] : result;
         return result;
     }
 
     public static float signedPow(float base, float exponent) {
-        return Math.signum(base) * (float)Math.pow(Math.abs(base), exponent);
+        return (float)(base < 0 ? -Math.pow(-base, exponent) : Math.pow(base, exponent));
     }
 
     public static int clamp(int v, int a, int b, int c) {
-        int lower = min(a, b, c);
-        int upper = max(a, b, c);
-        return Math.min(Math.max(v, lower), upper);
+        int lower = a < b ? a : b;
+        int upper = lower ^ a ^ b;
+        lower = lower < c ? lower : c;
+        upper = upper > c ? upper : c;
+        return v < lower ? lower : v > upper ? upper : v;
     }
 
     public static int clamp(int v, int a, int b) {
-        int lower = Math.min(a, b);
-        int upper = Math.max(a, b);
-        return Math.min(Math.max(v, lower), upper);
+        int lower = a < b ? a : b;
+        int upper = lower ^ a ^ b;
+        return v < lower ? lower : v > upper ? upper : v;
     }
 
     public static float clamp(float v, float a, float b) {
-        float lower = Math.min(a, b);
-        float upper = Math.max(a, b);
-        return Math.min(Math.max(v, lower), upper);
+        float lower = a < b ? a : b;
+        float upper = a < b ? b : a;
+        return v < lower ? lower : v > upper ? upper : v;
     }
 
     public static float[] matrixMutliply(final float[][] matrix, final float[] columnVector) {
