@@ -1,7 +1,6 @@
 package com.thebombzen.jxlatte.util;
 
 import java.util.Arrays;
-import java.util.stream.Stream;
 
 public final class MathHelper {
 
@@ -238,7 +237,7 @@ public final class MathHelper {
         return total;
     }
 
-    public static float[][] matrixMutliply(float[][] left, float[][] right) {
+    public static float[][] matrixMutliply(final float[][] left, final float[][] right) {
         if (left == null)
             return right;
         if (right == null)
@@ -258,8 +257,8 @@ public final class MathHelper {
         return identity;
     }
 
-    public static float[][] matrixMutliply(float[][]... matrices) {
-        return Stream.of(matrices).reduce(MathHelper::matrixMutliply).orElse(null);
+    public static float[][] matrixMutliply(float[][] a, float[][] b, float[][] c) {
+        return matrixMutliply(matrixMutliply(a, b), c);
     }
 
     // expensive! try not to use on the fly
@@ -295,10 +294,10 @@ public final class MathHelper {
 
     public static int mirrorCoordinate(int coordinate, int size) {
         if (coordinate < 0)
-            return mirrorCoordinate(-coordinate - 1, size);
-        if (coordinate >= size)
-            return mirrorCoordinate(2 * size - coordinate - 1, size);
-        return coordinate;
+            return mirrorCoordinate(~coordinate, size);
+        if (coordinate < size)
+            return coordinate;
+        return mirrorCoordinate((size << 1) + ~coordinate, size);
     }
 
     public static float floatFromF16(int bits16) {
