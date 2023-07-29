@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.util.MathHelper;
 
 public class HFBlockContext {
@@ -14,7 +15,7 @@ public class HFBlockContext {
     public final int[] qfThresholds;
     public final int numLFContexts;
 
-    public HFBlockContext(Bitreader reader) throws IOException {
+    public HFBlockContext(Bitreader reader, Loggers loggers) throws IOException {
         boolean useDefault = reader.readBool();
         if (useDefault) {
             clusterMap = new int[]{
@@ -52,5 +53,6 @@ public class HFBlockContext {
             throw new InvalidBitstreamException("HF block Size too large");
         clusterMap = new int[bSize];
         numClusters = EntropyStream.readClusterMap(reader, clusterMap, 16);
+        loggers.log(Loggers.LOG_TRACE, "HFBlockContext Cluster Map: %s", clusterMap);
     }
 }

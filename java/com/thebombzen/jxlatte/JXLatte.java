@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.io.PFMWriter;
 import com.thebombzen.jxlatte.io.PNGWriter;
 import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
@@ -175,13 +176,13 @@ public class JXLatte {
                 return true;
             case "info":
                 if (Arrays.asList("", "info", "yes", "true").contains(valueL)) {
-                    options.verbosity = JXLOptions.VERBOSITY_INFO;
+                    options.verbosity = Loggers.LOG_INFO;
                 } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.verbosity = JXLOptions.VERBOSITY_BASE;
+                    options.verbosity = Loggers.LOG_BASE;
                 } else if (Arrays.asList("v", "verbose").contains(valueL)) {
-                    options.verbosity = JXLOptions.VERBOSITY_VERBOSE;
+                    options.verbosity = Loggers.LOG_VERBOSE;
                 } else if (valueL.equals("trace")) {
-                    options.verbosity = JXLOptions.VERBOSITY_TRACE;
+                    options.verbosity = Loggers.LOG_TRACE;
                 } else {
                     System.err.format("jxlatte: Unknown --info flag: %s%n", value);
                     System.exit(1);
@@ -189,9 +190,9 @@ public class JXLatte {
                 return true;
             case "verbose":
                 if (Arrays.asList("", "yes", "true", "v", "verbose").contains(valueL)) {
-                    options.verbosity = JXLOptions.VERBOSITY_VERBOSE;
+                    options.verbosity = Loggers.LOG_VERBOSE;
                 } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.verbosity = JXLOptions.VERBOSITY_BASE;
+                    options.verbosity = Loggers.LOG_BASE;
                 } else {
                     System.err.format("jxlatte: Unknown --verbose flag: %s%n", value);
                     System.exit(1);

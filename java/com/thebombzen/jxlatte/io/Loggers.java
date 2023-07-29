@@ -7,6 +7,12 @@ import com.thebombzen.jxlatte.JXLOptions;
 import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
 
 public class Loggers {
+
+    public static final int LOG_BASE = 0;
+    public static final int LOG_INFO = 8;
+    public static final int LOG_VERBOSE = 16;
+    public static final int LOG_TRACE = 24;
+
     public final JXLOptions options;
     public final PrintWriter err;
 

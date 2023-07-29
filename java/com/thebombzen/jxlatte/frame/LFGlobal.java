@@ -60,7 +60,7 @@ public class LFGlobal {
         }
         if (frame.getFrameHeader().encoding == FrameFlags.VARDCT) {
             quantizer = new Quantizer(reader, lfDequant);
-            hfBlockCtx = new HFBlockContext(reader);
+            hfBlockCtx = new HFBlockContext(reader, parent.getLoggers());
             lfChanCorr = new LFChannelCorrelation(reader);
         } else {
             quantizer = null;

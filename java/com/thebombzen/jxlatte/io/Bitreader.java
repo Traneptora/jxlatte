@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
+import com.thebombzen.jxlatte.util.MathHelper;
 
 public class Bitreader extends InputStream {
 
@@ -56,24 +57,10 @@ public class Bitreader extends InputStream {
 
     public float readF16() throws IOException {
         int bits16 = readBits(16);
-        int mantissa = bits16 & 0x3FF;
-        int biased_exp = (bits16 >>> 10) & 0x1F;
-        if (biased_exp == 31)
+        float f = MathHelper.floatFromF16(bits16);
+        if (!Float.isFinite(f))
             throw new InvalidBitstreamException("Illegal infinite/NaN float16");
-        biased_exp += 127 - 15;
-        mantissa <<= 13;
-        int sign = (bits16 & 0x8000) << 16;
-        int total;
-        if (biased_exp == 112) {
-            if (mantissa == 0) {
-                biased_exp = 0;
-            } else {
-                int clz = Integer.numberOfLeadingZeros(mantissa);
-                mantissa = (mantissa << (clz - 8)) & 0x7FFFFF;
-            }
-        }
-        total = sign | (biased_exp << 23) | mantissa;
-        return Float.intBitsToFloat(total);
+        return f;
     }
 
     public int readEnum() throws IOException {

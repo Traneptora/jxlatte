@@ -12,6 +12,7 @@ import com.thebombzen.jxlatte.frame.modular.ModularChannel;
 import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
 import com.thebombzen.jxlatte.frame.modular.ModularStream;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.util.FlowHelper;
 import com.thebombzen.jxlatte.util.IntPoint;
 import com.thebombzen.jxlatte.util.MathHelper;
@@ -222,9 +223,12 @@ public class HFGlobal {
 
     public HFGlobal(Bitreader reader, Frame frame) throws IOException {
         boolean quantAllDefault = reader.readBool();
+        Loggers loggers = frame.getLoggers();
         if (quantAllDefault) {
+            loggers.log(Loggers.LOG_TRACE, "Using default params.");
             params = defaultParams;
         } else {
+            loggers.log(Loggers.LOG_TRACE, "Using individual params.");
             params = new DCTParams[17];
             for (int i = 0; i < 17; i++)
                 setupDCTParam(reader, frame, i);
@@ -240,6 +244,8 @@ public class HFGlobal {
 
     private void setupDCTParam(Bitreader reader, Frame frame, int index) throws IOException {
         int encodingMode = reader.readBits(3);
+        Loggers loggers = frame.getLoggers();
+        loggers.log(Loggers.LOG_TRACE, "Parameter %d, encoded as %d", index, encodingMode);
         TransformType.validateIndex(index, encodingMode);
         float[][] m;
         switch (encodingMode) {
@@ -278,6 +284,7 @@ public class HFGlobal {
                 break;
             case TransformType.MODE_RAW:
                 float den = reader.readF16();
+                loggers.log(Loggers.LOG_TRACE, "Raw denominator: %f, reciprocol %f", den, 1.0D / den);
                 // SPEC: do not zero pad to byte here
                 TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
@@ -296,6 +303,7 @@ public class HFGlobal {
                         }
                     }
                 }
+                loggers.log(Loggers.LOG_TRACE, "weights: %s", (Object)m);
                 params[index] = new DCTParams(null, m, encodingMode, den);
                 break;
             case TransformType.MODE_AFV:
@@ -415,21 +423,24 @@ public class HFGlobal {
                     break;
                 case TransformType.MODE_RAW:
                     weights[index][c] = new float[tt.matrixHeight][tt.matrixWidth];
-                    for (IntPoint p : FlowHelper.range2D(tt.matrixWidth, tt.matrixHeight)) {
-                        // SPEC: spec has the wrong params here
-                        weights[index][c][p.y][p.x] = 1f / (params[index].param[c][p.y * tt.matrixWidth + p.x]
-                            * params[index].denominator);
+                    for (int y = 0; y < tt.matrixHeight; y++) {
+                        for (int x = 0; x < tt.matrixWidth; x++) {
+                             weights[index][c][y][x] = params[index].param[c][y * tt.matrixWidth + x]
+                                * params[index].denominator;
+                        }
                     }
                     break;
                 default:
                     throw new IllegalStateException("Challenge complete how did we get here");
             }
         }
-        for (int c = 0; c < 3; c++) {
-            for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(weights[index][c]))) {
-                if (weights[index][c][p.y][p.x] <= 0f || !Double.isFinite(weights[index][c][p.y][p.x]))
-                    throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
-                weights[index][c][p.y][p.x] = 1f / weights[index][c][p.y][p.x];
+        if (params[index].mode != TransformType.MODE_RAW) {
+            for (int c = 0; c < 3; c++) {
+                for (IntPoint p : FlowHelper.range2D(IntPoint.sizeOf(weights[index][c]))) {
+                    if (weights[index][c][p.y][p.x] <= 0f || !Float.isFinite(weights[index][c][p.y][p.x]))
+                        throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
+                    weights[index][c][p.y][p.x] = 1f / weights[index][c][p.y][p.x];
+                }
             }
         }
     }

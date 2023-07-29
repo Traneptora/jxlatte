@@ -15,12 +15,13 @@ public final class MathHelper {
     private static float[][][] cosineLut = new float[9][][];
 
     static {
+        final double root2 = StrictMath.sqrt(2.0D);
         for (int l = 0; l < cosineLut.length; l++) {
             int s = 1 << l;
             cosineLut[l] = new float[s - 1][s];
             for (int n = 0; n < cosineLut[l].length; n++) {
                 for (int k = 0; k < cosineLut[l][n].length; k++) {
-                    cosineLut[l][n][k] = (float)(SQRT_2 * StrictMath.cos(Math.PI * (n + 1) * (k + 0.5D) / s));
+                    cosineLut[l][n][k] = (float)(root2 * StrictMath.cos(Math.PI * (n + 1) * (k + 0.5D) / s));
                 }
             }
         }
@@ -286,14 +287,27 @@ public final class MathHelper {
         return inverse;
     }
 
-    private MathHelper() {}
-
     public static int mirrorCoordinate(int coordinate, int size) {
         if (coordinate < 0)
             return mirrorCoordinate(-coordinate - 1, size);
         if (coordinate >= size)
             return mirrorCoordinate(2 * size - coordinate - 1, size);
         return coordinate;
+    }
+
+    public static float floatFromF16(int bits16) {
+        int mantissa = bits16 & 0x3FF;
+        int biased_exp = (bits16 >>> 10) & 0x1F;
+        int sign = (bits16 >>> 15) & 1;
+        if (biased_exp == 31)
+            return Float.NaN;
+        if (biased_exp == 0)
+            return (1 - 2 * sign) * mantissa / 16777216f;
+        biased_exp += 127 - 15;
+        mantissa <<= 13;
+        sign <<= 31;
+        int total = sign | (biased_exp << 23) | mantissa;
+        return Float.intBitsToFloat(total);
     }
 
     public static float[][][] deepCopyOf(float[][][] array) {
@@ -312,4 +326,6 @@ public final class MathHelper {
         }
         return copy;
     }
+
+    private MathHelper() {}
 }

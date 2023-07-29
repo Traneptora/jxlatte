@@ -12,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.JXLOptions;
 import com.thebombzen.jxlatte.bundle.ImageHeader;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.features.noise.NoiseGroup;
@@ -938,17 +937,17 @@ public class Frame {
     }
 
     public void printDebugInfo() {
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "Frame Info:");
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Encoding: %s", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
+        loggers.log(Loggers.LOG_VERBOSE, "Frame Info:");
+        loggers.log(Loggers.LOG_VERBOSE, "    Encoding: %s", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
                     : header.type == FrameFlags.LF_FRAME ? "LF Frame"
                     : header.type == FrameFlags.REFERENCE_ONLY ? "Reference Only"
                     : header.type == FrameFlags.SKIP_PROGRESSIVE ? "Skip Progressive"
                     : "????";
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Type: %s", type);
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Size: %dx%d", width, height);
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    Origin: (%d, %d)", header.origin.x, header.origin.y);
-        loggers.log(JXLOptions.VERBOSITY_VERBOSE, "    YCbCr: %b", header.doYCbCr);
+        loggers.log(Loggers.LOG_VERBOSE, "    Type: %s", type);
+        loggers.log(Loggers.LOG_VERBOSE, "    Size: %dx%d", width, height);
+        loggers.log(Loggers.LOG_VERBOSE, "    Origin: (%d, %d)", header.origin.x, header.origin.y);
+        loggers.log(Loggers.LOG_VERBOSE, "    YCbCr: %b", header.doYCbCr);
     }
 
     public Loggers getLoggers() {

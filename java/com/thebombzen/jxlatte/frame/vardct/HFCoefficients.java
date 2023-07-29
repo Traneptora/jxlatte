@@ -185,9 +185,9 @@ public class HFCoefficients {
             final IntPoint size = varblock.sizeInBlocks();
             final TransformType tt = varblock.transformType();
             for (int c = 0; c < 3; c++) {
-                final float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
                 if (!varblock.isCorner(shift[c]))
                     continue;
+                final float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
                 final float[][] dq = dequantHFCoeff[i][c];
                 MathHelper.forwardDCT2D(dqlf, dq,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),

@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.JXLOptions;
 import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
+import com.thebombzen.jxlatte.io.Loggers;
 import com.thebombzen.jxlatte.util.TaskList;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
@@ -90,7 +90,7 @@ public class ModularStream {
             channels.addAll(Arrays.asList(channelArray));
         }
 
-        frame.getLoggers().log(JXLOptions.VERBOSITY_TRACE, transforms);
+        frame.getLoggers().log(Loggers.LOG_TRACE, "Transforms: %s", (Object)transforms);
 
         for (int i = 0; i < nbTransforms; i++) {
             if (transforms[i].tr == TransformInfo.PALETTE) {
