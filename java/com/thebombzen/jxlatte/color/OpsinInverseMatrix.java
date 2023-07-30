@@ -102,7 +102,7 @@ public class OpsinInverseMatrix {
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         final float itScale = 255f / intensityTarget;
         for (int y = 0; y < buffer[0].length; y++) {
-            for (int x = 0; x < buffer[0][y].length; y++) {
+            for (int x = 0; x < buffer[0][y].length; x++) {
                 float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
                 float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
                 float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];

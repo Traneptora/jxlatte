@@ -39,8 +39,8 @@ public class HFCoefficients {
     public final LFGroup lfg;
     public final int groupID;
     private final int[][][] nonZeroes;
-    public final float[][][][] dequantHFCoeff;
-    public final int[][][][] quantizedCoeffs;
+    public final float[][][] dequantHFCoeff;
+    public final int[][][] quantizedCoeffs;
     public final EntropyStream stream;
     public final Frame frame;
     public final Varblock[] varblocks;
@@ -58,7 +58,13 @@ public class HFCoefficients {
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
         final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         stream = new EntropyStream(hfPass.contextStream);
-        quantizedCoeffs = new int[lfg.hfMetadata.blockList.length][][][];
+        quantizedCoeffs = new int[3][][];
+        dequantHFCoeff = new float[3][][];
+        for (int c = 0; c < 3; c++) {
+            IntPoint s = groupSize.shiftRight(shift[c]);
+            quantizedCoeffs[c] = new int[s.y][s.x];
+            dequantHFCoeff[c] = new float[s.y][s.x];
+        }
         varblocks = new Varblock[lfg.hfMetadata.blockList.length];
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
             final Varblock varblock = lfg.hfMetadata.getVarblock(i);
@@ -66,8 +72,6 @@ public class HFCoefficients {
                 continue; // block is not in this group
             varblocks[i] = varblock;
             final TransformType tt = varblock.transformType();
-            final int[][][] co = new int[3][tt.blockHeight][tt.blockWidth];
-            quantizedCoeffs[i] = co;
             final boolean flip = varblock.flip() || tt.isVertical();
             final int hfMult = varblock.hfMult();
             final int lfIndex = lfg.lfCoeff.lfIndex[varblock.blockPosInLFGroup.y][varblock.blockPosInLFGroup.x];
@@ -78,6 +82,7 @@ public class HFCoefficients {
                 if (!varblock.isCorner(shiftC))
                     continue; // subsampled block
                 final IntPoint shiftedBlockPos = varblock.blockPosInGroup.shiftRight(shiftC);
+                final IntPoint ppg = shiftedBlockPos.shiftLeft(3);
                 final int predicted = getPredictedNonZeroes(c, shiftedBlockPos);
                 final int blockCtx = getBlockContext(c, tt.orderID, hfMult, lfIndex);
                 final int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
@@ -95,16 +100,15 @@ public class HFCoefficients {
                 final int size = hfPass.order[tt.orderID][c].length;
                 final int[] ucoeff = new int[size - numBlocks];
                 final int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
-                final int[][] cco = co[c];
                 for (int k = 0; k < ucoeff.length; k++) {
                     // SPEC: spec has this condition flipped
                     final int prev = k == 0 ? (nonZero > size/16 ? 0 : 1) : (ucoeff[k - 1] != 0 ? 1 : 0);
                     final int ctx = histCtx + getCoefficientContext(k + numBlocks, nonZero, numBlocks, prev);
                     ucoeff[k] = stream.readSymbol(reader, ctx);
                     final IntPoint pos = hfPass.order[tt.orderID][c][k + numBlocks];
-                    final int posX = flip ? pos.y : pos.x;
-                    final int posY = flip ? pos.x : pos.y;
-                    cco[posY][posX] = MathHelper.unpackSigned(ucoeff[k]);
+                    final int posX = (flip ? pos.y : pos.x) + ppg.x;
+                    final int posY = (flip ? pos.x : pos.y) + ppg.y;
+                    quantizedCoeffs[c][posY][posX] = MathHelper.unpackSigned(ucoeff[k]);
                     if (ucoeff[k] != 0) {
                         if (--nonZero == 0)
                             break;
@@ -120,7 +124,6 @@ public class HFCoefficients {
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
 
-        this.dequantHFCoeff =  new float[varblocks.length][3][][];
     }
 
     public void bakeDequantizedCoeffs() {
@@ -139,7 +142,6 @@ public class HFCoefficients {
                 if (varblock == null)
                     continue;
                 final IntPoint sizeInPixels = varblock.sizeInPixels();
-                final float[][][] dq = dequantHFCoeff[i];
                 for (int iy = 0; iy < sizeInPixels.y; iy++) {
                     final int y = varblock.pixelPosInLFGroup.y + iy;
                     final int fy = y >> 6;
@@ -148,9 +150,6 @@ public class HFCoefficients {
                     final float[] bF = bFactors[fy];
                     final int[] hfX = xFactorHF[fy];
                     final int[] hfB = bFactorHF[fy];
-                    final float[] dq0 = dq[0][iy];
-                    final float[] dq1 = dq[1][iy];
-                    final float[] dq2 = dq[2][iy];
                     for (int ix = 0; ix < sizeInPixels.x; ix++) {
                         final int x = varblock.pixelPosInLFGroup.x + ix;
                         final int fx = x >> 6;
@@ -165,9 +164,12 @@ public class HFCoefficients {
                             kX = xF[fx];
                             kB = bF[fx];
                         }
-                        final float dequantY = dq1[ix];
-                        dq0[ix] += kX * dequantY;
-                        dq2[ix] += kB * dequantY;
+                        final float dequantY =
+                            dequantHFCoeff[1][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix];
+                        dequantHFCoeff[0][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
+                            += kX * dequantY;
+                        dequantHFCoeff[2][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
+                            += kB * dequantY;
                     }
                 }
             }
@@ -188,15 +190,16 @@ public class HFCoefficients {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 final float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
-                final float[][] dq = dequantHFCoeff[i][c];
+                final float[][] dq = dequantHFCoeff[c];
+                final IntPoint ppg = varblock.pixelPosInGroup.shiftRight(shift[c]);
                 MathHelper.forwardDCT2D(dqlf, dq,
                     varblock.blockPosInLFGroup.shiftRight(shift[c]),
-                    IntPoint.ZERO, size, scratchBlock[0], scratchBlock[1]);
+                    ppg, size, scratchBlock[0], scratchBlock[1]);
                 for (int y = 0; y < size.y; y++) {
-                    final float[] dqy = dq[y];
+                    final float[] dqy = dq[y + ppg.y];
                     final float[] llfy = tt.llfScale[y];
                     for (int x = 0; x < size.x; x++)
-                        dqy[x] *= llfy[x];
+                        dqy[x + ppg.x] *= llfy[x];
                 }
             }
         }
@@ -239,8 +242,6 @@ public class HFCoefficients {
     }
 
     private void dequantizeHFCoefficients() {
-        final float[][][][] dequant = this.dequantHFCoeff;
-        final int[][][][] coeffs = this.quantizedCoeffs;
         final OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
         final float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
         final float[] scaleFactor = new float[]{
@@ -261,15 +262,12 @@ public class HFCoefficients {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 final float[][] w3 = w2[c];
-                final int[][] co = coeffs[i][c];
-                final float[][] dq = new float[co.length][co[0].length];
                 final float qbc = matrix.quantBias[c];
                 final float sfc = scaleFactor[c] / varblock.hfMult();
+                final IntPoint ppg = varblock.pixelPosInGroup.shiftRight(shift[c]);
                 for (int y = 0; y < tt.blockHeight; y++) {
-                    final float[] dq1 = dq[y];
-                    final int[] co2 = co[y];
                     for (int x = 0; x < tt.blockWidth; x++) {
-                        final int coeff = co2[x];
+                        final int coeff = quantizedCoeffs[c][ppg.y + y][ppg.x + x];
                         final float quant;
                         if (coeff == 0) {
                             quant = 0f;
@@ -282,10 +280,9 @@ public class HFCoefficients {
                         }
                         final int wx = flip ? y : x;
                         final int wy = flip ? x : y;
-                        dq1[x] = quant * sfc * w3[wy][wx];
+                        dequantHFCoeff[c][ppg.y + y][ppg.x + x] = quant * sfc * w3[wy][wx];
                     }
                 }
-                dequant[i][c] = dq;
             }
         }
     }

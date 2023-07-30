@@ -87,9 +87,9 @@ public class PassGroup {
             System.arraycopy(block[y + inPos.y], inPos.x, buffer[y + outPos.y], outPos.x, inSize.x);
     }
 
-    private void invertAFV(float[][] coeffs, float[][] buffer, Varblock varblock, IntPoint pixelPosInFrame, float[][][] scratchBlock) {
-        IntPoint p = IntPoint.ZERO;
-        IntPoint ps = pixelPosInFrame;
+    private void invertAFV(float[][] coeffs, float[][] buffer, Varblock varblock, IntPoint pixelPosInFrame, float[][][] scratchBlock, IntPoint shift) {
+        IntPoint p = varblock.pixelPosInGroup.shiftRight(shift);
+        IntPoint ps = pixelPosInFrame.shiftRight(shift);
         scratchBlock[0][0][0] = (coeffs[p.y][p.x] + coeffs[p.y + 1][p.x] + coeffs[p.y][p.x + 1]) * 4f;
         for (int iy = 0; iy < 4; iy++) {
             for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
@@ -174,16 +174,18 @@ public class PassGroup {
         IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         if (prev != null) {
             for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
-                if (hfCoefficients.varblocks[i] == null)
+                Varblock varblock = hfCoefficients.varblocks[i];
+                if (varblock == null)
                     continue;
+                IntPoint size = varblock.sizeInPixels();
                 for (int c = 0; c < 3; c++) {
-                    if (!hfCoefficients.varblocks[i].isCorner(shift[c]))
+                    if (!varblock.isCorner(shift[c]))
                         continue;
-                    IntPoint size = IntPoint.sizeOf(hfCoefficients.quantizedCoeffs[i][c]);
-                    for (int y = 0; y < size.y; y++) {
-                        for (int x = 0; x < size.x; x++) {
-                            hfCoefficients.quantizedCoeffs[i][c][y][x] +=
-                                prev.hfCoefficients.quantizedCoeffs[i][c][y][x];
+                    final IntPoint ppg = varblock.pixelPosInGroup.shiftRight(shift[c]);
+                    for (int y = ppg.y; y < ppg.y + size.y; y++) {
+                        for (int x = ppg.x; x < ppg.x + size.x; x++) {
+                            hfCoefficients.quantizedCoeffs[c][y][x] +=
+                                prev.hfCoefficients.quantizedCoeffs[c][y][x];
                         }
                     }
                 }
@@ -191,7 +193,7 @@ public class PassGroup {
         }
         hfCoefficients.bakeDequantizedCoeffs();
         hfCoefficients.finalizeLLF();
-        float[][][][] coeffs = hfCoefficients.dequantHFCoeff;
+        final float[][][] coeffs = hfCoefficients.dequantHFCoeff;
         float[][][] scratchBlock = new float[4][256][256];
         for (int i = 0; i < hfCoefficients.varblocks.length; i++) {
             Varblock varblock = hfCoefficients.varblocks[i];
@@ -201,25 +203,27 @@ public class PassGroup {
                 if (!varblock.isCorner(shift[c]))
                     continue;
                 TransformType tt = varblock.transformType();
-                IntPoint pixelPosInFrame = varblock.pixelPosInGroup.plus(frame.groupXY(groupID).shiftLeft(8)).shiftRight(shift[c]);
+                final IntPoint ppg = varblock.pixelPosInGroup.shiftRight(shift[c]);
+                IntPoint pixelPosInFrame = varblock.pixelPosInGroup.plus(frame.groupXY(groupID).shiftLeft(8))
+                    .shiftRight(shift[c]);
                 float coeff0, coeff1;
                 float[] lfs = new float[2];
                 IntPoint size = varblock.sizeInPixels();
                 switch (tt.transformMethod) {
                     case TransformType.METHOD_DCT:
-                        MathHelper.inverseDCT2D(coeffs[i][c], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame,
+                        MathHelper.inverseDCT2D(coeffs[c], frameBuffer[c], ppg, pixelPosInFrame,
                             size, scratchBlock[0], scratchBlock[1], false);
                         break;
                     case TransformType.METHOD_DCT8_4:
-                        coeff0 = coeffs[i][c][0][0];
-                        coeff1 = coeffs[i][c][1][0];
+                        coeff0 = coeffs[c][ppg.y][ppg.x];
+                        coeff1 = coeffs[c][ppg.y + 1][ppg.x];
                         lfs[0] = coeff0 + coeff1;
                         lfs[1] = coeff0 - coeff1;
                         for (int x = 0; x < 2; x++) {
                             scratchBlock[0][0][0] = lfs[x];
                             for (int iy = 0; iy < 4; iy++) {
                                 for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
-                                    scratchBlock[0][iy][ix] = coeffs[i][c][x + iy * 2][ix];
+                                    scratchBlock[0][iy][ix] = coeffs[c][ppg.y + x + iy * 2][ppg.x + ix];
                                 }
                             }
                             MathHelper.inverseDCT2D(scratchBlock[0], frameBuffer[c], IntPoint.ZERO,
@@ -228,37 +232,37 @@ public class PassGroup {
                         }
                         break;
                     case TransformType.METHOD_DCT4_8:
-                        coeff0 = coeffs[i][c][0][0];
-                        coeff1 = coeffs[i][c][1][0];
+                        coeff0 = coeffs[c][ppg.y][ppg.x];
+                        coeff1 = coeffs[c][ppg.y + 1][ppg.x];
                         lfs[0] = coeff0 + coeff1;
                         lfs[1] = coeff0 - coeff1;
                         for (int y = 0; y < 2; y++) {
                             scratchBlock[0][0][0] = lfs[y];
                             for (int iy = 0; iy < 4; iy++) {
                                 for (int ix = (iy == 0 ? 1 : 0); ix < 8; ix++) {
-                                    scratchBlock[0][iy][ix] = coeffs[i][c][y + iy * 2][ix];
+                                    scratchBlock[0][iy][ix] = coeffs[c][ppg.y + y + iy * 2][ppg.x + ix];
                                 }
                             }
                             MathHelper.inverseDCT2D(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, new IntPoint(0, 4 * y).plus(pixelPosInFrame), new IntPoint(8, 4), scratchBlock[1], scratchBlock[2], false);
                         }
                         break;
                     case TransformType.METHOD_AFV:
-                        invertAFV(coeffs[i][c], frameBuffer[c], varblock, pixelPosInFrame, scratchBlock);
+                        invertAFV(coeffs[c], frameBuffer[c], varblock, pixelPosInFrame, scratchBlock, shift[c]);
                         break;
                     case TransformType.METHOD_DCT2:
-                        auxDCT2(coeffs[i][c], scratchBlock[0], IntPoint.ZERO, IntPoint.ZERO, 2);
+                        auxDCT2(coeffs[c], scratchBlock[0], ppg, IntPoint.ZERO, 2);
                         auxDCT2(scratchBlock[0], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, 4);
                         auxDCT2(scratchBlock[1], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, 8);
                         break;
                     case TransformType.METHOD_HORNUSS:
-                        auxDCT2(coeffs[i][c], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, 2);
+                        auxDCT2(coeffs[c], scratchBlock[1], ppg, IntPoint.ZERO, 2);
                         for (int y = 0; y < 2; y++) {
                             for (int x = 0; x < 2; x++) {
                                 float blockLF = scratchBlock[1][y][x];
                                 float residual = 0f;
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
-                                        residual += coeffs[i][c][y + iy * 2][x + ix * 2];
+                                        residual += coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2];
                                     }
                                 }
                                 scratchBlock[0][4 * y + 1][4 * x + 1] = blockLF - residual / 16f;
@@ -266,25 +270,26 @@ public class PassGroup {
                                     for (int ix = 0; ix < 4; ix++) {
                                         if (ix == 1 && iy == 1)
                                             continue;
-                                        scratchBlock[0][y * 4 + iy][x * 4 + ix] = coeffs[i][c][y + iy * 2][x + ix * 2]
+                                        scratchBlock[0][y * 4 + iy][x * 4 + ix] =
+                                            coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2]
                                             + scratchBlock[0][4 * y + 1][4 * x + 1];
 
                                     }
                                 }
-                                scratchBlock[0][4 * y][4 * x] = coeffs[i][c][y + 2][x + 2]
+                                scratchBlock[0][4 * y][4 * x] = coeffs[c][ppg.y + y + 2][ppg.x + x + 2]
                                     + scratchBlock[0][4 * y + 1][4 * x + 1];
                             }
                         }
                         layBlock(scratchBlock[0], frameBuffer[c], IntPoint.ZERO, pixelPosInFrame, size);
                         break;
                     case TransformType.METHOD_DCT4:
-                        auxDCT2(coeffs[i][c], scratchBlock[1], IntPoint.ZERO, IntPoint.ZERO, 2);
+                        auxDCT2(coeffs[c], scratchBlock[1], ppg, IntPoint.ZERO, 2);
                         for (int y = 0; y < 2; y++) {
                             for (int x = 0; x < 2; x++) {
                                 scratchBlock[0][0][0] = scratchBlock[1][y][x];
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
-                                        scratchBlock[0][iy][ix] = coeffs[i][c][x + ix * 2][y + iy * 2];
+                                        scratchBlock[0][iy][ix] = coeffs[c][ppg.y + x + ix * 2][ppg.x + y + iy * 2];
                                     }
                                 }
                                 // we're already using scratchblock[1] for the auxDCT2 coordiantes

@@ -422,7 +422,15 @@ public class Frame {
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
         IntPoint paddedSize = getPaddedFrameSize();
 
-        buffer = new float[getColorChannelCount() + globalMetadata.getExtraChannelCount()][paddedSize.y][paddedSize.x];
+        buffer = new float[getColorChannelCount() + globalMetadata.getExtraChannelCount()][][];
+        for (int c = 0; c < buffer.length; c++) {
+            if (c < 3 && c < getColorChannelCount()) {
+                IntPoint shiftedSize = paddedSize.shiftRight(header.jpegUpsampling[c]);
+                buffer[c] = new float[shiftedSize.y][shiftedSize.x];
+            } else {
+                buffer[c] = new float[paddedSize.y][paddedSize.x];
+            }
+        }
 
         decodeLFGroups(lfBuffer);
 
