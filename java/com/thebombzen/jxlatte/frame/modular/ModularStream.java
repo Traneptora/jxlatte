@@ -12,7 +12,6 @@ import com.thebombzen.jxlatte.entropy.EntropyStream;
 import com.thebombzen.jxlatte.frame.Frame;
 import com.thebombzen.jxlatte.io.Bitreader;
 import com.thebombzen.jxlatte.io.Loggers;
-import com.thebombzen.jxlatte.util.TaskList;
 import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
 public class ModularStream {
@@ -307,11 +306,9 @@ public class ModularStream {
                     default:
                         throw new IllegalStateException("Challenge complete how did we get here");
                 }
-                TaskList<Void> tasks = new TaskList<>(frame.getFlowHelper().getThreadPool());
                 for (int y = 0; y < v[0].height; y++) {
-                    for (int x = 0; x < v[0].width; x++) {
+                    for (int x = 0; x < v[0].width; x++)
                         rct.consume(x, y);
-                    }
                 }
                 for (int j = 0; j < 3; j++)
                     channels.set(start + permutationLut[permutation][j], v[j]);
