@@ -46,7 +46,6 @@ public class RestorationFilter {
     public RestorationFilter(Bitreader reader, int encoding) throws IOException {
         boolean allDefault = reader.readBool();
         gab = allDefault ? true : reader.readBool();
-        // note that this is signalled if allDefault == true
         customGab = !allDefault && gab ? reader.readBool() : false;
         if (customGab) {
             for (int i = 0; i < 3; i++) {
