@@ -13,6 +13,7 @@ src = files(
     'com/thebombzen/jxlatte/bundle/Extensions.java',
     'com/thebombzen/jxlatte/bundle/ExtraChannelInfo.java',
     'com/thebombzen/jxlatte/bundle/ExtraChannelType.java',
+    'com/thebombzen/jxlatte/bundle/ImageHeader.java',
     'com/thebombzen/jxlatte/bundle/PreviewHeader.java',
     'com/thebombzen/jxlatte/bundle/SizeHeader.java',
 
