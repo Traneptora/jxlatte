@@ -75,4 +75,12 @@ public class ColorEncodingBundle {
             renderingIntent = ColorFlags.RI_RELATIVE;
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "ColorEncodingBundle [useIccProfile=%s, colorEncoding=%s, whitePoint=%s, white=%s, primaries=%s, prim=%s, tf=%s, renderingIntent=%s]",
+                useIccProfile, colorEncoding, whitePoint, white, primaries, prim, tf, renderingIntent);
+    }
+
 }
