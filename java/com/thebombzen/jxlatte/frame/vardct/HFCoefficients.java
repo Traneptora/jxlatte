@@ -1,6 +1,7 @@
 package com.thebombzen.jxlatte.frame.vardct;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.thebombzen.jxlatte.InvalidBitstreamException;
 import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
@@ -131,7 +132,7 @@ public class HFCoefficients {
         final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         // chroma from luma
         // shifts are nonnegative so the sum equals zero iff they all equal zero
-        if (shift[0].x + shift[1].x + shift[2].x + shift[0].y + shift[1].y + shift[2].y == 0) {
+        if (Arrays.stream(shift).allMatch(x -> IntPoint.ZERO.equals(x))) {
             final LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
             final int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
             final int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
