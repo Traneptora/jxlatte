@@ -131,47 +131,46 @@ public class HFCoefficients {
         dequantizeHFCoefficients();
         final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         // chroma from luma
-        // shifts are nonnegative so the sum equals zero iff they all equal zero
-        if (Arrays.stream(shift).allMatch(x -> IntPoint.ZERO.equals(x))) {
-            final LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
-            final int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
-            final int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
-            final float[][] xFactors = new float[xFactorHF.length][xFactorHF[0].length];
-            final float[][] bFactors = new float[bFactorHF.length][bFactorHF[0].length];
-            for (int i = 0; i < varblocks.length; i++) {
-                final Varblock varblock = varblocks[i];
-                if (varblock == null)
-                    continue;
-                final IntPoint sizeInPixels = varblock.sizeInPixels();
-                for (int iy = 0; iy < sizeInPixels.y; iy++) {
-                    final int y = varblock.pixelPosInLFGroup.y + iy;
-                    final int fy = y >> 6;
-                    final boolean by = fy << 6 == y;
-                    final float[] xF = xFactors[fy];
-                    final float[] bF = bFactors[fy];
-                    final int[] hfX = xFactorHF[fy];
-                    final int[] hfB = bFactorHF[fy];
-                    for (int ix = 0; ix < sizeInPixels.x; ix++) {
-                        final int x = varblock.pixelPosInLFGroup.x + ix;
-                        final int fx = x >> 6;
-                        final float kX;
-                        final float kB;
-                        if (by && fx << 6 == x) {
-                            kX = lfc.baseCorrelationX + hfX[fx] / (float)lfc.colorFactor;
-                            kB = lfc.baseCorrelationB + hfB[fx] / (float)lfc.colorFactor;
-                            xF[fx] = kX;
-                            bF[fx] = kB;
-                        } else {
-                            kX = xF[fx];
-                            kB = bF[fx];
-                        }
-                        final float dequantY =
-                            dequantHFCoeff[1][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix];
-                        dequantHFCoeff[0][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
-                            += kX * dequantY;
-                        dequantHFCoeff[2][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
-                            += kB * dequantY;
+        if (!Arrays.stream(shift).allMatch(x -> IntPoint.ZERO.equals(x)))
+            return;
+        final LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
+        final int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
+        final int[][] bFactorHF = lfg.hfMetadata.hfStreamBuffer[1];
+        final float[][] xFactors = new float[xFactorHF.length][xFactorHF[0].length];
+        final float[][] bFactors = new float[bFactorHF.length][bFactorHF[0].length];
+        for (int i = 0; i < varblocks.length; i++) {
+            final Varblock varblock = varblocks[i];
+            if (varblock == null)
+                continue;
+            final IntPoint sizeInPixels = varblock.sizeInPixels();
+            for (int iy = 0; iy < sizeInPixels.y; iy++) {
+                final int y = varblock.pixelPosInLFGroup.y + iy;
+                final int fy = y >> 6;
+                final boolean by = fy << 6 == y;
+                final float[] xF = xFactors[fy];
+                final float[] bF = bFactors[fy];
+                final int[] hfX = xFactorHF[fy];
+                final int[] hfB = bFactorHF[fy];
+                for (int ix = 0; ix < sizeInPixels.x; ix++) {
+                    final int x = varblock.pixelPosInLFGroup.x + ix;
+                    final int fx = x >> 6;
+                    final float kX;
+                    final float kB;
+                    if (by && fx << 6 == x) {
+                        kX = lfc.baseCorrelationX + hfX[fx] / (float)lfc.colorFactor;
+                        kB = lfc.baseCorrelationB + hfB[fx] / (float)lfc.colorFactor;
+                        xF[fx] = kX;
+                        bF[fx] = kB;
+                    } else {
+                        kX = xF[fx];
+                        kB = bF[fx];
                     }
+                    final float dequantY =
+                        dequantHFCoeff[1][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix];
+                    dequantHFCoeff[0][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
+                        += kX * dequantY;
+                    dequantHFCoeff[2][varblock.pixelPosInGroup.y + iy][varblock.pixelPosInGroup.x + ix]
+                        += kB * dequantY;
                 }
             }
         }
