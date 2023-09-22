@@ -81,7 +81,7 @@ public enum TransformType {
     }
 
     public boolean flip() {
-        return transformMethod == METHOD_DCT && this.blockWidth == this.blockHeight;
+        return blockHeight > blockWidth || transformMethod == METHOD_DCT && blockHeight == blockWidth;
     }
 
     private float scaleF(int c, int b) {

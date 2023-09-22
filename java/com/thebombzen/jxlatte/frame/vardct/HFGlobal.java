@@ -144,7 +144,8 @@ public class HFGlobal {
             {764.3655248643528689f, -0.92630200888366945f, -0.9675229603596517f, -0.27845290869168118f},
             {527.107573587542228f, -1.4594385811273854f, -1.450082094097871593f, -1.5843722511996204f},
         };
-        defaultParams[9] = new DCTParams(dct4x8Params, new float[][]{{1.0f}, {1.0f}, {1.0f}}, TransformType.MODE_DCT4_8);
+        defaultParams[9] = new DCTParams(dct4x8Params, new float[][]{{1.0f}, {1.0f}, {1.0f}},
+            TransformType.MODE_DCT4_8);
         defaultParams[10] = new DCTParams(dct4x8Params, new float[][]{
             {3072f, 3072f, 256f, 256f, 256f, 414f, 0.0f, 0.0f, 0.0f},
             {1024f, 1024f, 50.0f, 50.0f, 50.0f, 58f, 0.0f, 0.0f, 0.0f},
@@ -308,10 +309,12 @@ public class HFGlobal {
                 break;
             case TransformType.MODE_AFV:
                 m = new float[3][9];
-                for (IntPoint p : FlowHelper.range2D(9, 3)) {
-                    m[p.y][p.x] = reader.readF16();
-                    if (p.x < 6)
-                        m[p.y][p.x] *= 64D;
+                for (int y = 0; y < 3; y++) {
+                    for (int x = 0; x < 9; x++) {
+                        m[y][x] = reader.readF16();
+                        if (x < 6)
+                            m[y][x] *= 64f;
+                    }
                 }
                 float[][] d = readDCTParams(reader);
                 float[][] f = readDCTParams(reader);

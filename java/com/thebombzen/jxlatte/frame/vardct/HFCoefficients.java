@@ -72,7 +72,7 @@ public class HFCoefficients {
                 continue; // block is not in this group
             varblocks[i] = varblock;
             final TransformType tt = varblock.transformType();
-            final boolean flip = varblock.flip() || tt.isVertical();
+            final boolean flip = tt.flip();
             final int hfMult = varblock.hfMult();
             final int lfIndex = lfg.lfCoeff.lfIndex[varblock.blockPosInLFGroup.y][varblock.blockPosInLFGroup.x];
             final IntPoint sizeInBlocks = varblock.sizeInBlocks();
@@ -256,7 +256,7 @@ public class HFCoefficients {
             if (varblock == null)
                 continue;
             final TransformType tt = varblock.transformType();
-            final boolean flip = tt.isVertical() || tt.flip();
+            final boolean flip = tt.flip();
             final float[][][] w2 = weights[tt.parameterIndex];
             for (int c = 0; c < 3; c++) {
                 if (!varblock.isCorner(shift[c]))
@@ -279,7 +279,7 @@ public class HFCoefficients {
                             quant = coeff - matrix.quantBiasNumerator / coeff;
                         }
                         final int wx = flip ? y : x;
-                        final int wy = flip ? x : y;
+                        final int wy = y ^ x ^ wx;
                         dequantHFCoeff[c][ppg.y + y][ppg.x + x] = quant * sfc * w3[wy][wx];
                     }
                 }
