@@ -288,11 +288,11 @@ public class PassGroup {
                             for (int x = 0; x < 2; x++) {
                                 scratchBlock[0][0][0] = scratchBlock[1][y][x];
                                 for (int iy = 0; iy < 4; iy++) {
-                                    for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++) {
-                                        scratchBlock[0][iy][ix] = coeffs[c][ppg.y + x + ix * 2][ppg.x + y + iy * 2];
-                                    }
+                                    for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++)
+                                        // This does look backwards
+                                        scratchBlock[0][iy][ix] = coeffs[c][ppg.y + y + ix * 2][ppg.x + x + iy * 2];
                                 }
-                                // we're already using scratchblock[1] for the auxDCT2 coordiantes
+                                // we're already using scratchblock[1] for the auxDCT2 coordinates
                                 // but we're putting these far away at (8, 8) so there's no overlap
                                 MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], IntPoint.ZERO,
                                     new IntPoint(8), new IntPoint(4), scratchBlock[2], scratchBlock[3], false);
