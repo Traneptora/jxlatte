@@ -185,4 +185,12 @@ public class MATree {
     public EntropyStream getStream() {
         return this.stream;
     }
+
+    public String toString() {
+        if (isLeafNode()) {
+            return String.format("{context=%d, predictor=%d, offset=%d, multiplier=%d}", context, predictor, offset, multiplier);
+        } else {
+            return String.format("{property=%d, value=%d, left=%s, right=%s}", property, value, leftChildNode.toString(), rightChildNode.toString());
+        }
+    }
 }
