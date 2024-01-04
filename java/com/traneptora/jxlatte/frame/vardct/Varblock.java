@@ -1,7 +1,7 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
-import com.thebombzen.jxlatte.frame.group.LFGroup;
-import com.thebombzen.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.frame.group.LFGroup;
+import com.traneptora.jxlatte.util.IntPoint;
 
 public class Varblock {
     // position, in units of blocks, relative to LF group origin

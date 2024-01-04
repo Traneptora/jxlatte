@@ -1,9 +1,9 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class TransformInfo {
     public static final int RCT = 0;

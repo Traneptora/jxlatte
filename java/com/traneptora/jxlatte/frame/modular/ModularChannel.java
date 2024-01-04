@@ -1,13 +1,13 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class ModularChannel extends ModularChannelInfo {
 

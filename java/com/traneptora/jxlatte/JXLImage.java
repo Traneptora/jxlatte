@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte;
+package com.traneptora.jxlatte;
 
 import java.awt.Point;
 import java.awt.Transparency;
@@ -17,16 +17,16 @@ import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.util.function.DoubleUnaryOperator;
 
-import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.color.CIEPrimaries;
-import com.thebombzen.jxlatte.color.CIEXY;
-import com.thebombzen.jxlatte.color.ColorEncodingBundle;
-import com.thebombzen.jxlatte.color.ColorFlags;
-import com.thebombzen.jxlatte.color.ColorManagement;
-import com.thebombzen.jxlatte.color.JXLColorSpace;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.bundle.ImageHeader;
+import com.traneptora.jxlatte.color.CIEPrimaries;
+import com.traneptora.jxlatte.color.CIEXY;
+import com.traneptora.jxlatte.color.ColorEncodingBundle;
+import com.traneptora.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.color.ColorManagement;
+import com.traneptora.jxlatte.color.JXLColorSpace;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class JXLImage {
     private FlowHelper flowHelper;

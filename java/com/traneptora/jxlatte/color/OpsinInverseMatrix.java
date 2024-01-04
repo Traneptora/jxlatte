@@ -1,11 +1,11 @@
-package com.thebombzen.jxlatte.color;
+package com.traneptora.jxlatte.color;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class OpsinInverseMatrix {
 

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.features.noise;
+package com.traneptora.jxlatte.frame.features.noise;
 
 public class XorShiro {
 

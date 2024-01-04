@@ -1,10 +1,10 @@
-package com.thebombzen.jxlatte.frame.group;
+package com.traneptora.jxlatte.frame.group;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class PassesInfo {
     public final int numPasses;

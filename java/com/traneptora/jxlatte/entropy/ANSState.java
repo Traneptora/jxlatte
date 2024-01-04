@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.entropy;
+package com.traneptora.jxlatte.entropy;
 
 public class ANSState {
     private int state;

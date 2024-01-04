@@ -1,19 +1,19 @@
-package com.thebombzen.jxlatte.bundle;
+package com.traneptora.jxlatte.bundle;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.color.ColorEncodingBundle;
-import com.thebombzen.jxlatte.color.ColorFlags;
-import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
-import com.thebombzen.jxlatte.color.ToneMapping;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.color.ColorEncodingBundle;
+import com.traneptora.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.color.OpsinInverseMatrix;
+import com.traneptora.jxlatte.color.ToneMapping;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class ImageHeader {
 

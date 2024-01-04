@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.features.spline;
+package com.traneptora.jxlatte.frame.features.spline;
 
 public class SplineArc {
     public final FloatPoint location;

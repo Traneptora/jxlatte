@@ -1,6 +1,6 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
-import com.thebombzen.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.IntPoint;
 
 public class ModularChannelInfo {
     public int width;

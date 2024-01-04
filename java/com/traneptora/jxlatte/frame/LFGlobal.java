@@ -1,17 +1,17 @@
-package com.thebombzen.jxlatte.frame;
+package com.traneptora.jxlatte.frame;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.features.Patch;
-import com.thebombzen.jxlatte.frame.features.noise.NoiseParameters;
-import com.thebombzen.jxlatte.frame.features.spline.SplinesBundle;
-import com.thebombzen.jxlatte.frame.modular.GlobalModular;
-import com.thebombzen.jxlatte.frame.vardct.HFBlockContext;
-import com.thebombzen.jxlatte.frame.vardct.LFChannelCorrelation;
-import com.thebombzen.jxlatte.frame.vardct.Quantizer;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.frame.features.Patch;
+import com.traneptora.jxlatte.frame.features.noise.NoiseParameters;
+import com.traneptora.jxlatte.frame.features.spline.SplinesBundle;
+import com.traneptora.jxlatte.frame.modular.GlobalModular;
+import com.traneptora.jxlatte.frame.vardct.HFBlockContext;
+import com.traneptora.jxlatte.frame.vardct.LFChannelCorrelation;
+import com.traneptora.jxlatte.frame.vardct.Quantizer;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class LFGlobal {
     public final Frame frame;

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,7 +6,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.function.Supplier;
 
-import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
+import com.traneptora.jxlatte.util.functional.ExceptionalSupplier;
 
 public class PushbackInputStream extends InputStream {
     private byte[] buffer = null;

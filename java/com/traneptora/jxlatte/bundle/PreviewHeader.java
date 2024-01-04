@@ -1,10 +1,10 @@
-package com.thebombzen.jxlatte.bundle;
+package com.traneptora.jxlatte.bundle;
 
 import java.awt.Dimension;
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class PreviewHeader extends Dimension {
 

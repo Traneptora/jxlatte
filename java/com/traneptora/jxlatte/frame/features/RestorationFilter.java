@@ -1,11 +1,11 @@
-package com.thebombzen.jxlatte.frame.features;
+package com.traneptora.jxlatte.frame.features;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.bundle.Extensions;
-import com.thebombzen.jxlatte.frame.FrameFlags;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.bundle.Extensions;
+import com.traneptora.jxlatte.frame.FrameFlags;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class RestorationFilter {
 

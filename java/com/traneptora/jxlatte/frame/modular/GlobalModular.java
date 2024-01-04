@@ -1,12 +1,12 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.color.ColorFlags;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.FrameFlags;
-import com.thebombzen.jxlatte.frame.FrameHeader;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.frame.FrameFlags;
+import com.traneptora.jxlatte.frame.FrameHeader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class GlobalModular {
     public final MATree globalTree;

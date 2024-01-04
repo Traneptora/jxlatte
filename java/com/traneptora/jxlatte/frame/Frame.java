@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame;
+package com.traneptora.jxlatte.frame;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
@@ -11,29 +11,29 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.features.noise.NoiseGroup;
-import com.thebombzen.jxlatte.frame.features.spline.Spline;
-import com.thebombzen.jxlatte.frame.group.LFGroup;
-import com.thebombzen.jxlatte.frame.group.Pass;
-import com.thebombzen.jxlatte.frame.group.PassGroup;
-import com.thebombzen.jxlatte.frame.modular.MATree;
-import com.thebombzen.jxlatte.frame.modular.ModularChannel;
-import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
-import com.thebombzen.jxlatte.frame.vardct.HFGlobal;
-import com.thebombzen.jxlatte.frame.vardct.HFPass;
-import com.thebombzen.jxlatte.frame.vardct.TransformType;
-import com.thebombzen.jxlatte.frame.vardct.Varblock;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.Loggers;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
-import com.thebombzen.jxlatte.util.TaskList;
-import com.thebombzen.jxlatte.util.functional.ExceptionalFunction;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.bundle.ImageHeader;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.frame.features.noise.NoiseGroup;
+import com.traneptora.jxlatte.frame.features.spline.Spline;
+import com.traneptora.jxlatte.frame.group.LFGroup;
+import com.traneptora.jxlatte.frame.group.Pass;
+import com.traneptora.jxlatte.frame.group.PassGroup;
+import com.traneptora.jxlatte.frame.modular.MATree;
+import com.traneptora.jxlatte.frame.modular.ModularChannel;
+import com.traneptora.jxlatte.frame.modular.ModularChannelInfo;
+import com.traneptora.jxlatte.frame.vardct.HFGlobal;
+import com.traneptora.jxlatte.frame.vardct.HFPass;
+import com.traneptora.jxlatte.frame.vardct.TransformType;
+import com.traneptora.jxlatte.frame.vardct.Varblock;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.TaskList;
+import com.traneptora.jxlatte.util.functional.ExceptionalFunction;
+import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
 

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.io.IOException;
 import java.io.InputStream;

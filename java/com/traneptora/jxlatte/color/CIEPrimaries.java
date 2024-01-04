@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.color;
+package com.traneptora.jxlatte.color;
 
 import java.util.Objects;
 

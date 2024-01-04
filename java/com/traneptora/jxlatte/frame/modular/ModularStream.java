@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,12 +7,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.Loggers;
-import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
 public class ModularStream {
 

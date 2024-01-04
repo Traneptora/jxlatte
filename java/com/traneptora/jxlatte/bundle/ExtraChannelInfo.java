@@ -1,11 +1,11 @@
-package com.thebombzen.jxlatte.bundle;
+package com.traneptora.jxlatte.bundle;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class ExtraChannelInfo {
     public final int type;

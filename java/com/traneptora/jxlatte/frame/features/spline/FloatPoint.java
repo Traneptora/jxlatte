@@ -1,6 +1,6 @@
-package com.thebombzen.jxlatte.frame.features.spline;
+package com.traneptora.jxlatte.frame.features.spline;
 
-import com.thebombzen.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.IntPoint;
 
 public class FloatPoint {
     public float x;

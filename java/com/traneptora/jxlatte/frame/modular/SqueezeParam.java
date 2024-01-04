@@ -1,8 +1,8 @@
-package com.thebombzen.jxlatte.frame.modular;
+package com.traneptora.jxlatte.frame.modular;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class SqueezeParam {
     public final boolean horizontal;

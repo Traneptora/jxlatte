@@ -1,9 +1,9 @@
-package com.thebombzen.jxlatte.frame;
+package com.traneptora.jxlatte.frame;
 
 import java.io.IOException;
 import java.util.Objects;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class BlendingInfo {
     public final int mode;

@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte;
+package com.traneptora.jxlatte;
 
 import java.io.BufferedOutputStream;
 import java.io.EOFException;
@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.io.Loggers;
-import com.thebombzen.jxlatte.io.PFMWriter;
-import com.thebombzen.jxlatte.io.PNGWriter;
-import com.thebombzen.jxlatte.util.functional.ExceptionalConsumer;
+import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.io.PFMWriter;
+import com.traneptora.jxlatte.io.PNGWriter;
+import com.traneptora.jxlatte.util.functional.ExceptionalConsumer;
 
 public class JXLatte {
 

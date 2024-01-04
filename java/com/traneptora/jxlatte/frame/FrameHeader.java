@@ -1,17 +1,17 @@
-package com.thebombzen.jxlatte.frame;
+package com.traneptora.jxlatte.frame;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import com.thebombzen.jxlatte.bundle.Extensions;
-import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.frame.features.RestorationFilter;
-import com.thebombzen.jxlatte.frame.group.PassesInfo;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.bundle.Extensions;
+import com.traneptora.jxlatte.bundle.ImageHeader;
+import com.traneptora.jxlatte.frame.features.RestorationFilter;
+import com.traneptora.jxlatte.frame.group.PassesInfo;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class FrameHeader {
 

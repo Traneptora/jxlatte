@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.util.functional;
+package com.traneptora.jxlatte.util.functional;
 
 @FunctionalInterface
 public interface ExceptionalIntTriConsumer {

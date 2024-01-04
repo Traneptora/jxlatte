@@ -1,11 +1,11 @@
-package com.thebombzen.jxlatte.entropy;
+package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class PrefixSymbolDistribution extends SymbolDistribution {
 

@@ -1,9 +1,9 @@
-package com.thebombzen.jxlatte.color;
+package com.traneptora.jxlatte.color;
 
 import java.util.function.DoubleUnaryOperator;
 
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public final class ColorManagement {
     private ColorManagement() {

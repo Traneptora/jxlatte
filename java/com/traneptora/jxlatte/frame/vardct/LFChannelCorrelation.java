@@ -1,9 +1,9 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class LFChannelCorrelation {
     public final int colorFactor;

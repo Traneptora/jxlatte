@@ -1,8 +1,8 @@
-package com.thebombzen.jxlatte.frame.features.noise;
+package com.traneptora.jxlatte.frame.features.noise;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class NoiseParameters {
 

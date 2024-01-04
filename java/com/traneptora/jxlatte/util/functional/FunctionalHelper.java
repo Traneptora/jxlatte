@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.util.functional;
+package com.traneptora.jxlatte.util.functional;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -10,7 +10,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import com.thebombzen.jxlatte.util.IteratorIterable;
+import com.traneptora.jxlatte.util.IteratorIterable;
 
 public final class FunctionalHelper {
     private FunctionalHelper() {

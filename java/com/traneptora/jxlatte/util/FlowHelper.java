@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.util;
+package com.traneptora.jxlatte.util;
 
 import java.util.concurrent.ExecutorService;
 

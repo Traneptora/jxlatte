@@ -1,14 +1,14 @@
-package com.thebombzen.jxlatte.frame.features.spline;
+package com.traneptora.jxlatte.frame.features.spline;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.LFGlobal;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
-import com.thebombzen.jxlatte.util.TaskList;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.frame.LFGlobal;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.TaskList;
 
 public class Spline {
     public final IntPoint[] controlPoints;

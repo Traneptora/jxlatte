@@ -1,17 +1,17 @@
-package com.thebombzen.jxlatte.frame.group;
+package com.traneptora.jxlatte.frame.group;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.FrameFlags;
-import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
-import com.thebombzen.jxlatte.frame.modular.ModularStream;
-import com.thebombzen.jxlatte.frame.vardct.HFCoefficients;
-import com.thebombzen.jxlatte.frame.vardct.TransformType;
-import com.thebombzen.jxlatte.frame.vardct.Varblock;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.frame.FrameFlags;
+import com.traneptora.jxlatte.frame.modular.ModularChannelInfo;
+import com.traneptora.jxlatte.frame.modular.ModularStream;
+import com.traneptora.jxlatte.frame.vardct.HFCoefficients;
+import com.traneptora.jxlatte.frame.vardct.TransformType;
+import com.traneptora.jxlatte.frame.vardct.Varblock;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class PassGroup {
 

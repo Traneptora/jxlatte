@@ -1,17 +1,17 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.stream.Stream;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.functional.ExceptionalRunnable;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.functional.ExceptionalRunnable;
+import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class HFPass {
 

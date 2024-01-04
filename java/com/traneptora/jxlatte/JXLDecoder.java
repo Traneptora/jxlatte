@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte;
+package com.traneptora.jxlatte;
 
 import java.io.BufferedInputStream;
 import java.io.Closeable;
@@ -10,9 +10,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 
-import com.thebombzen.jxlatte.io.Demuxer;
-import com.thebombzen.jxlatte.io.PushbackInputStream;
-import com.thebombzen.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.io.Demuxer;
+import com.traneptora.jxlatte.io.PushbackInputStream;
+import com.traneptora.jxlatte.util.FlowHelper;
 
 public class JXLDecoder implements Closeable {
     private Demuxer demuxer;

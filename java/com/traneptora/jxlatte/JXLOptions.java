@@ -1,6 +1,6 @@
-package com.thebombzen.jxlatte;
+package com.traneptora.jxlatte;
 
-import com.thebombzen.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.io.Loggers;
 
 public class JXLOptions {
 

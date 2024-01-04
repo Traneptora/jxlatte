@@ -1,8 +1,8 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class Quantizer {
     public final int globalScale;

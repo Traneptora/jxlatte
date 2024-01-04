@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.util;
+package com.traneptora.jxlatte.util;
 
 import java.util.Collections;
 import java.util.List;

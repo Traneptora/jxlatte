@@ -1,11 +1,11 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class Bitreader extends InputStream {
 

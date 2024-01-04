@@ -1,10 +1,10 @@
-package com.thebombzen.jxlatte.color;
+package com.traneptora.jxlatte.color;
 
 import java.awt.color.ColorSpace;
 import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;
 
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class JXLColorSpace extends ColorSpace {
     public final CIEPrimaries primaries;

@@ -1,12 +1,12 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.awt.image.Raster;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.thebombzen.jxlatte.JXLImage;
-import com.thebombzen.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.JXLImage;
+import com.traneptora.jxlatte.color.ColorFlags;
 
 public class PFMWriter {
     private final JXLImage image;

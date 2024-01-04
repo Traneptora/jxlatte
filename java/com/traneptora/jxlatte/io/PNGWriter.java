@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
@@ -13,14 +13,14 @@ import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
-import com.thebombzen.jxlatte.JXLImage;
-import com.thebombzen.jxlatte.JXLOptions;
-import com.thebombzen.jxlatte.JXLatte;
-import com.thebombzen.jxlatte.color.CIEPrimaries;
-import com.thebombzen.jxlatte.color.CIEXY;
-import com.thebombzen.jxlatte.color.ColorFlags;
-import com.thebombzen.jxlatte.color.ColorManagement;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.JXLImage;
+import com.traneptora.jxlatte.JXLOptions;
+import com.traneptora.jxlatte.JXLatte;
+import com.traneptora.jxlatte.color.CIEPrimaries;
+import com.traneptora.jxlatte.color.CIEXY;
+import com.traneptora.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.color.ColorManagement;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;

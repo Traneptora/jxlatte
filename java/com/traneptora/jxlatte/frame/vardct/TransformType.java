@@ -1,7 +1,7 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.util.IntPoint;
 
 public enum TransformType {
     DCT8("DCT 8x8", 0, 0, 1, 1, 8, 8, 8, 8, 0, 0),

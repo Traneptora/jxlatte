@@ -1,9 +1,9 @@
-package com.thebombzen.jxlatte.entropy;
+package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class EntropyStream {
 

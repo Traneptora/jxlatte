@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
 import java.util.Arrays;
 

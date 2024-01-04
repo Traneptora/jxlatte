@@ -1,16 +1,16 @@
-package com.thebombzen.jxlatte.util;
+package com.traneptora.jxlatte.util;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import com.thebombzen.jxlatte.util.functional.ExceptionalFunction;
-import com.thebombzen.jxlatte.util.functional.ExceptionalIntBiConsumer;
-import com.thebombzen.jxlatte.util.functional.ExceptionalIntConsumer;
-import com.thebombzen.jxlatte.util.functional.ExceptionalRunnable;
-import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.traneptora.jxlatte.util.functional.ExceptionalFunction;
+import com.traneptora.jxlatte.util.functional.ExceptionalIntBiConsumer;
+import com.traneptora.jxlatte.util.functional.ExceptionalIntConsumer;
+import com.traneptora.jxlatte.util.functional.ExceptionalRunnable;
+import com.traneptora.jxlatte.util.functional.ExceptionalSupplier;
+import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class TaskList<T> {
 

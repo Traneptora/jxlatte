@@ -1,10 +1,10 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.io.PrintWriter;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.JXLOptions;
-import com.thebombzen.jxlatte.util.functional.FunctionalHelper;
+import com.traneptora.jxlatte.JXLOptions;
+import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class Loggers {
 

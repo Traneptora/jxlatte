@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte;
+package com.traneptora.jxlatte;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -8,23 +8,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.thebombzen.jxlatte.bundle.ExtraChannelType;
-import com.thebombzen.jxlatte.bundle.ImageHeader;
-import com.thebombzen.jxlatte.color.ColorEncodingBundle;
-import com.thebombzen.jxlatte.color.ColorFlags;
-import com.thebombzen.jxlatte.color.OpsinInverseMatrix;
-import com.thebombzen.jxlatte.frame.BlendingInfo;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.FrameFlags;
-import com.thebombzen.jxlatte.frame.FrameHeader;
-import com.thebombzen.jxlatte.frame.features.Patch;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.io.Demuxer;
-import com.thebombzen.jxlatte.io.Loggers;
-import com.thebombzen.jxlatte.io.PushbackInputStream;
-import com.thebombzen.jxlatte.util.FlowHelper;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.bundle.ExtraChannelType;
+import com.traneptora.jxlatte.bundle.ImageHeader;
+import com.traneptora.jxlatte.color.ColorEncodingBundle;
+import com.traneptora.jxlatte.color.ColorFlags;
+import com.traneptora.jxlatte.color.OpsinInverseMatrix;
+import com.traneptora.jxlatte.frame.BlendingInfo;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.frame.FrameFlags;
+import com.traneptora.jxlatte.frame.FrameHeader;
+import com.traneptora.jxlatte.frame.features.Patch;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Demuxer;
+import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.io.PushbackInputStream;
+import com.traneptora.jxlatte.util.FlowHelper;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class JXLCodestreamDecoder {
 

@@ -1,12 +1,12 @@
-package com.thebombzen.jxlatte.frame.features.spline;
+package com.traneptora.jxlatte.frame.features.spline;
 
 import java.io.IOException;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.entropy.EntropyStream;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.entropy.EntropyStream;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class SplinesBundle {
 

@@ -1,12 +1,12 @@
-package com.thebombzen.jxlatte.io;
+package com.traneptora.jxlatte.io;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.util.functional.ExceptionalSupplier;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.util.functional.ExceptionalSupplier;
 
 public class Demuxer implements ExceptionalSupplier<byte[]>, Closeable {
 

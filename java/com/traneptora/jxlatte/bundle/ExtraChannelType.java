@@ -1,4 +1,4 @@
-package com.thebombzen.jxlatte.bundle;
+package com.traneptora.jxlatte.bundle;
 
 public interface ExtraChannelType {
     

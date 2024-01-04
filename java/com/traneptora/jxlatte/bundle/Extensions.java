@@ -1,10 +1,10 @@
-package com.thebombzen.jxlatte.bundle;
+package com.traneptora.jxlatte.bundle;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.thebombzen.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Bitreader;
 
 public class Extensions {
     public final long extensionsKey;

@@ -1,16 +1,16 @@
-package com.thebombzen.jxlatte.frame.vardct;
+package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.thebombzen.jxlatte.InvalidBitstreamException;
-import com.thebombzen.jxlatte.frame.Frame;
-import com.thebombzen.jxlatte.frame.group.LFGroup;
-import com.thebombzen.jxlatte.frame.modular.ModularChannelInfo;
-import com.thebombzen.jxlatte.frame.modular.ModularStream;
-import com.thebombzen.jxlatte.io.Bitreader;
-import com.thebombzen.jxlatte.util.IntPoint;
-import com.thebombzen.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.frame.Frame;
+import com.traneptora.jxlatte.frame.group.LFGroup;
+import com.traneptora.jxlatte.frame.modular.ModularChannelInfo;
+import com.traneptora.jxlatte.frame.modular.ModularStream;
+import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.MathHelper;
 
 public class HFMetadata {
     public final int nbBlocks;

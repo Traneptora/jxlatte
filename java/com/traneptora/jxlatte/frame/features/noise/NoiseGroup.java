@@ -1,6 +1,6 @@
-package com.thebombzen.jxlatte.frame.features.noise;
+package com.traneptora.jxlatte.frame.features.noise;
 
-import com.thebombzen.jxlatte.frame.FrameHeader;
+import com.traneptora.jxlatte.frame.FrameHeader;
 
 public class NoiseGroup {
 
