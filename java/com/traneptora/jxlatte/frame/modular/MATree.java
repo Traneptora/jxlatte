@@ -8,6 +8,7 @@ import java.util.function.IntUnaryOperator;
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class MATree {
@@ -32,10 +33,10 @@ public class MATree {
 
     }
 
-    public MATree(Bitreader reader) throws IOException {
+    public MATree(Loggers loggers, Bitreader reader) throws IOException {
         this.parent = null;
         List<MATree> nodes = new ArrayList<>();
-        EntropyStream stream = new EntropyStream(reader, 6);
+        EntropyStream stream = new EntropyStream(loggers, reader, 6);
         int contextId = 0;
         int nodesRemaining = 1;
         while (nodesRemaining-- > 0) {
@@ -77,7 +78,7 @@ public class MATree {
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal MA Tree Entropy Stream");
 
-        this.stream = new EntropyStream(reader, (nodes.size() + 1) / 2);
+        this.stream = new EntropyStream(loggers, reader, (nodes.size() + 1) / 2);
 
         for (int n = 0; n < nodes.size(); n++) {
             MATree node = nodes.get(n);

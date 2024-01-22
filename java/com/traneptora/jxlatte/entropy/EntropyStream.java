@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 
 public class EntropyStream {
 
@@ -33,11 +34,12 @@ public class EntropyStream {
     private int numDecoded77;
     private int[] window;
     private ANSState state = new ANSState();
+    private Loggers loggers;
 
     /**  
      * returns the number of clusters
      */
-    public static int readClusterMap(Bitreader reader, int[] clusterMap, int maxClusters) throws IOException {
+    public static int readClusterMap(Loggers loggers, Bitreader reader, int[] clusterMap, int maxClusters) throws IOException {
         int numDists = clusterMap.length;
         if (numDists == 1) {
             clusterMap[0] = 0;
@@ -48,7 +50,7 @@ public class EntropyStream {
                 clusterMap[i] = reader.readBits(nbits);
         } else {
             boolean useMtf = reader.readBool();
-            EntropyStream nested = new EntropyStream(reader, 1, numDists <= 2);
+            EntropyStream nested = new EntropyStream(loggers, reader, 1, numDists <= 2);
             for (int i = 0; i < numDists; i++)
                 clusterMap[i] = nested.readSymbol(reader, 0);
             if (!nested.validateFinalState())
@@ -91,15 +93,18 @@ public class EntropyStream {
         this.dists = stream.dists;
         if (this.usesLZ77)
             window = new int[1 << 20];
+        this.loggers = stream.loggers;
     }
 
-    public EntropyStream(Bitreader reader, int numDists) throws IOException {
-        this(reader, numDists, false);
+    public EntropyStream(Loggers loggers, Bitreader reader, int numDists) throws IOException {
+        this(loggers, reader, numDists, false);
     }
 
-    private EntropyStream(Bitreader reader, int numDists, boolean disallowLZ77) throws IOException {
+    private EntropyStream(Loggers loggers, Bitreader reader, int numDists, boolean disallowLZ77) throws IOException {
         if (numDists <= 0)
             throw new IllegalArgumentException("Num Dists must be positive");
+
+        this.loggers = loggers;
 
         usesLZ77 = reader.readBool();
         if (usesLZ77) {
@@ -113,8 +118,10 @@ public class EntropyStream {
         }
 
         clusterMap = new int[numDists];
-        int numClusters = readClusterMap(reader, clusterMap, numDists);
+        int numClusters = readClusterMap(loggers, reader, clusterMap, numDists);
         dists = new SymbolDistribution[numClusters];
+
+        loggers.log(Loggers.LOG_TRACE, "clusters: %d", numClusters);
 
         boolean prefixCodes = reader.readBool();
         logAlphabetSize = prefixCodes ? 15 : 5 + reader.readBits(2);
@@ -122,6 +129,8 @@ public class EntropyStream {
 
         for (int i = 0; i < configs.length; i++)
             configs[i] = new HybridIntegerConfig(reader, logAlphabetSize);
+
+        loggers.log(Loggers.LOG_TRACE, "Configs: %s", (Object)configs);
 
         if (prefixCodes) {
             int[] alphabetSizes = new int[dists.length];

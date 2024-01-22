@@ -12,6 +12,7 @@ import com.traneptora.jxlatte.color.OpsinInverseMatrix;
 import com.traneptora.jxlatte.color.ToneMapping;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.IntPoint;
 import com.traneptora.jxlatte.util.MathHelper;
 
@@ -153,7 +154,7 @@ public class ImageHeader {
 
     }
 
-    public static ImageHeader parse(Bitreader reader, int level) throws IOException {
+    public static ImageHeader parse(Loggers loggers, Bitreader reader, int level) throws IOException {
         ImageHeader header = new ImageHeader();
         if (reader.readBits(16) != CODESTREAM_HEADER)
             throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch"));
@@ -256,7 +257,7 @@ public class ImageHeader {
                 throw new InvalidBitstreamException(ex);
             }
             header.encodedICC = new byte[encodedSize];
-            EntropyStream iccDistribution = new EntropyStream(reader, 41);
+            EntropyStream iccDistribution = new EntropyStream(loggers, reader, 41);
             for (int i = 0; i < encodedSize; i++)
                 header.encodedICC[i] = (byte)iccDistribution.readSymbol(reader, getICCContext(header.encodedICC, i));
             if (!iccDistribution.validateFinalState())

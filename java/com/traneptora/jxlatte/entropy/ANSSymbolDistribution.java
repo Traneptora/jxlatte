@@ -38,27 +38,31 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         int uniqPos = -1;
         if (reader.readBool()) {
             // simple distribution
-            this.alphabetSize = 1 << logAlphabetSize;
-            this.frequencies = new int[alphabetSize];
             if (reader.readBool()) {
                 int v1 = reader.readU8();
                 int v2 = reader.readU8();
                 if (v1 == v2)
                     throw new InvalidBitstreamException("Overlapping dual peak distribution");
+                this.alphabetSize = 1 + Math.max(v1, v2);
+                if (this.alphabetSize > (1 << logAlphabetSize))
+                    throw new InvalidBitstreamException("Illegal Alphabet Size: " + this.alphabetSize);
+                this.frequencies = new int[alphabetSize];
                 frequencies[v1] = reader.readBits(12);
                 frequencies[v2] = (1 << 12) - frequencies[v1];
                 if (frequencies[v1] == 0)
                     uniqPos = v2;
             } else {
                 int x = reader.readU8();
-                if (x >= frequencies.length)
-                    throw new InvalidBitstreamException("Invalid frequency position");
+                this.alphabetSize = 1 + x;
+                this.frequencies = new int[alphabetSize];
                 frequencies[x] = 1 << 12;
                 uniqPos = x;
             }
         } else if (reader.readBool()) {
             // flat distribution
             alphabetSize = 1 + reader.readU8();
+            if (this.alphabetSize > (1 << logAlphabetSize))
+                throw new InvalidBitstreamException("Illegal Alphabet Size: " + this.alphabetSize);
             if (alphabetSize == 1)
                 uniqPos = 0;
             frequencies = new int[alphabetSize];
@@ -76,6 +80,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
             if (shift > 13)
                 throw new InvalidBitstreamException("Shift > 13");
             this.alphabetSize = 3 + reader.readU8();
+            if (this.alphabetSize > (1 << logAlphabetSize))
+                throw new InvalidBitstreamException("Illegal Alphabet Size: " + this.alphabetSize);
             this.frequencies = new int[alphabetSize];
             int[] logCounts = new int[alphabetSize];
             int[] same = new int[alphabetSize];

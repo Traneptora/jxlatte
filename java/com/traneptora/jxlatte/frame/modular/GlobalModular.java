@@ -17,7 +17,7 @@ public class GlobalModular {
         frame = parent;
         boolean hasGlobalTree = reader.readBool();
         if (hasGlobalTree) {
-            globalTree = new MATree(reader);
+            globalTree = new MATree(parent.getLoggers(), reader);
         } else {
             globalTree = null;
         }

@@ -166,7 +166,7 @@ public class Frame {
 
         permutedTOC = globalReader.readBool();
         if (permutedTOC) {
-            EntropyStream tocStream = new EntropyStream(globalReader, 8);
+            EntropyStream tocStream = new EntropyStream(loggers, globalReader, 8);
             tocPermuation = readPermutation(globalReader, tocStream, tocEntries, 0);
             if (!tocStream.validateFinalState())
                 throw new InvalidBitstreamException("Invalid final ANS state decoding TOC");
@@ -174,6 +174,10 @@ public class Frame {
             tocPermuation = new int[tocEntries];
             for (int i = 0; i < tocEntries; i++)
                 tocPermuation[i] = i;
+        }
+        loggers.log(Loggers.LOG_TRACE, "Permuted TOC: %b", permutedTOC);
+        if (permutedTOC) {
+            loggers.log(Loggers.LOG_TRACE, "TOC Permutation: %s", tocPermuation);
         }
 
         globalReader.zeroPadToByte();
@@ -194,6 +198,8 @@ public class Frame {
             tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
 
         globalReader.zeroPadToByte();
+
+        loggers.log(Loggers.LOG_TRACE, "TOC Lengths: %s", tocLengths);
 
         if (tocEntries != 1) {
             new Thread(() -> {

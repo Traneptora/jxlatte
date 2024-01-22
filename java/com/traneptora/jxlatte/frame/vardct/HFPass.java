@@ -48,7 +48,7 @@ public class HFPass {
 
     public HFPass(Bitreader reader, Frame frame, int passIndex) throws IOException {
         usedOrders = reader.readU32(0x5F, 0, 0x13, 0, 0, 0, 0, 13);
-        EntropyStream stream = usedOrders != 0 ? new EntropyStream(reader, 8) : null;
+        EntropyStream stream = usedOrders != 0 ? new EntropyStream(frame.getLoggers(), reader, 8) : null;
         for (int b = 0; b < 13; b++) {
             for (int c = 0; c < 3; c++) {
                 order[b][c] = new IntPoint[naturalOrderX[b].length];
@@ -71,6 +71,6 @@ public class HFPass {
         if (stream != null && !stream.validateFinalState())
             throw new InvalidBitstreamException("ANS state decoding HFPass perms: " + passIndex);
         int numContexts = 495 * frame.getHFGlobal().numHfPresets * frame.getLFGlobal().hfBlockCtx.numClusters;
-        contextStream = new EntropyStream(reader, numContexts);
+        contextStream = new EntropyStream(frame.getLoggers(), reader, numContexts);
     }
 }

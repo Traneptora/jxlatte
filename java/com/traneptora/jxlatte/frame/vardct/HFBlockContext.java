@@ -52,7 +52,7 @@ public class HFBlockContext {
         if (bSize > 39 * 64)
             throw new InvalidBitstreamException("HF block Size too large");
         clusterMap = new int[bSize];
-        numClusters = EntropyStream.readClusterMap(reader, clusterMap, 16);
+        numClusters = EntropyStream.readClusterMap(loggers, reader, clusterMap, 16);
         loggers.log(Loggers.LOG_TRACE, "HFBlockContext Cluster Map: %s", clusterMap);
     }
 }

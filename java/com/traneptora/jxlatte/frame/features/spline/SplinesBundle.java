@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.IntPoint;
 import com.traneptora.jxlatte.util.MathHelper;
 
@@ -20,8 +21,8 @@ public class SplinesBundle {
     public final int[][] coeffB;
     public final int[][] coeffSigma;
 
-    public SplinesBundle(Bitreader reader) throws IOException {
-        EntropyStream stream = new EntropyStream(reader, 6);
+    public SplinesBundle(Loggers loggers, Bitreader reader) throws IOException {
+        EntropyStream stream = new EntropyStream(loggers, reader, 6);
         numSplines = 1 + stream.readSymbol(reader, 2);
         splinePos = new IntPoint[numSplines];
         for (int i = 0; i < numSplines; i++) {

@@ -172,7 +172,7 @@ public class ModularStream {
             }
         }
         if (!useGlobalTree) {
-            tree = new MATree(reader);
+            tree = new MATree(frame.getLoggers(), reader);
         } else {
             tree = frame.getGlobalTree();
         }

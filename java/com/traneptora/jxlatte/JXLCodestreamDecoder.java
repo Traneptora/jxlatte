@@ -323,7 +323,7 @@ public class JXLCodestreamDecoder {
         Loggers loggers = new Loggers(options, err);
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
-        this.imageHeader = ImageHeader.parse(bitreader, level);
+        this.imageHeader = ImageHeader.parse(loggers, bitreader, level);
         loggers.log(Loggers.LOG_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
         loggers.log(Loggers.LOG_INFO, "    Level: %d", level);
         loggers.log(Loggers.LOG_INFO, "    Size: %dx%d", imageHeader.getSize().width, imageHeader.getSize().height);

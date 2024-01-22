@@ -27,7 +27,7 @@ public class LFGlobal {
     public LFGlobal(Bitreader reader, Frame parent) throws IOException {
         this.frame = parent;
         if ((frame.getFrameHeader().flags & FrameFlags.PATCHES) != 0) {
-            EntropyStream stream = new EntropyStream(reader, 10);
+            EntropyStream stream = new EntropyStream(frame.getLoggers(), reader, 10);
             int numPatches = stream.readSymbol(reader, 0);
             patches = new Patch[numPatches];
             for (int i = 0; i < numPatches; i++) {
@@ -42,7 +42,7 @@ public class LFGlobal {
         if ((frame.getFrameHeader().flags & FrameFlags.SPLINES) != 0) {
             if (frame.globalMetadata.getColorChannelCount() < 3)
                 throw new InvalidBitstreamException("Cannot do splines in grayscale");
-            splines = new SplinesBundle(reader);
+            splines = new SplinesBundle(frame.getLoggers(), reader);
         } else {
             splines = null;
         }
