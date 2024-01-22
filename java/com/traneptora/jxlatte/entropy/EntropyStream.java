@@ -214,7 +214,7 @@ public class EntropyStream {
             return token;
         int n = config.splitExponent - config.lsbInToken - config.msbInToken
             + ((token - split) >>> (config.msbInToken + config.lsbInToken));
-        if (n > 29)
+        if (n > 32)
             throw new InvalidBitstreamException("n is too large");
         int low = token & ((1 << config.lsbInToken) - 1);
         token >>>= config.lsbInToken;
