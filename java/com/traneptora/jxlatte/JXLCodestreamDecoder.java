@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import com.traneptora.jxlatte.bundle.ExtraChannelType;
 import com.traneptora.jxlatte.bundle.ImageHeader;
@@ -313,12 +311,16 @@ public class JXLCodestreamDecoder {
         }
     }
 
+    public boolean atEnd() throws IOException {
+        return bitreader != null && bitreader.atEnd();
+    }
+
     public JXLImage decode() throws IOException {
         return decode(new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
     }
 
     public JXLImage decode(PrintWriter err) throws IOException {
-        if (bitreader.atEnd())
+        if (atEnd())
             return null;
         Loggers loggers = new Loggers(options, err);
         bitreader.showBits(16); // force the level to be populated
@@ -344,33 +346,15 @@ public class JXLCodestreamDecoder {
 
         if (imageHeader.getPreviewHeader() != null) {
             Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
-            frame.readHeader();
+            frame.readFrameHeader();
             frame.skipFrameData();
         }
 
-        List<Frame> frames = new ArrayList<>();
+        int frameCount = 0;
         float[][][][] reference = new float[4][][][];
         FrameHeader header;
         // last one is always null, avoids ugly branch later
         float[][][][] lfBuffer = new float[5][][][];
-
-        do {
-            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
-            frame.readHeader();
-            header = frame.getFrameHeader();
-            if (frames.size() == 0) {
-                loggers.log(Loggers.LOG_INFO, "    Lossless: %s",
-                    header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
-            }
-            frame.printDebugInfo();
-            loggers.log(Loggers.LOG_TRACE, "%s", header);
-            if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
-                throw new InvalidBitstreamException("LF Level too large");
-            frame.decodeFrame(lfBuffer[header.lfLevel]);
-            if (header.lfLevel > 0)
-                lfBuffer[header.lfLevel - 1] = frame.getBuffer();
-            frames.add(frame);
-        } while (!header.isLast);
 
         OpsinInverseMatrix matrix = null;
         if (imageHeader.isXYBEncoded()) {
@@ -378,14 +362,32 @@ public class JXLCodestreamDecoder {
             matrix = imageHeader.getOpsinInverseMatrix().getMatrix(bundle.prim, bundle.white);
         }
 
-        float[][][] canvas = new float[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()]
-            [imageHeader.getSize().height][imageHeader.getSize().width];
+        float[][][] canvas = null;
+        if (!options.parseOnly)
+            canvas = new float[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()]
+                [imageHeader.getSize().height][imageHeader.getSize().width];
 
         long invisibleFrames = 0;
         long visibleFrames = 0;
 
-        for (Frame frame : frames) {
-            header = frame.getFrameHeader();
+        do {
+            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
+            header = frame.readFrameHeader();
+            if (frameCount++ == 0) {
+                loggers.log(Loggers.LOG_INFO, "    Lossless: %s",
+                    header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
+            }
+            frame.printDebugInfo();
+            loggers.log(Loggers.LOG_TRACE, "%s", header);
+            if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
+                throw new InvalidBitstreamException("LF Level too large");
+            if (options.parseOnly) {
+                frame.skipFrameData();
+                continue;
+            }
+            frame.decodeFrame(lfBuffer[header.lfLevel]);
+            if (header.lfLevel > 0)
+                lfBuffer[header.lfLevel - 1] = frame.getBuffer();
             boolean save = (header.saveAsReference != 0 || header.duration == 0)
                 && !header.isLast && header.type != FrameFlags.LF_FRAME;
             if (frame.isVisible()) {
@@ -408,7 +410,17 @@ public class JXLCodestreamDecoder {
                 blendFrame(canvas, reference, frame);
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = MathHelper.deepCopyOf(canvas);
-        }
+        } while (!header.isLast);
+
+        bitreader.zeroPadToByte();
+        byte[] drain = bitreader.drainCache();
+        if (drain != null)
+            demuxer.pushBack(drain);
+        while ((drain = in.drain()) != null)
+            demuxer.pushBack(drain);
+
+        if (options.parseOnly)
+            return null;
 
         int orientation = imageHeader.getOrientation();
 
@@ -418,13 +430,6 @@ public class JXLCodestreamDecoder {
             orientedCanvas[i] = transposeBuffer(canvas[i], orientation);
 
         JXLImage image = new JXLImage(orientedCanvas, imageHeader, flowHelper);
-
-        bitreader.zeroPadToByte();
-        byte[] drain = bitreader.drainCache();
-        if (drain != null)
-            demuxer.pushBack(drain);
-        while ((drain = in.drain()) != null)
-            demuxer.pushBack(drain);
 
         return image;
     }

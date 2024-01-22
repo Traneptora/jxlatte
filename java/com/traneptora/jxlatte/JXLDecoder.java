@@ -48,6 +48,10 @@ public class JXLDecoder implements Closeable {
         return decoder.decode();
     }
 
+    public boolean atEnd() throws IOException {
+        return decoder.atEnd();
+    }
+
     @Override
     public void close() throws IOException {
         demuxer.close();

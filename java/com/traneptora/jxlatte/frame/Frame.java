@@ -129,7 +129,7 @@ public class Frame {
         return flowHelper;
     }
 
-    public void readHeader() throws IOException {
+    private void readHeader() throws IOException {
         globalReader.zeroPadToByte();
         this.header = new FrameHeader(globalReader, this.globalMetadata);
         width = header.width;
@@ -145,13 +145,18 @@ public class Frame {
         readTOC();
     }
 
+    public FrameHeader readFrameHeader() throws IOException {
+        readHeader();
+        return header;
+    }
+
     public FrameHeader getFrameHeader() {
         return header;
     }
 
     public void skipFrameData() throws IOException {
         for (int i = 0; i < tocLengths.length; i++) {
-            globalReader.skipBits(tocLengths[i]);
+            globalReader.skipBits(tocLengths[i] << 3);
         }
     }
 

@@ -25,6 +25,7 @@ public class JXLOptions {
     public boolean renderVarblocks = false;
     public int peakDetect = PEAK_DETECT_AUTO;
     public int threads = 0;
+    public boolean parseOnly = false;
 
     public String input = null;
     public String output = null;
@@ -43,6 +44,7 @@ public class JXLOptions {
         this.renderVarblocks = options.renderVarblocks;
         this.peakDetect = options.peakDetect;
         this.threads = options.threads;
+        this.parseOnly = options.parseOnly;
 
         this.input = options.input;
         this.output = options.output;

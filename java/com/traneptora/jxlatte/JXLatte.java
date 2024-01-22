@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.List;
 
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.io.PFMWriter;
@@ -16,6 +17,9 @@ import com.traneptora.jxlatte.util.functional.ExceptionalConsumer;
 public class JXLatte {
 
     public static final String JXLATTE_VERSION = "0.1.0";
+
+    private static final List<String> yesOptions = Arrays.asList("", "yes", "true");
+    private static final List<String> noOptions = Arrays.asList("no", "false");
 
     private static void writeImage(ExceptionalConsumer<? super OutputStream> writer,
             String outputFilename) throws IOException {
@@ -73,11 +77,25 @@ public class JXLatte {
             "        Show varblocks for VarDCT images",
             "    --threads=N",
             "        Use N threads (0 for auto)",
+            "    --parse-only",
+            "        Read through the input without decoding frame data",
             "",
             "If the output filename is not provided, jxlatte will discard the decoded pixels.",
         };
         System.err.println(String.join(String.format("%n"), lines));
         System.exit(success ? 0 : 1);
+    }
+
+    private static boolean parseFlag(String name, String value, String valueL) {
+        if (yesOptions.contains(valueL)) {
+            return true;
+        } else if (noOptions.contains(valueL)) {
+            return false;
+        } else {
+            System.err.format("jxlatte: Unknown --%s flag: %s%n", name, valueL);
+            System.exit(1);
+            return false;
+        }
     }
 
     private static boolean parseOption(JXLOptions options, String arg, boolean foundMM) {
@@ -117,14 +135,7 @@ public class JXLatte {
                 }
                 return true;
             case "debug":
-                if (Arrays.asList("", "yes", "true").contains(valueL)) {
-                    options.debug = true;
-                } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.debug = false;
-                } else {
-                    System.err.format("jxlatte: Unknown --debug flag: %s%n", value);
-                    System.exit(1);
-                }
+                options.debug = parseFlag(key, value, valueL);
                 return true;
             case "png-hdr":
                 if (Arrays.asList("", "auto").contains(valueL)) {
@@ -198,15 +209,11 @@ public class JXLatte {
                     System.exit(1);
                 }
                 return true;
+            case "parse-only":
+                options.parseOnly = parseFlag(key, value, valueL);
+                return true;
             case "draw-varblocks":
-                if (Arrays.asList("", "yes", "true").contains(valueL)) {
-                    options.renderVarblocks = true;
-                } else if (Arrays.asList("no", "false").contains(valueL)) {
-                    options.renderVarblocks = false;
-                } else {
-                    System.err.format("jxlatte: Unknown --draw-varblocks flag: %s%n", value);
-                    System.exit(1);
-                }
+                options.renderVarblocks = parseFlag(key, value, valueL);
                 return true;
             case "threads":
                 try {
@@ -265,8 +272,10 @@ public class JXLatte {
 
     private static boolean writeImage(JXLOptions options, JXLDecoder decoder) {
         JXLImage image = null;
+        boolean atEnd = false;
         try {
             image = decoder.decode();
+            atEnd = decoder.atEnd();
         } catch (EOFException | InvalidBitstreamException ex) {
             System.err.println("jxlatte: Invalid input bitstream");
             if (options.debug)
@@ -289,7 +298,7 @@ public class JXLatte {
         }
 
         if (image == null)
-            return false;
+            return options.parseOnly && !atEnd;
 
         if (options.output != null) {
             try {
