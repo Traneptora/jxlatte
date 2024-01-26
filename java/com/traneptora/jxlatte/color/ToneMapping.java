@@ -29,7 +29,7 @@ public class ToneMapping {
             if (intensityTarget <= 0f)
                 throw new InvalidBitstreamException("Intensity Target must be positive");
             minNits = reader.readF16();
-            if (minNits <= 0f)
+            if (minNits < 0f)
                 throw new InvalidBitstreamException("Min Nits must be positive");
             if (minNits > intensityTarget)
                 throw new InvalidBitstreamException("Min Nits must be at most the Intensity Target");
