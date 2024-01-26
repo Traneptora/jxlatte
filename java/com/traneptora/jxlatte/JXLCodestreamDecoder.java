@@ -342,7 +342,9 @@ public class JXLCodestreamDecoder {
             loggers.log(Loggers.LOG_INFO, "    Animated: true");
 
         if (imageHeader.getPreviewHeader() != null) {
-            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
+            JXLOptions previewOptions = new JXLOptions(options);
+            previewOptions.parseOnly = true;
+            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers, previewOptions);
             frame.readFrameHeader();
             frame.skipFrameData();
         }
@@ -368,7 +370,7 @@ public class JXLCodestreamDecoder {
         long visibleFrames = 0;
 
         do {
-            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers);
+            Frame frame = new Frame(bitreader, imageHeader, flowHelper, loggers, options);
             header = frame.readFrameHeader();
             if (frameCount++ == 0) {
                 loggers.log(Loggers.LOG_INFO, "    Lossless: %s",

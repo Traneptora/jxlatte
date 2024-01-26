@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.JXLOptions;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.features.noise.NoiseGroup;
@@ -78,12 +79,15 @@ public class Frame {
     private int height;
     private Loggers loggers;
     private FlowHelper flowHelper;
+    private JXLOptions options;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata, FlowHelper flowHelper, Loggers loggers) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, FlowHelper flowHelper,
+            Loggers loggers, JXLOptions options) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
         this.loggers = loggers;
         this.flowHelper = flowHelper;
+        this.options = options;
     }
 
     public Frame(Frame frame) {
@@ -123,6 +127,7 @@ public class Frame {
         }
         this.loggers = frame.loggers;
         this.flowHelper = frame.flowHelper;
+        this.options = frame.options;
     }
 
     public FlowHelper getFlowHelper() {
@@ -206,7 +211,7 @@ public class Frame {
 
         loggers.log(Loggers.LOG_TRACE, "TOC Lengths: %s", tocLengths);
 
-        if (tocEntries != 1) {
+        if (tocEntries != 1 && !options.parseOnly) {
             new Thread(() -> {
                 for (int i = 0; i < tocEntries; i++) {
                     try {
