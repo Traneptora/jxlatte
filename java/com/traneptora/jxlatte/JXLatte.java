@@ -267,6 +267,9 @@ public class JXLatte {
             System.exit(1);
         }
 
+        if (options.verbosity < Loggers.LOG_VERBOSE && options.parseOnly)
+            options.verbosity = Loggers.LOG_VERBOSE;
+
         return options;
     }
 
