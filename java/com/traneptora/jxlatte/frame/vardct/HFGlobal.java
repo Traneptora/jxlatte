@@ -73,7 +73,7 @@ public class HFGlobal {
                 float dx = (float)x / (width - 1);
                 float dy = (float)y / (height - 1);
                 float dist = (float)Math.sqrt(dx * dx + dy * dy);
-                weights[y][x] = interpolate(dist, (float)MathHelper.SQRT_2 + 1e-6f, bands);
+                weights[y][x] = interpolate(dist, MathHelper.SQRT_2 + 1e-6f, bands);
             }
         }
         return weights;
