@@ -160,8 +160,8 @@ public class Spline {
                             float diffX = x - arc.location.x;
                             float diffY = y - arc.location.y;
                             float distance = (float)Math.sqrt(diffX * diffX + diffY * diffY);
-                            float factor = MathHelper.erf((0.5f * distance + (float)MathHelper.SQRT_F) * inverseSigma);
-                            factor -= MathHelper.erf((0.5f * distance - (float)MathHelper.SQRT_F) * inverseSigma);
+                            float factor = MathHelper.erf((0.5f * distance + MathHelper.SQRT_F) * inverseSigma);
+                            factor -= MathHelper.erf((0.5f * distance - MathHelper.SQRT_F) * inverseSigma);
                             float extra = 0.25f * values[c] * sigma * factor * factor;
                             synchronized(buffer) {
                                 buffer[x] += extra;
