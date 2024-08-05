@@ -7,6 +7,9 @@ import java.util.function.DoubleUnaryOperator;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class JXLColorSpace extends ColorSpace {
+
+    private static final long serialVersionUID = 1L;
+
     public final CIEPrimaries primaries;
     public final CIEXY whitePoint;
     public final int transfer;

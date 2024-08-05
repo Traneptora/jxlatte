@@ -8,6 +8,8 @@ import com.traneptora.jxlatte.io.Bitreader;
 
 public class PreviewHeader extends Dimension {
 
+    private static final long serialVersionUID = 1L;
+
     public PreviewHeader(Bitreader reader) throws IOException {
         boolean div8 = reader.readBool();
         if (div8)
