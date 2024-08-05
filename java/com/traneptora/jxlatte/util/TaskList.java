@@ -23,7 +23,7 @@ public class TaskList<T> {
 
     public TaskList(ExecutorService threadPool, int bins) {
         this.threadPool = threadPool;
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         List<CompletableFuture<? extends T>>[] tasks = new List[bins];
         this.tasks = tasks;
         for (int i = 0; i < bins; i++)
