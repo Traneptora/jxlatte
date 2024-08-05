@@ -196,7 +196,7 @@ public class Frame {
         {
             // if we don't declare a new variable here with the unchecked assignment
             // it won't compile, for some reason
-            @SuppressWarnings("unchecked")
+            @SuppressWarnings({"unchecked", "rawtypes"})
             CompletableFuture<byte[]>[] buffers = new CompletableFuture[tocEntries];
             this.buffers = buffers;
         }
@@ -585,8 +585,12 @@ public class Frame {
         final int blockH = MathHelper.ceilDiv(size.y, 8);
         final float[][] inverseSigma = new float[blockH][blockW];
         final int dimS = header.logLFGroupDim - 3;
-
-        CompletableFuture<?>[] futures = new CompletableFuture[size.y];
+        CompletableFuture<?>[] futures;
+        {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            CompletableFuture<?>[] futures0 = new CompletableFuture[size.y];
+            futures = futures0;
+        }
 
         if (header.encoding == FrameFlags.MODULAR) {
             final float inv = 1f / header.restorationFilter.epfSigmaForModular;
