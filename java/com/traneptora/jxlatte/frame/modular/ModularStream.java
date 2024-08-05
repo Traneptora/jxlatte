@@ -264,32 +264,32 @@ public class ModularStream {
                         break;
                     case 1:
                         rct = (x, y) -> {
-                            v[2].buffer[y][x] = v[0].buffer[y][x] + v[2].buffer[y][x];
+                            v[2].buffer[y][x] += v[0].buffer[y][x];
                         };
                         break;
                     case 2:
                         rct = (x, y) -> {
-                            v[1].buffer[y][x] = v[0].buffer[y][x] + v[1].buffer[y][x];
+                            v[1].buffer[y][x] += v[0].buffer[y][x];
                         };
                         break;
                     case 3:
                         rct = (x, y) -> {
                             final int a = v[0].buffer[y][x];
-                            v[2].buffer[y][x] = a + v[2].buffer[y][x];
-                            v[1].buffer[y][x] = a + v[1].buffer[y][x];
+                            v[2].buffer[y][x] += a;
+                            v[1].buffer[y][x] += a;
                         };
                         break;
                     case 4:
                         rct = (x, y) -> {
-                            v[1].buffer[y][x] = v[1].buffer[y][x] + (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1;
+                            v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) / 2;
                         };
                         break;
                     case 5:
                         rct = (x, y) -> {
                             final int a = v[0].buffer[y][x];
-                            final int c = v[2].buffer[y][x];
-                            v[1].buffer[y][x] = v[1].buffer[y][x] + a + (c >> 1);
-                            v[2].buffer[y][x] = a + c;
+                            final int ac = a + v[2].buffer[y][x];
+                            v[1].buffer[y][x] += (a + ac) / 2;
+                            v[2].buffer[y][x] = ac;
                         };
                         break;
                     case 6:
