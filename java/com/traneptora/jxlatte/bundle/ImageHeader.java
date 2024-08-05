@@ -477,7 +477,7 @@ public class ImageHeader {
         int commandSize = commandReader.readICCVarint();
         // readICCVarint is always a multiple of bytes
         int commandStart = (int)(commandReader.getBitsCount() >> 3);
-        int dataStart = (int)(commandStart + commandSize);
+        int dataStart = commandStart + commandSize;
         Bitreader dataReader = new Bitreader(new ByteArrayInputStream(
             encodedICC, dataStart, encodedICC.length - dataStart));
         int headerSize = Math.min(128, outputSize);
