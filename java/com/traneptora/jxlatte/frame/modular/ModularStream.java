@@ -281,14 +281,14 @@ public class ModularStream {
                         break;
                     case 4:
                         rct = (x, y) -> {
-                            v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) / 2;
+                            v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1;
                         };
                         break;
                     case 5:
                         rct = (x, y) -> {
                             final int a = v[0].buffer[y][x];
                             final int ac = a + v[2].buffer[y][x];
-                            v[1].buffer[y][x] += (a + ac) / 2;
+                            v[1].buffer[y][x] += (a + ac) >> 1;
                             v[2].buffer[y][x] = ac;
                         };
                         break;
