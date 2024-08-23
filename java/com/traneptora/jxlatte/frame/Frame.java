@@ -108,26 +108,21 @@ public class Frame {
         this.permutedTOC = frame.permutedTOC;
         this.buffer = new float[frame.buffer.length][][];
         for (int c = 0; c < buffer.length; c++) {
-            if (copyBuffer) {
-                buffer[c] = new float[frame.buffer[c].length][];
-            } else {
-                buffer[c] = new float[globalMetadata.getSize().height][];
-            }
+            buffer[c] = new float[frame.buffer[c].length][];
             for (int y = 0; y < buffer[c].length; y++) {
                 if (copyBuffer)
                     buffer[c][y] = Arrays.copyOf(frame.buffer[c][y], frame.buffer[c][y].length);
                 else
-                    buffer[c][y] = new float[globalMetadata.getSize().width];
+                    buffer[c][y] = new float[frame.buffer[c][y].length];
             }
-        }
-        if (!copyBuffer) {
-            header.width = globalMetadata.getSize().width;
-            header.height = globalMetadata.getSize().height;
-            header.origin = new IntPoint();
         }
         this.loggers = frame.loggers;
         this.flowHelper = frame.flowHelper;
         this.options = frame.options;
+        this.width = frame.width;
+        this.height = frame.height;
+        this.groupRowStride = frame.groupRowStride;
+        this.lfGroupRowStride = frame.lfGroupRowStride;
     }
 
     public FlowHelper getFlowHelper() {
@@ -139,10 +134,6 @@ public class Frame {
         this.header = new FrameHeader(globalReader, this.globalMetadata);
         width = header.width;
         height = header.height;
-        width = MathHelper.ceilDiv(width, header.upsampling);
-        height = MathHelper.ceilDiv(height, header.upsampling);
-        width = MathHelper.ceilDiv(width, 1 << (3 * header.lfLevel));
-        height = MathHelper.ceilDiv(height, 1 << (3 * header.lfLevel));
         groupRowStride = MathHelper.ceilDiv(width, header.groupDim);
         lfGroupRowStride = MathHelper.ceilDiv(width, header.groupDim << 3);
         numGroups = groupRowStride * MathHelper.ceilDiv(height, header.groupDim);

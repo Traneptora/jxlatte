@@ -143,6 +143,10 @@ public class FrameHeader {
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
         boolean fullFrame = origin.x <= 0 && origin.y <= 0 && (width + origin.x) >= parent.getSize().width
             && (height + origin.y) >= parent.getSize().height;
+        width = MathHelper.ceilDiv(width, upsampling);
+        height = MathHelper.ceilDiv(height, upsampling);
+        width = MathHelper.ceilDiv(width, 1 << (3 * lfLevel));
+        height = MathHelper.ceilDiv(height, 1 << (3 * lfLevel));
         ecBlendingInfo = new BlendingInfo[parent.getExtraChannelCount()];
         if (normalFrame) {
             blendingInfo = new BlendingInfo(reader, ecBlendingInfo.length > 0, fullFrame);
