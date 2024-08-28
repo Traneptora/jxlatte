@@ -29,7 +29,6 @@ src = files(
     'com/traneptora/jxlatte/color/ToneMapping.java',
 
     # com.traneptora.jxlatte.entropy
-    'com/traneptora/jxlatte/entropy/ANSState.java',
     'com/traneptora/jxlatte/entropy/ANSSymbolDistribution.java',
     'com/traneptora/jxlatte/entropy/EntropyStream.java',
     'com/traneptora/jxlatte/entropy/HybridIntegerConfig.java',
@@ -102,6 +101,7 @@ src = files(
     'com/traneptora/jxlatte/util/IntPoint.java',
     'com/traneptora/jxlatte/util/IteratorIterable.java',
     'com/traneptora/jxlatte/util/MathHelper.java',
+    'com/traneptora/jxlatte/util/MutableLong.java',
     'com/traneptora/jxlatte/util/TaskList.java',
 
     # com.traneptora.jxlatte.util.functional

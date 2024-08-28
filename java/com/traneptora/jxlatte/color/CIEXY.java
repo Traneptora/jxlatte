@@ -1,8 +1,12 @@
 package com.traneptora.jxlatte.color;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class CIEXY {
+public class CIEXY implements Serializable {
+
+    private static final long serialVersionUID = 0xb3c642d8db60fd9aL;
+
     public final float x;
     public final float y;
 

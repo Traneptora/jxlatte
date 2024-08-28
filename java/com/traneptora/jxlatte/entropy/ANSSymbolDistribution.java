@@ -6,6 +6,7 @@ import java.util.Deque;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.MutableLong;
 
 public class ANSSymbolDistribution extends SymbolDistribution {
 
@@ -135,8 +136,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     }
 
     @Override
-    public int readSymbol(Bitreader reader, ANSState stateObj) throws IOException {
-        int state =  stateObj.hasState() ? stateObj.getState() : reader.readBits(32);
+    public int readSymbol(Bitreader reader, MutableLong stateObj) throws IOException {
+        int state =  stateObj.value < 0 ? reader.readBits(32) : (int)stateObj.value;
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);
@@ -146,7 +147,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         state = frequencies[symbol] * (state >>> 12) + offset;
         if ((state & 0xFFFF0000) == 0)
             state = (state << 16) | reader.readBits(16);
-        stateObj.setState(state);
+        stateObj.value = 0xFFFFFFFFL & (long)state;
 
         return symbol;
     }

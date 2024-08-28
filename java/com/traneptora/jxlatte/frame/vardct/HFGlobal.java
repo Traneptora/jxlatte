@@ -41,7 +41,7 @@ public class HFGlobal {
             for (int i = 0; i < numParams; i++) {
                 vals[c][i] = reader.readF16();
             }
-            vals[c][0] *= 64D;
+            vals[c][0] *= 64f;
         }
         return vals;
     }

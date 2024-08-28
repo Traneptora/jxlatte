@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.util.MutableLong;
 
 public class EntropyStream {
 
@@ -33,7 +34,7 @@ public class EntropyStream {
     private int copyPos77;
     private int numDecoded77;
     private int[] window;
-    private ANSState state = new ANSState();
+    private MutableLong ansState = new MutableLong(-1L);
     private Loggers loggers;
 
     /**  
@@ -154,11 +155,11 @@ public class EntropyStream {
 
     public void reset() {
         this.numToCopy77 = 0;
-        this.state.reset();
+        ansState.value = -1L;
     }
 
     public boolean validateFinalState() {
-        return !state.hasState() || state.getState() == 0x130000;
+        return ansState.value == -1 || ansState.value == 0x130000L;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
@@ -179,12 +180,12 @@ public class EntropyStream {
             throw new InvalidBitstreamException("Cluster Map points to nonexisted distribution");
 
         SymbolDistribution dist = dists[clusterMap[context]];
-        int token = dist.readSymbol(reader, state);
+        int token = dist.readSymbol(reader, ansState);
 
         if (usesLZ77 && token >= lz77MinSymbol) {
             SymbolDistribution lz77dist = dists[clusterMap[clusterMap.length - 1]];
             numToCopy77 = lz77MinLength + readHybridInteger(reader, lzLengthConfig, token - lz77MinSymbol);
-            token = lz77dist.readSymbol(reader, state);
+            token = lz77dist.readSymbol(reader, ansState);
             int distance = readHybridInteger(reader, lz77dist.config, token);
             if (distanceMultiplier == 0) {
                 distance++;

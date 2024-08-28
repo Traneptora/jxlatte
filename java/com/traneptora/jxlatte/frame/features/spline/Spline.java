@@ -101,7 +101,7 @@ public class Spline {
     private static float fourierICT(float[] coeffs, float t) {
         float total = MathHelper.SQRT_H * coeffs[0];
         for (int i = 1; i < 32; i++) {
-            total += coeffs[i] * Math.cos(i * (Math.PI / 32D) * (t + 0.5D));
+            total += coeffs[i] * (float)Math.cos(i * (Math.PI / 32D) * (t + 0.5D));
         }
         return total;
     }

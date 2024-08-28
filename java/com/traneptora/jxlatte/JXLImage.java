@@ -81,7 +81,7 @@ public class JXLImage {
             this.iccProfile = header.getDecodedICC();
         }
         this.taggedTransfer = bundle.tf;
-        this.alphaIsPremultiplied = hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
+        this.alphaIsPremultiplied = header.hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {

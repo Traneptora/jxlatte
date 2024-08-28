@@ -186,7 +186,7 @@ public class Bitreader extends InputStream {
         if (bits == 0)
             return 0;
         if (bits <= cacheBits) {
-            cacheBits -= bits;
+            cacheBits -= (int)bits;
             cache >>>= bits;
             bitsRead += bits;
             return bits;
