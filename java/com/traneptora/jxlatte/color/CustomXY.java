@@ -7,6 +7,8 @@ import com.traneptora.jxlatte.util.MathHelper;
 
 public class CustomXY extends CIEXY {
 
+    private static final long serialVersionUID = 0xf7956620d8b4ff79L;
+
     // hack to deal with Java's super() mechanics
     private static CIEXY readCustom(Bitreader reader) throws IOException {
         int ux = reader.readU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21);
