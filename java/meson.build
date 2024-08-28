@@ -23,7 +23,6 @@ src = files(
     'com/traneptora/jxlatte/color/ColorEncodingBundle.java',
     'com/traneptora/jxlatte/color/ColorFlags.java',
     'com/traneptora/jxlatte/color/ColorManagement.java',
-    'com/traneptora/jxlatte/color/CustomXY.java',
     'com/traneptora/jxlatte/color/JXLColorSpace.java',
     'com/traneptora/jxlatte/color/OpsinInverseMatrix.java',
     'com/traneptora/jxlatte/color/ToneMapping.java',

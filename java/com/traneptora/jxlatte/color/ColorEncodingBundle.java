@@ -42,7 +42,7 @@ public class ColorEncodingBundle {
         if (!ColorFlags.validateWhitePoint(whitePoint))
             throw new InvalidBitstreamException("Invalid WhitePoint enum");
         if (whitePoint == ColorFlags.WP_CUSTOM)
-            white = new CustomXY(reader);
+            white = CIEXY.readCustom(reader);
         else
             white = ColorFlags.getWhitePoint(whitePoint);
         if (!allDefault && !useIccProfile && colorEncoding != ColorFlags.CE_XYB && colorEncoding != ColorFlags.CE_GRAY)
@@ -52,9 +52,9 @@ public class ColorEncodingBundle {
         if (!ColorFlags.validatePrimaries(primaries))
             throw new InvalidBitstreamException("Invalid Primaries enum");
         if (primaries == ColorFlags.PRI_CUSTOM) {
-            CIEXY pRed = new CustomXY(reader);
-            CIEXY pGreen = new CustomXY(reader);
-            CIEXY pBlue = new CustomXY(reader);
+            CIEXY pRed = CIEXY.readCustom(reader);
+            CIEXY pGreen = CIEXY.readCustom(reader);
+            CIEXY pBlue = CIEXY.readCustom(reader);
             prim = new CIEPrimaries(pRed, pGreen, pBlue);
         } else {
             prim = ColorFlags.getPrimaries(primaries);
