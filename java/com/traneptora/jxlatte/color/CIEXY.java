@@ -20,7 +20,7 @@ public class CIEXY implements Serializable {
     }
 
     public boolean matches(CIEXY xy) {
-        return Math.abs(x - xy.x) + Math.abs(y - xy.y) < 1e-4D;
+        return Math.abs(x - xy.x) + Math.abs(y - xy.y) < 1e-4f;
     }
 
     public static boolean matches(CIEXY a, CIEXY b) {
