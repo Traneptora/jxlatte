@@ -34,7 +34,7 @@ public class EntropyStream {
     private int copyPos77;
     private int numDecoded77;
     private int[] window;
-    private MutableLong ansState = new MutableLong(-1L);
+    private final MutableLong ansState = new MutableLong(-1L);
     private Loggers loggers;
 
     /**  
@@ -159,7 +159,7 @@ public class EntropyStream {
     }
 
     public boolean validateFinalState() {
-        return ansState.value == -1 || ansState.value == 0x130000L;
+        return ansState.value == -1L || ansState.value == 0x130000L;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
@@ -199,7 +199,7 @@ public class EntropyStream {
             if (distance > numDecoded77)
                 distance = numDecoded77;
             copyPos77 = numDecoded77 - distance;
-            return readSymbol(reader, context);
+            return readSymbol(reader, context, distanceMultiplier);
         }
 
         int hybridInt = readHybridInteger(reader, dist.config, token);

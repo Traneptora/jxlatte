@@ -23,7 +23,7 @@ public class HFMetadata {
 
     public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
         this.parent = parent;
-        final IntPoint size = frame.getLFGroupSize(parent.lfGroupID).shiftRight(3);
+        final IntPoint size = parent.size;
         int n = MathHelper.ceilLog2(size.x * size.y);
         nbBlocks = 1 + reader.readBits(n);
         IntPoint aFromYSize = size.ceilDiv(8);

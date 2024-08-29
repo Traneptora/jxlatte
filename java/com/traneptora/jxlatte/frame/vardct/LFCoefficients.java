@@ -31,11 +31,13 @@ public class LFCoefficients {
         final IntPoint[] shift = header.jpegUpsampling;
         final ModularChannelInfo[] info = new ModularChannelInfo[3];
         final float[][][] dequantLFCoeff = new float[3][][];
+        final IntPoint shiftMax = Arrays.asList(shift).stream().reduce(IntPoint.ZERO, IntPoint::max);
 
         for (int i = 0; i < 3; i++) {
             if (adaptiveSmoothing && (shift[i].x != 0 || shift[i].y != 0))
                 throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
-            final IntPoint channelSize = sizeInBlocks.shiftRight(shift[i]);
+            final IntPoint channelSize = sizeInBlocks.ceilDiv(IntPoint.ONE.shiftLeft(shiftMax))
+                .shiftLeft(shiftMax.minus(shift[i]));
             info[Frame.cMap[i]] = new ModularChannelInfo(channelSize.x, channelSize.y, shift[i].x, shift[i].y);
             dequantLFCoeff[i] = new float[channelSize.y][channelSize.x];
         }

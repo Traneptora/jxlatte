@@ -137,7 +137,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
 
     @Override
     public int readSymbol(Bitreader reader, MutableLong stateObj) throws IOException {
-        int state =  stateObj.value < 0 ? reader.readBits(32) : (int)stateObj.value;
+        int state =  stateObj.value == -1L ? reader.readBits(32) : (int)stateObj.value;
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);

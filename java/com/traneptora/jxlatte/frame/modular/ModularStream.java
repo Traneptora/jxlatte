@@ -77,10 +77,9 @@ public class ModularStream {
         for (int i = 0; i < nbTransforms; i++)
             transforms[i] = new TransformInfo(reader);
 
-        int w = frame.getModularFrameSize().x;
-        int h = frame.getModularFrameSize().y;
-
         if (channelArray == null) {
+            int w = frame.getModularFrameSize().x;
+            int h = frame.getModularFrameSize().y;
             for (int i = 0; i < channelCount; i++) {
                 int dimShift = i < ecStart ? 0 : frame.globalMetadata.getExtraChannelInfo(i - ecStart).dimShift;
                 channels.add(new ModularChannelInfo(w, h, dimShift, dimShift));
@@ -108,8 +107,8 @@ public class ModularStream {
                 if (transforms[i].sp.length == 0) {
                     int first = nbMetaChannels;
                     int count = channels.size() - first;
-                    w = channels.get(first).width;
-                    h = channels.get(first).height;
+                    int w = channels.get(first).width;
+                    int h = channels.get(first).height;
                     if (count > 2 && channels.get(first + 1).width == w && channels.get(first + 1).height == h) {
                         squeezeList.add(new SqueezeParam(true, false, first + 1, 2));
                         squeezeList.add(new SqueezeParam(false, false, first + 1, 2));
@@ -149,13 +148,13 @@ public class ModularStream {
                         ModularChannelInfo chan = channels.get(k);
                         int r = offset + k - begin;
                         if (spa[j].horizontal) {
-                            w = chan.width;
+                            int w = chan.width;
                             chan.width = (w + 1) / 2;
                             chan.hshift++;
                             residu = new ModularChannelInfo(chan);
                             residu.width = w / 2;
                         } else {
-                            h = chan.height;
+                            int h = chan.height;
                             chan.height = (h + 1) / 2;
                             chan.vshift++;
                             residu = new ModularChannelInfo(chan);

@@ -1,6 +1,7 @@
 package com.traneptora.jxlatte.frame.group;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.FrameFlags;
@@ -23,7 +24,11 @@ public class LFGroup {
     public LFGroup(Bitreader reader, Frame parent, int index, ModularChannelInfo[] replaced, float[][][] lfBuffer) throws IOException {
         this.lfGroupID = index;
         this.frame = parent;
-        this.size = frame.getLFGroupSize(index).shiftRight(3);
+        IntPoint size = frame.getLFGroupSize(lfGroupID).shiftRight(3);
+        final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
+        final IntPoint maxShift = Arrays.asList(shift).stream().reduce(IntPoint.ZERO, IntPoint::max);
+        size = size.ceilDiv(IntPoint.ONE.shiftLeft(maxShift)).shiftLeft(maxShift);
+        this.size = size;
 
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
             this.lfCoeff = new LFCoefficients(reader, this, parent, lfBuffer);

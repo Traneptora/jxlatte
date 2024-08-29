@@ -931,10 +931,12 @@ public class Frame {
     }
 
     public IntPoint getPaddedFrameSize() {
+        IntPoint factor = IntPoint.ONE.shiftLeft(Arrays.asList(getFrameHeader().jpegUpsampling).stream()
+            .reduce(IntPoint.ZERO, IntPoint::max));
         if (header.encoding == FrameFlags.VARDCT)
-            return new IntPoint(width, height).ceilDiv(8).times(8);
+            return new IntPoint(width, height).ceilDiv(8).ceilDiv(factor).times(factor).times(8);
         else
-            return new IntPoint(width, height);
+            return new IntPoint(width, height).ceilDiv(factor).times(factor);
     }
 
     public IntPoint getModularFrameSize() {

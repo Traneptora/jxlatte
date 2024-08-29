@@ -54,8 +54,8 @@ public class HFCoefficients {
         this.lfg = frame.getLFGroupForGroup(group);
         final int offset = 495 * hfctx.numClusters * hfPreset;
         final HFPass hfPass = frame.getHFPass(pass);
-        final IntPoint groupSize = frame.groupSize(group);
-        final IntPoint groupBlockSize = groupSize.shiftRight(3);
+        final IntPoint groupBlockSize = lfg.size;
+        final IntPoint groupSize = groupBlockSize.shiftLeft(3);
         nonZeroes = new int[3][groupBlockSize.y][groupBlockSize.x];
         final IntPoint[] shift = frame.getFrameHeader().jpegUpsampling;
         stream = new EntropyStream(hfPass.contextStream);
