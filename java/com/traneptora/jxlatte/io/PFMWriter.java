@@ -1,6 +1,5 @@
 package com.traneptora.jxlatte.io;
 
-import java.awt.image.Raster;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -25,12 +24,14 @@ public class PFMWriter {
         String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF",
             image.getWidth(), image.getHeight());
         dout.writeBytes(header);
-        Raster raster = image.asBufferedImage().getRaster();
+        float[][] buffer = image.getBuffer(false);
+        final int cCount = gray ? 1 : 3;
         // pfm is in backwards scanline order, bottom to top
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {
-                for (int c = 0; c < (gray ? 1 : 3); c++)
-                    dout.writeFloat(raster.getSampleFloat(x, y, c));
+                final int p = y * width + x;
+                for (int c = 0; c < cCount; c++)
+                    dout.writeFloat(buffer[c][p]);
             }
         }
     }

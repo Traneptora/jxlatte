@@ -1,14 +1,14 @@
 package com.traneptora.jxlatte.bundle;
 
-import java.awt.Dimension;
 import java.io.IOException;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
 
-public class PreviewHeader extends Dimension {
+public class PreviewHeader {
 
-    private static final long serialVersionUID = 1L;
+    public final int width;
+    public final int height;
 
     public PreviewHeader(Bitreader reader) throws IOException {
         boolean div8 = reader.readBool();

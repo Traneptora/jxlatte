@@ -23,9 +23,10 @@ src = files(
     'com/traneptora/jxlatte/color/ColorEncodingBundle.java',
     'com/traneptora/jxlatte/color/ColorFlags.java',
     'com/traneptora/jxlatte/color/ColorManagement.java',
-    'com/traneptora/jxlatte/color/JXLColorSpace.java',
+    'com/traneptora/jxlatte/color/GammaTransferFunction.java',
     'com/traneptora/jxlatte/color/OpsinInverseMatrix.java',
     'com/traneptora/jxlatte/color/ToneMapping.java',
+    'com/traneptora/jxlatte/color/TransferFunction.java',
 
     # com.traneptora.jxlatte.entropy
     'com/traneptora/jxlatte/entropy/ANSSymbolDistribution.java',
@@ -111,6 +112,7 @@ src = files(
     'com/traneptora/jxlatte/util/functional/ExceptionalIntTriConsumer.java',
     'com/traneptora/jxlatte/util/functional/ExceptionalRunnable.java',
     'com/traneptora/jxlatte/util/functional/ExceptionalSupplier.java',
+    'com/traneptora/jxlatte/util/functional/FloatUnaryOperator.java',
     'com/traneptora/jxlatte/util/functional/FunctionalHelper.java',
 )
 

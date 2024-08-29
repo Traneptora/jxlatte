@@ -1,21 +1,6 @@
 package com.traneptora.jxlatte;
 
-import java.awt.Point;
-import java.awt.Transparency;
-import java.awt.color.ColorSpace;
-import java.awt.color.ICC_ColorSpace;
-import java.awt.color.ICC_Profile;
-import java.awt.image.BandedSampleModel;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.ComponentColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DataBufferFloat;
-import java.awt.image.Raster;
-import java.awt.image.SampleModel;
-import java.awt.image.WritableRaster;
 import java.io.IOException;
-import java.util.function.DoubleUnaryOperator;
 
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.color.CIEPrimaries;
@@ -23,18 +8,13 @@ import com.traneptora.jxlatte.color.CIEXY;
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.ColorManagement;
-import com.traneptora.jxlatte.color.JXLColorSpace;
 import com.traneptora.jxlatte.util.FlowHelper;
-import com.traneptora.jxlatte.util.IntPoint;
 import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.functional.FloatUnaryOperator;
 
 public class JXLImage {
     private FlowHelper flowHelper;
 
-    private DataBufferFloat buffer;
-    private WritableRaster raster;
-
-    private SampleModel sampleModel;
     private ImageHeader imageHeader;
     private int colorEncoding;
     private int alphaIndex;
@@ -44,35 +24,35 @@ public class JXLImage {
     private int transfer;
     private int taggedTransfer;
 
-    private CIEXY white1931;
-    private CIEPrimaries primaries1931;
+    private CIEXY whiteXY;
+    private CIEPrimaries primariesXY;
+
     private byte[] iccProfile;
     private int width;
     private int height;
 
     private boolean alphaIsPremultiplied;
 
+    private float[][] buffer;
+
     protected JXLImage(float[][][] buffer, ImageHeader header, FlowHelper flowHelper) throws IOException {
         this.width = buffer[0][0].length;
         this.height = buffer[0].length;
         this.flowHelper = flowHelper;
-        int channels = header.getColorChannelCount() + (header.hasAlpha() ? 1 : 0);
-        final float[][] dataArray  = new float[channels][width * height];
+        int channels = header.getTotalChannelCount();
+        this.buffer = new float[channels][width * height];
         for (int c = 0; c < channels; c++) {
             for (int y = 0; y < height; y++)
-                System.arraycopy(buffer[c][y], 0, dataArray[c], y * width, width);
+                System.arraycopy(buffer[c][y], 0, this.buffer[c], y * width, width);
         }
-        this.buffer = new DataBufferFloat(dataArray, width * height);
-        this.sampleModel = new BandedSampleModel(DataBuffer.TYPE_FLOAT, width, height, dataArray.length);
-        this.raster = Raster.createWritableRaster(this.sampleModel, this.buffer, new Point());
         ColorEncodingBundle bundle = header.getColorEncoding();
         this.colorEncoding = bundle.colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
         this.imageHeader = header;
         this.primaries = bundle.primaries;
         this.whitePoint = bundle.whitePoint;
-        this.primaries1931 = bundle.prim;
-        this.white1931 = bundle.white;
+        this.primariesXY = bundle.prim;
+        this.whiteXY = bundle.white;
         if (imageHeader.isXYBEncoded()) {
             this.transfer = ColorFlags.TF_LINEAR;
             this.iccProfile = null;
@@ -86,7 +66,6 @@ public class JXLImage {
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
         this.flowHelper = image.flowHelper;
-        this.sampleModel = image.sampleModel;
         this.imageHeader = image.imageHeader;
         this.colorEncoding = image.colorEncoding;
         this.alphaIndex = image.alphaIndex;
@@ -96,42 +75,20 @@ public class JXLImage {
         this.transfer = image.transfer;
         this.taggedTransfer = image.taggedTransfer;
 
-        this.white1931 = image.white1931;
-        this.primaries1931 = image.primaries1931;
+        this.whiteXY = image.whiteXY;
+        this.primariesXY = image.primariesXY;
         this.iccProfile = image.iccProfile;
         this.width = image.width;
         this.height = image.height;
 
         this.alphaIsPremultiplied = image.alphaIsPremultiplied;
 
-        if (copyBuffer) {
-            final float[][] dataBuffer = image.buffer.getBankData();
-            final float[][] buf = new float[dataBuffer.length][width * height];
-            for (int c = 0; c < buf.length; c++)
-                System.arraycopy(dataBuffer[c], 0, buf[c], 0, dataBuffer[c].length);
-            this.buffer = new DataBufferFloat(buf, buf[0].length);
-            this.raster = Raster.createWritableRaster(this.sampleModel, this.buffer, new Point());
-        }
+        if (copyBuffer)
+            this.buffer = image.getBuffer(true);
     }
 
     public JXLImage(JXLImage image) {
         this(image, true);
-    }
-
-    private ColorModel getColorModel() {
-        boolean alpha = this.hasAlpha();
-        int transparency = alpha ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
-        ColorSpace cs;
-        if (this.hasICCProfile())
-            cs = new ICC_ColorSpace(ICC_Profile.getInstance(iccProfile));
-        else
-            cs = new JXLColorSpace(this.primaries1931, this.white1931, this.transfer,
-                imageHeader.getColorChannelCount());
-        return new ComponentColorModel(cs, alpha, alphaIsPremultiplied, transparency, DataBuffer.TYPE_FLOAT);
-    }
-
-    public BufferedImage asBufferedImage() {
-        return new BufferedImage(getColorModel(), raster, alphaIsPremultiplied, null);
     }
 
     public boolean isHDR() {
@@ -150,20 +107,22 @@ public class JXLImage {
      * Assumes Linear Light
      */
     private JXLImage toneMapLinear(CIEPrimaries primaries, CIEXY whitePoint) {
-        if (CIEPrimaries.matches(primaries1931, primaries) && CIEXY.matches(white1931, whitePoint))
+        if (CIEPrimaries.matches(primariesXY, primaries) && CIEXY.matches(whiteXY, whitePoint))
             return this;
         float[][] conversionMatrix =
-            ColorManagement.getConversionMatrix(primaries, whitePoint, this.primaries1931, this.white1931);
+            ColorManagement.getConversionMatrix(primaries, whitePoint, this.primariesXY, this.whiteXY);
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new DataBufferFloat(buffer.getSize(), buffer.getNumBanks());
-        image.raster = Raster.createWritableRaster(image.sampleModel, image.buffer, new Point());
-        final float[] rgb = raster.getPixel(0, 0, (float[])null);
-        for (IntPoint p : FlowHelper.range2D(width, height)) {
-            raster.getPixel(p.x, p.y, rgb);
-            image.raster.setPixel(p.x, p.y, MathHelper.matrixMutliply(conversionMatrix, rgb));
+        image.buffer = new float[buffer.length][buffer[0].length];
+        final float[] rgb = new float[3];
+        for (int p = 0; p < buffer[0].length; p++) {
+            for (int c = 0; c < 3; c++)
+                rgb[c] = buffer[c][p];
+            MathHelper.matrixMutliply3InPlace(conversionMatrix, rgb);
+            for (int c = 0; c < 3; c++)
+                image.buffer[c][p] = rgb[c];
         }
-        image.primaries1931 = primaries;
-        image.white1931 = whitePoint;
+        image.primariesXY = primaries;
+        image.whiteXY = whitePoint;
         image.primaries = ColorFlags.getPrimaries(primaries);
         image.whitePoint = ColorFlags.getWhitePoint(whitePoint);
         return image;
@@ -172,16 +131,12 @@ public class JXLImage {
     public JXLImage fillColor() {
         if (this.colorEncoding != ColorFlags.CE_GRAY)
             return this;
-        final float[][] dataArray = new float[buffer.getNumBanks() + 2][buffer.getSize()];
-        final float[][] src = buffer.getBankData();
-        for (int c = 0; c < dataArray.length; c++) {
-            final int cIn = c > 2 ? c - 2 : 0;
-            System.arraycopy(src[cIn], 0, dataArray[c], 0, buffer.getSize());
-        }
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new DataBufferFloat(dataArray, buffer.getSize());
-        image.sampleModel = new BandedSampleModel(DataBuffer.TYPE_FLOAT, image.width, image.height, dataArray.length);
-        image.raster = Raster.createWritableRaster(image.sampleModel, image.buffer, new Point());
+        image.buffer = new float[this.buffer.length + 2][this.buffer[0].length];
+        for (int c = 0; c < 3; c++)
+            System.arraycopy(buffer[0], 0, image.buffer[c], 0, buffer[0].length);
+        for (int c = 3; c < image.buffer.length; c++)
+            System.arraycopy(buffer[c - 2], 0, image.buffer[c], 0, buffer[c - 2].length);
         image.colorEncoding = ColorFlags.CE_RGB;
         return image;
     }
@@ -189,23 +144,18 @@ public class JXLImage {
     public JXLImage flattenColor() {
         if (this.colorEncoding == ColorFlags.CE_GRAY)
             return this;
-        final float[][] dataArray = new float[buffer.getNumBanks() - 2][buffer.getSize()];
-        final float[][] src = buffer.getBankData();
-        for (int c = 0; c < dataArray.length; c++) {
-            final int cIn = c > 1 ? c + 2 : 1;
-            System.arraycopy(src[cIn], 0, dataArray[c], 0, buffer.getSize());
-        }
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new DataBufferFloat(dataArray, buffer.getSize());
-        image.sampleModel = new BandedSampleModel(DataBuffer.TYPE_FLOAT, image.width, image.height, dataArray.length);
-        image.raster = Raster.createWritableRaster(image.sampleModel, image.buffer, new Point());
+        image.buffer = new float[buffer.length - 2][buffer[0].length];
+        System.arraycopy(buffer[1], 0, image.buffer[0], 0, buffer[1].length);
+        for (int c = 1; c < image.buffer.length; c++)
+            System.arraycopy(buffer[c + 2], 0, image.buffer[c], 0, buffer[c + 2].length);
         image.colorEncoding = ColorFlags.CE_GRAY;
         return image;
     }
 
     public JXLImage transform(CIEPrimaries primaries, CIEXY whitePoint, int transfer, int peakDetect) {
         JXLImage image = this;
-        if (CIEPrimaries.matches(primaries, this.primaries1931) && CIEXY.matches(whitePoint, this.white1931))
+        if (CIEPrimaries.matches(primaries, this.primariesXY) && CIEXY.matches(whitePoint, this.whiteXY))
             return image.transfer(transfer, peakDetect);
         return image.linearize()
             .fillColor()
@@ -226,31 +176,46 @@ public class JXLImage {
         return transform(primaries, whitePoint, this.transfer, JXLOptions.PEAK_DETECT_OFF);
     }
 
-    private float determinePeak() {
-        float max = MathHelper.max(
-            transform(null, null, ColorFlags.TF_LINEAR, JXLOptions.PEAK_DETECT_OFF)
-            .buffer.getData(1));
-        return max;
+    public float[][] getBuffer(boolean copy) {
+        if (!copy)
+            return this.buffer;
+        final float[][] buf = new float[buffer.length][buffer[0].length];
+        for (int c = 0; c < buf.length; c++)
+            System.arraycopy(buffer[c], 0, buf[c], 0, buffer[c].length);
+        return buf;
     }
 
-    private JXLImage transfer(DoubleUnaryOperator op) {
-        JXLImage image = new JXLImage(this);
+    private float determinePeak() {
+        if (transfer != ColorFlags.TF_LINEAR)
+            return linearize().determinePeak();
+        int c = colorEncoding == ColorFlags.CE_GRAY ? 0 : 1;
+        return MathHelper.max(buffer[c]);
+    }
+
+    private JXLImage transfer(FloatUnaryOperator op) {
+        JXLImage image = new JXLImage(this, false);
         for (int c = 0; c < imageHeader.getColorChannelCount(); c++) {
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                     image.raster.setSample(x, y, c, op.applyAsDouble(this.raster.getSampleFloat(x, y, c)));
-                }
+            for (int p = 0; p < image.buffer[0].length; p++) {
+                image.buffer[c][p] = op.applyAsFloat(buffer[c][p]);
             }
         }
         return image;
+    }
+
+    private void transferInPlace(FloatUnaryOperator op) {
+        for (int c = 0; c < imageHeader.getColorChannelCount(); c++) {
+            for (int p = 0; p < buffer[0].length; p++) {
+                buffer[c][p] = op.applyAsFloat(buffer[c][p]);
+            }
+        }
     }
 
     private JXLImage linearize() {
         if (this.transfer == ColorFlags.TF_LINEAR)
             return this;
 
-        DoubleUnaryOperator inverse =  ColorManagement.getInverseTransferFunction(this.transfer);
-        JXLImage image = this.transfer(inverse);
+        FloatUnaryOperator toLinear = ColorManagement.getTransferFunction(this.transfer).toLinearFloatOp();
+        JXLImage image = transfer(toLinear);
         image.transfer = ColorFlags.TF_LINEAR;
         return image;
     }
@@ -269,18 +234,17 @@ public class JXLImage {
                     image = image.transfer(f -> f * scale);
             }
         }
-        DoubleUnaryOperator forward = ColorManagement.getTransferFunction(transfer);
-        image = image.transfer(forward);
+        image.transferInPlace(ColorManagement.getTransferFunction(transfer).fromLinearFloatOp());
         image.transfer = transfer;
         return image;
     }
 
     public CIEPrimaries getCIEPrimaries() {
-        return this.primaries1931;
+        return this.primariesXY;
     }
 
     public CIEXY getCIEWhitePoint() {
-        return this.white1931;
+        return this.whiteXY;
     }
 
     public int getPrimaries() {

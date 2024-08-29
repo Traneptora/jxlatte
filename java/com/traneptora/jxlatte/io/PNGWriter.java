@@ -1,7 +1,5 @@
 package com.traneptora.jxlatte.io;
 
-import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
@@ -24,7 +22,7 @@ import com.traneptora.jxlatte.util.MathHelper;
 
 public class PNGWriter {
     private int bitDepth;
-    private WritableRaster raster;
+    private float[][] buffer;
     private DataOutputStream out;
     private int maxValue;
     private int width;
@@ -64,9 +62,6 @@ public class PNGWriter {
         this.tf = hdr ? ColorFlags.TF_PQ : ColorFlags.TF_SRGB;
         this.iccProfile = image.getICCProfile();
         image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);
-        BufferedImage bufferedImage = image.asBufferedImage();
-        this.raster = bufferedImage.getRaster();
-        bufferedImage.getColorModel().coerceData(this.raster, false);
         this.bitDepth = bitDepth;
         this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
@@ -79,6 +74,15 @@ public class PNGWriter {
         } else {
             this.colorMode = alphaIndex >= 0 ? 6 : 2;
             this.colorChannels = 3;
+        }
+        if (image.isAlphaPremultiplied()) {
+            this.buffer = image.getBuffer(true);
+            for (int c = 0; c < this.colorChannels; c++) {
+                for (int p = 0; p < buffer[c].length; p++)
+                    this.buffer[c][p] /= this.buffer[image.getAlphaIndex()][p];
+            }
+        } else {
+            this.buffer = image.getBuffer(false);
         }
     }
 
@@ -143,8 +147,8 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
-    private void writeSample(DataOutput dout, int x, int y, int c) throws IOException {
-        int s = MathHelper.round(raster.getSampleFloat(x, y, c) * maxValue);
+    private void writeSample(DataOutput dout, float sample) throws IOException {
+        int s = MathHelper.round(sample * this.maxValue);
         s = MathHelper.clamp(s, 0, maxValue);
         if (bitDepth == 8)
             dout.writeByte(s);
@@ -159,10 +163,11 @@ public class PNGWriter {
         for (int y = 0; y < height; y++) {
             dout.writeByte(0); // filter 0
             for (int x = 0; x < width; x++) {
+                final int p = y * width + x;
                 for (int c = 0; c < colorChannels; c++)
-                    writeSample(dout, x, y, c);
+                    writeSample(dout, buffer[c][p]);
                 if (alphaIndex >= 0)
-                    writeSample(dout, x, y, colorChannels + alphaIndex);
+                    writeSample(dout, buffer[colorChannels + alphaIndex][p]);
             }
         }
         dout.close();

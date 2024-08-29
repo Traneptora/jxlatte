@@ -227,6 +227,18 @@ public final class MathHelper {
         return total;
     }
 
+    public static void matrixMutliply3InPlace(final float[][] matrix, final float[] columnVector) {
+        final float a = matrix[0][0] * columnVector[0]
+            + matrix[0][1] * columnVector[1] + matrix[0][2] * columnVector[2];
+        final float b = matrix[1][0] * columnVector[0]
+            + matrix[1][1] * columnVector[1] + matrix[1][2] * columnVector[2];
+        final float c = matrix[2][0] * columnVector[0]
+            + matrix[2][1] * columnVector[1] + matrix[2][2] * columnVector[2];
+        columnVector[0] = a;
+        columnVector[1] = b;
+        columnVector[2] = c;
+    }
+
     public static float[] matrixMutliply(final float[] rowVector, final float[][] matrix) {
         if (matrix == null)
             return rowVector;

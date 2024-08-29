@@ -27,6 +27,8 @@ public final class ColorManagement {
     public static final CIEXY WP_DCI = ColorFlags.getWhitePoint(ColorFlags.WP_DCI);
     public static final CIEXY WP_E = ColorFlags.getWhitePoint(ColorFlags.WP_E);
 
+    public static final DoubleUnaryOperator TRC_LINEAR = DoubleUnaryOperator.identity();
+
     private static float[] getXYZ(CIEXY xy) {
         validateXY(xy);
         float invY = 1.0f / xy.y;
@@ -99,79 +101,26 @@ public final class ColorManagement {
         return MathHelper.matrixMutliply(reverse, whitePointConv, forward);
     }
 
-    public static DoubleUnaryOperator getTransferFunction(int transfer) {
+    public static TransferFunction getTransferFunction(int transfer) {
         switch (transfer) {
             case ColorFlags.TF_LINEAR:
-                return DoubleUnaryOperator.identity();
+                return TransferFunction.TF_LINEAR;
             case ColorFlags.TF_SRGB:
-                return f -> {
-                    if (f <= 0.00313066844250063D)
-                        return f * 12.92D;
-                    else
-                        return 1.055D * Math.pow(f, 0.4166666666666667D) - 0.055D;
-                };
+                return TransferFunction.TF_SRGB;
             case ColorFlags.TF_PQ:
-                return f -> {
-                    double d = Math.pow(f, 0.159423828125D);
-                    return Math.pow((0.8359375D + 18.8515625D * d) / (1D + 18.6875D * d), 78.84375D);
-                };
+                return TransferFunction.TF_PQ;
             case ColorFlags.TF_BT709:
-                return f -> {
-                    if (f <= 0.018053968510807807336D)
-                        return 4.5D * f;
-                    else
-                        return 1.0992968268094429403D * Math.pow(f, 0.45D) - 0.0992968268094429403D;
-                };
+                return TransferFunction.TF_BT709;
             case ColorFlags.TF_DCI:
-                transfer = 3846154;
-                break;
+                return TransferFunction.TF_DCI;
             case ColorFlags.TF_HLG:
                 throw new UnsupportedOperationException("Not yet implemented");
         }
 
         if (transfer < (1 << 24)) {
-            double gamma = transfer * 1e-7D;
-            return f -> Math.pow(f, gamma);
+            return new GammaTransferFunction(transfer);
         }
 
-        throw new IllegalArgumentException("Invalid transfer function");
-    }
-
-    public static DoubleUnaryOperator getInverseTransferFunction(int transfer) {
-        switch (transfer) {
-            case ColorFlags.TF_LINEAR:
-                return DoubleUnaryOperator.identity();
-            case ColorFlags.TF_SRGB:
-                return f -> {
-                    if (f <= 0.0404482362771082D)
-                        return f * 0.07739938080495357D;
-                    else
-                        return Math.pow((f + 0.055D) * 0.9478672985781991D, 2.4D);
-                };
-            case ColorFlags.TF_BT709:
-                return f -> {
-                    if (f <= 0.081242858298635133011D)
-                        return f * 0.22222222222222222222D;
-                    else
-                        return Math.pow((f + 0.0992968268094429403D) * 0.90967241568627260377D, 2.2222222222222222222D);
-                };
-            case ColorFlags.TF_PQ:
-                return f -> {
-                    double d = Math.pow(f, 0.012683313515655965121D);
-                    return Math.pow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
-                };
-            case ColorFlags.TF_DCI:
-                transfer = 3846154;
-                break;
-            case ColorFlags.TF_HLG:
-                throw new UnsupportedOperationException("Not yet implemented");
-        }
-    
-        if (transfer < (1 << 24)) {
-            double gamma = 1e7D / transfer;
-            return f -> Math.pow(f, gamma);
-        }
-    
         throw new IllegalArgumentException("Invalid transfer function");
     }
 }
