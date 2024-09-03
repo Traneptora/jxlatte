@@ -2,7 +2,6 @@ package com.traneptora.jxlatte.color;
 
 import java.util.function.DoubleUnaryOperator;
 
-import com.traneptora.jxlatte.util.IntPoint;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public final class ColorManagement {
@@ -76,11 +75,15 @@ public final class ColorManagement {
             getXYZ(primaries.green),
             getXYZ(primaries.blue)
         };
-        float[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, new IntPoint(3));
+        float[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, 3, 3);
         float[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesMatrix);
         float[] w = getXYZ(wp);
         float[] xyz = MathHelper.matrixMutliply(inversePrimaries, w);
-        float[][] a = new float[][]{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}};
+        float[][] a = new float[][]{
+            {xyz[0], 0, 0},
+            {0, xyz[1], 0},
+            {0, 0, xyz[2]}
+        };
         return MathHelper.matrixMutliply(primariesMatrix, a);
     }
 

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
+import java.util.stream.IntStream;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.JXLOptions;
@@ -22,17 +23,15 @@ import com.traneptora.jxlatte.frame.group.Pass;
 import com.traneptora.jxlatte.frame.group.PassGroup;
 import com.traneptora.jxlatte.frame.modular.MATree;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;
-import com.traneptora.jxlatte.frame.modular.ModularChannelInfo;
 import com.traneptora.jxlatte.frame.vardct.HFGlobal;
 import com.traneptora.jxlatte.frame.vardct.HFPass;
 import com.traneptora.jxlatte.frame.vardct.TransformType;
-import com.traneptora.jxlatte.frame.vardct.Varblock;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
-import com.traneptora.jxlatte.util.FlowHelper;
-import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
-import com.traneptora.jxlatte.util.TaskList;
+import com.traneptora.jxlatte.util.Point;
+import com.traneptora.jxlatte.util.Rectangle;
 import com.traneptora.jxlatte.util.functional.ExceptionalFunction;
 import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
@@ -40,17 +39,17 @@ public class Frame {
 
     public static final int[] cMap = new int[]{1, 0, 2};
 
-    private static IntPoint[] epfCross = new IntPoint[] {
-        IntPoint.ZERO,
-        new IntPoint(0, 1), new IntPoint(1, 0),
-        new IntPoint(-1, 0), new IntPoint(0, -1),
+    private static Point[] epfCross = new Point[] {
+        new Point(0, 0),
+        new Point(1, 0), new Point(0, 1),
+        new Point(0, -1), new Point(-1, 0),
     };
 
-    private static IntPoint[] epfDoubleCross = new IntPoint[] {
-        IntPoint.ZERO,
-        new IntPoint(-1, 0), new IntPoint(0, -1), new IntPoint(1, 0), new IntPoint(0, 1),
-        new IntPoint(1, -1), new IntPoint(1, 1), new IntPoint(-1, -1), new IntPoint(-1, 1),
-        new IntPoint(2, 0), new IntPoint(0, 2), new IntPoint(-2, 0), new IntPoint(-2, 2),
+    private static Point[] epfDoubleCross = new Point[] {
+        new Point(0, 0),
+        new Point(0, -1), new Point(-1, 0), new Point(0, 1), new Point(1, 0),
+        new Point(-1, 1), new Point(1, 1), new Point(-1, -1), new Point(1, -1),
+        new Point(0, 2), new Point(2, 0), new Point(0, -2), new Point(-2, 0),
     };
 
     private static float[][] laplacian = null;
@@ -75,18 +74,14 @@ public class Frame {
     private int groupRowStride;
     private int lfGroupRowStride;
     private MATree globalTree;
-    private int width;
-    private int height;
+    private Rectangle bounds;
     private Loggers loggers;
-    private FlowHelper flowHelper;
     private JXLOptions options;
 
-    public Frame(Bitreader reader, ImageHeader globalMetadata, FlowHelper flowHelper,
-            Loggers loggers, JXLOptions options) {
+    public Frame(Bitreader reader, ImageHeader globalMetadata, Loggers loggers, JXLOptions options) {
         this.globalReader = reader;
         this.globalMetadata = globalMetadata;
         this.loggers = loggers;
-        this.flowHelper = flowHelper;
         this.options = options;
     }
 
@@ -117,32 +112,20 @@ public class Frame {
             }
         }
         this.loggers = frame.loggers;
-        this.flowHelper = frame.flowHelper;
         this.options = frame.options;
-        this.width = frame.width;
-        this.height = frame.height;
+        this.bounds = new Rectangle(frame.bounds);
         this.groupRowStride = frame.groupRowStride;
         this.lfGroupRowStride = frame.lfGroupRowStride;
     }
 
-    public FlowHelper getFlowHelper() {
-        return flowHelper;
-    }
-
-    private void readHeader() throws IOException {
+    public FrameHeader readFrameHeader() throws IOException {
         globalReader.zeroPadToByte();
         this.header = new FrameHeader(globalReader, this.globalMetadata);
-        width = header.width;
-        height = header.height;
-        groupRowStride = MathHelper.ceilDiv(width, header.groupDim);
-        lfGroupRowStride = MathHelper.ceilDiv(width, header.groupDim << 3);
-        numGroups = groupRowStride * MathHelper.ceilDiv(height, header.groupDim);
-        numLFGroups = lfGroupRowStride * MathHelper.ceilDiv(height, header.groupDim << 3);
-        readTOC();
-    }
-
-    public FrameHeader readFrameHeader() throws IOException {
-        readHeader();
+        this.bounds = new Rectangle(header.bounds);
+        groupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim);
+        lfGroupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim << 3);
+        numGroups = groupRowStride * MathHelper.ceilDiv(bounds.size.height, header.groupDim);
+        numLFGroups = lfGroupRowStride * MathHelper.ceilDiv(bounds.size.height, header.groupDim << 3);
         return header;
     }
 
@@ -156,7 +139,7 @@ public class Frame {
         }
     }
 
-    private void readTOC() throws IOException {
+    public void readTOC() throws IOException {
         int tocEntries;
         if (numGroups == 1 && header.passes.numPasses == 1) {
             tocEntries = 1;
@@ -268,50 +251,47 @@ public class Frame {
         int l = MathHelper.ceilLog1p(k - 1) - 1;
         float[][][][] upWeights = globalMetadata.getUpWeights()[l];
         float[][] newBuffer = new float[buffer.length * k][];
-        TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
-        for (int y0 = 0; y0 < buffer.length; y0++) {
-            tasks.submit(y0, (y) -> {
-                for (int ky = 0; ky < k; ky++) {
-                    newBuffer[y*k + ky] = new float[buffer[y].length * k];
-                    for (int x = 0; x < buffer[y].length; x++) {
-                        for (int kx = 0; kx < k; kx++) {
-                            float[][] weights = upWeights[ky][kx];
-                            float total = 0f;
-                            float min = Float.MAX_VALUE;
-                            float max = Float.MIN_VALUE;
-                            for (int iy = 0; iy < 5; iy++) {
-                                for (int ix = 0; ix < 5; ix++) {
-                                    int newY = MathHelper.mirrorCoordinate(y + iy - 2, buffer.length);
-                                    int newX = MathHelper.mirrorCoordinate(x + ix - 2, buffer[newY].length);
-                                    float sample = buffer[newY][newX];
-                                    if (sample < min)
-                                        min = sample;
-                                    if (sample > max)
-                                        max = sample;
-                                    total += weights[iy][ix] * sample;
-                                }
+        for (int y = 0; y < buffer.length; y++) {
+            for (int ky = 0; ky < k; ky++) {
+                newBuffer[y*k + ky] = new float[buffer[y].length * k];
+                for (int x = 0; x < buffer[y].length; x++) {
+                    for (int kx = 0; kx < k; kx++) {
+                        float[][] weights = upWeights[ky][kx];
+                        float total = 0f;
+                        float min = Float.MAX_VALUE;
+                        float max = Float.MIN_VALUE;
+                        for (int iy = 0; iy < 5; iy++) {
+                            for (int ix = 0; ix < 5; ix++) {
+                                int newY = MathHelper.mirrorCoordinate(y + iy - 2, buffer.length);
+                                int newX = MathHelper.mirrorCoordinate(x + ix - 2, buffer[newY].length);
+                                float sample = buffer[newY][newX];
+                                if (sample < min)
+                                    min = sample;
+                                if (sample > max)
+                                    max = sample;
+                                total += weights[iy][ix] * sample;
                             }
-                            newBuffer[y*k + ky][x*k + kx] = MathHelper.clamp(total, min, max);
                         }
+                        newBuffer[y*k + ky][x*k + kx] = MathHelper.clamp(total, min, max);
                     }
                 }
-            });
+            }
         }
-        tasks.collect();
         return newBuffer;
     }
 
     private void decodeLFGroups(float[][][] lfBuffer) throws IOException {
 
-        List<ModularChannelInfo> lfReplacementChannels = new ArrayList<>();
+        List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
                 if (chan.hshift >= 3 && chan.vshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
-                    IntPoint size = new IntPoint(header.lfGroupDim).shiftRight(chan.hshift, chan.vshift);
-                    lfReplacementChannels.add(new ModularChannelInfo(size.x, size.y, chan.hshift, chan.vshift));
+                    int height = header.lfGroupDim >> chan.vshift;
+                    int width = header.lfGroupDim >> chan.hshift;
+                    lfReplacementChannels.add(new ModularChannel(height, width, chan.vshift, chan.hshift));
                 }
             }
         }
@@ -320,19 +300,17 @@ public class Frame {
 
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             Bitreader reader = FunctionalHelper.join(getBitreader(1 + lfGroupID));
-            IntPoint lfGroupPos = IntPoint.coordinates(lfGroupID, lfGroupRowStride);
-            ModularChannelInfo[] replaced = lfReplacementChannels.stream().map(ModularChannelInfo::new)
-                .toArray(ModularChannelInfo[]::new);
-            IntPoint frameSize = getPaddedFrameSize();
-            for (ModularChannelInfo info : replaced) {
-                IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                IntPoint lfSize = frameSize.shiftRight(shift);
-                IntPoint chanSize = new IntPoint(info.width, info.height);
-                IntPoint pos = lfGroupPos.times(chanSize);
-                IntPoint size = chanSize.min(lfSize.minus(pos));
-                info.width = size.x;
-                info.height = size.y;
-                info.origin = pos;
+            Point lfGroupPos = getLFGroupLocation(lfGroupID);
+            ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::new)
+                .toArray(ModularChannel[]::new);
+            Dimension frameSize = getPaddedFrameSize();
+            for (ModularChannel info : replaced) {
+                int lfHeight = frameSize.height >> info.vshift;
+                int lfWidth = frameSize.width >> info.hshift;
+                info.origin.y = lfGroupPos.y * info.size.height;
+                info.origin.x = lfGroupPos.x * info.size.width;
+                info.size.height = Math.min(info.size.height, lfHeight - info.origin.y);
+                info.size.width = Math.min(info.size.width, lfWidth - info.origin.x);
             }
             lfGroups[lfGroupID] = new LFGroup(reader, this, lfGroupID, replaced, lfBuffer);
         }
@@ -342,8 +320,8 @@ public class Frame {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                int[][] newChannel = lfGroups[lfGroupID].modularLFGroupBuffer[j];
-                ModularChannelInfo newChannelInfo = lfGroups[lfGroupID].modularLFGroupInfo[j];
+                ModularChannel newChannelInfo = lfGroups[lfGroupID].modularLFGroup.getChannel(index);
+                int[][] newChannel = newChannelInfo.buffer;
                 for (int y = 0; y < newChannel.length; y++) {
                     System.arraycopy(newChannel[y], 0, channel.buffer[y + newChannelInfo.origin.y],
                         newChannelInfo.origin.x, newChannel[y].length);
@@ -362,43 +340,41 @@ public class Frame {
     private void decodePassGroups() throws IOException {
 
         int numPasses = passes.length;
-        PassGroup[][] passGroups = new PassGroup[numPasses][];
+        PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
 
-        TaskList<PassGroup> taskList = new TaskList<>(flowHelper.getThreadPool(), numPasses);
-        for (final int pass : FlowHelper.range(numPasses)) {
-            for (final int group : FlowHelper.range(numGroups)) {
-                taskList.submit(pass, getBitreader(2 + numLFGroups + pass * numGroups + group), (reader) -> {
-                    ModularChannelInfo[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
-                    .filter(Objects::nonNull).map(ModularChannelInfo::new).toArray(ModularChannelInfo[]::new);
-                    for (ModularChannelInfo info : replaced) {
-                        IntPoint shift = new IntPoint(info.hshift, info.vshift);
-                        IntPoint passGroupSize = new IntPoint(header.groupDim).shiftRight(shift);
-                        int rowStride = MathHelper.ceilDiv(info.width, passGroupSize.x);
-                        IntPoint pos = IntPoint.coordinates(group, rowStride).times(passGroupSize);
-                        IntPoint chanSize = new IntPoint(info.width, info.height);
-                        info.origin = pos;
-                        IntPoint size = passGroupSize.min(chanSize.minus(info.origin));
-                        info.width = size.x;
-                        info.height = size.y;
-                    }
-                    return new PassGroup(reader, Frame.this, pass, group, replaced);
-                });
+        for (int pass0 = 0; pass0 < numPasses; pass0++) {
+            final int pass = pass0;
+            for (int group0 = 0; group0 < numGroups; group0++) {
+                final int group = group0;
+                Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
+                ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
+                    .filter(Objects::nonNull).map(ModularChannel::new).toArray(ModularChannel[]::new);
+                for (ModularChannel info : replaced) {
+                    int groupHeight = header.groupDim >> info.vshift;
+                    int groupWidth = header.groupDim >> info.hshift;
+                    int rowStride = MathHelper.ceilDiv(info.size.width, groupWidth);
+                    info.origin.y = (group / rowStride) * groupHeight;
+                    info.origin.x = (group % rowStride) * groupWidth;
+                    info.size.height = Math.min(info.size.height - info.origin.y, groupHeight);
+                    info.size.width = Math.min(info.size.width - info.origin.x, groupWidth);
+                }
+                passGroups[pass][group] = new PassGroup(reader, Frame.this, pass, group, replaced);
             }
         }
 
         for (int pass = 0; pass < numPasses; pass++) {
-            passGroups[pass] = taskList.collect(pass).stream().toArray(PassGroup[]::new);
             int j = 0;
             for (int i = 0; i < passes[pass].replacedChannels.length; i++) {
                 if (passes[pass].replacedChannels[i] == null)
                     continue;
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(i);
+                channel.allocate();
                 for (int group = 0; group < numGroups; group++) {
-                    ModularChannelInfo newChannelInfo = passGroups[pass][group].modularPassGroupInfo[j];
-                    int[][] buff = passGroups[pass][group].modularPassGroupBuffer[j];
-                    for (int y = 0; y < newChannelInfo.height; y++) {
+                    ModularChannel newChannelInfo = passGroups[pass][group].modularStream.getChannel(j);
+                    int[][] buff = newChannelInfo.buffer;
+                    for (int y = 0; y < buff.length; y++) {
                         System.arraycopy(buff[y], 0, channel.buffer[y + newChannelInfo.origin.y],
-                            newChannelInfo.origin.x, newChannelInfo.width);
+                            newChannelInfo.origin.x, buff[y].length);
                     }
                 }
                 j++;
@@ -406,36 +382,33 @@ public class Frame {
         }
 
         if (header.encoding == FrameFlags.VARDCT) {
-            TaskList<Void> varDCTTaskList = new TaskList<>(flowHelper.getThreadPool(), numPasses);
-            for (final int pass : FlowHelper.range(numPasses)) {
-                for (final int group : FlowHelper.range(numGroups)) {
-                    varDCTTaskList.submit(pass, () -> {
-                        PassGroup passGroup = passGroups[pass][group];
-                        PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
-                        passGroup.invertVarDCT(buffer, prev);
-                    });
+            for (int pass = 0; pass < numPasses; pass++) {
+                for (int group = 0; group < numGroups; group++) {
+                    PassGroup passGroup = passGroups[pass][group];
+                    PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
+                    passGroup.invertVarDCT(buffer, prev);
                 }
-                varDCTTaskList.collect(pass);
             }
         }
     }
 
     public void decodeFrame(float[][][] lfBuffer) throws IOException {
         if (this.decoded)
-            return;
+            throw new IllegalStateException("Already decoded this frame");
         this.decoded = true;
 
         lfGlobal = FunctionalHelper.join(getBitreader(0)
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
-        IntPoint paddedSize = getPaddedFrameSize();
+        Dimension paddedSize = getPaddedFrameSize();
 
         buffer = new float[getColorChannelCount() + globalMetadata.getExtraChannelCount()][][];
         for (int c = 0; c < buffer.length; c++) {
             if (c < 3 && c < getColorChannelCount()) {
-                IntPoint shiftedSize = paddedSize.shiftRight(header.jpegUpsampling[c]);
-                buffer[c] = new float[shiftedSize.y][shiftedSize.x];
+                int shiftedHeight = paddedSize.height >> header.jpegUpsamplingY[c];
+                int shiftedWidth = paddedSize.width >> header.jpegUpsamplingX[c];
+                buffer[c] = new float[shiftedHeight][shiftedWidth];
             } else {
-                buffer[c] = new float[paddedSize.y][paddedSize.x];
+                buffer[c] = new float[paddedSize.height][paddedSize.width];
             }
         }
 
@@ -474,13 +447,13 @@ public class Frame {
             else
                 scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
             if (isModularXYB && cIn == 2) {
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++)
+                for (int y = 0; y < bounds.size.height; y++) {
+                    for (int x = 0; x < bounds.size.width; x++)
                         buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
                 }
             } else {
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++)
+                for (int y = 0; y < bounds.size.height; y++) {
+                    for (int x = 0; x < bounds.size.width; x++)
                         buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
                 }
             }
@@ -498,31 +471,33 @@ public class Frame {
     // do this in RGB
     public void drawVarblocks() {
         for (LFGroup lfg : lfGroups) {
-            IntPoint pixelPosInFrame = getLFGroupXY(lfg.lfGroupID).shiftLeft(11);
+            Point pixelPos = getLFGroupLocation(lfg.lfGroupID);
+            pixelPos.y <<= 11;
+            pixelPos.x <<= 11;
             for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
-                Varblock varblock = lfg.hfMetadata.getVarblock(i);
-                TransformType tt = varblock.transformType();
+                Point block = lfg.hfMetadata.blockList[i];
+                TransformType tt = lfg.hfMetadata.dctSelect[block.y][block.x];
                 float hue = (((float)tt.type * MathHelper.PHI_BAR) % 1.0f) * 2f * (float)Math.PI;
                 float rFactor = ((float)Math.cos(hue) + 0.5f) / 1.5f;
                 float gFactor = ((float)Math.cos(hue - 2f * (float)Math.PI / 3f) + 1f) / 2f;
                 float bFactor = ((float)Math.cos(hue - 4f * (float)Math.PI / 3f) + 1f) / 2f;
-                IntPoint corner = varblock.pixelPosInLFGroup.plus(pixelPosInFrame);
-                IntPoint size = varblock.sizeInPixels();
-                for (int y = 0; y < size.y; y++) {
-                    for (int x = 0; x < size.x; x++) {
-                        float sampleR = buffer[0][y + corner.y][x + corner.x];
-                        float sampleG = buffer[1][y + corner.y][x + corner.x];
-                        float sampleB = buffer[2][y + corner.y][x + corner.x];
+                int cornerY = (block.y << 3) + pixelPos.y;
+                int cornerX = (block.x << 3) + pixelPos.x;
+                for (int y = 0; y < tt.blockHeight; y++) {
+                    for (int x = 0; x < tt.blockWidth; x++) {
+                        float sampleR = buffer[0][y + cornerY][x + cornerX];
+                        float sampleG = buffer[1][y + cornerY][x + cornerX];
+                        float sampleB = buffer[2][y + cornerY][x + cornerX];
                         if (x == 0 || y == 0) {
-                            buffer[1][y + corner.y][x + corner.x] = 0f;
-                            buffer[0][y + corner.y][x + corner.x] = 0f;
-                            buffer[2][y + corner.y][x + corner.x] = 0f;
+                            buffer[1][y + cornerY][x + cornerX] = 0f;
+                            buffer[0][y + cornerY][x + cornerX] = 0f;
+                            buffer[2][y + cornerY][x + cornerX] = 0f;
                         } else {
                             float light = 0.25f * (sampleR + sampleB) + 0.5f * sampleG;
-                            light = 0.5f * ((float)Math.cbrt(light) - 0.5f) + 0.5f;
-                            buffer[0][y + corner.y][x + corner.x] = rFactor * 0.5f + 0.5f * sampleR / light;
-                            buffer[1][y + corner.y][x + corner.x] = gFactor * 0.5f + 0.5f * sampleG / light;
-                            buffer[2][y + corner.y][x + corner.x] = bFactor * 0.5f + 0.5f * sampleB / light;
+                            light = (float)Math.cbrt(light) * 0.5f + 0.25f;
+                            buffer[0][y + cornerY][x + cornerX] = rFactor * 0.5f + 0.5f * sampleR / light;
+                            buffer[1][y + cornerY][x + cornerX] = gFactor * 0.5f + 0.5f * sampleG / light;
+                            buffer[2][y + cornerY][x + cornerX] = bFactor * 0.5f + 0.5f * sampleB / light;
                         }
                     }
                 }
@@ -531,150 +506,130 @@ public class Frame {
     }
 
     private void performGabConvolution() {
-        final TaskList<?> tasks = new TaskList<>(flowHelper.getThreadPool(), 3);
-        final float[][] normGabW = new float[3][getColorChannelCount()];
+        float[] normGabBase = new float[getColorChannelCount()];
+        float[] normGabAdj = new float[normGabBase.length];
+        float[] normGabDiag = new float[normGabBase.length];
         for (int c = 0; c < getColorChannelCount(); c++) {
-            final float gabW1 = header.restorationFilter.gab1Weights[c];
-            final float gabW2 = header.restorationFilter.gab2Weights[c];
-            final float mult = 1f / (1f + 4f * (gabW1 + gabW2));
-            normGabW[0][c] = mult;
-            normGabW[1][c] = gabW1 * mult;
-            normGabW[2][c] = gabW2 * mult;
+            float gabW1 = header.restorationFilter.gab1Weights[c];
+            float gabW2 = header.restorationFilter.gab2Weights[c];
+            float mult = 1f / (1f + 4f * (gabW1 + gabW2));
+            normGabBase[c] = mult;
+            normGabAdj[c] = gabW1 * mult;
+            normGabDiag[c] = gabW2 * mult;
         }
-        for (final int c : FlowHelper.range(getColorChannelCount())) {
-            final float[][] buffC = buffer[c];
-            final int height = buffC.length;
-            final int width = buffC[0].length;
-            final float[][] newBuffer = new float[height][width];
-            for (final int y : FlowHelper.range(height)) {
-                final int north = MathHelper.mirrorCoordinate(y - 1, height);
-                final int south = MathHelper.mirrorCoordinate(y + 1, height);
-                final float[] buffR = buffC[y];
-                final float[] buffN = buffC[north];
-                final float[] buffS = buffC[south];
-                final float[] newBuffR = newBuffer[y];
-                tasks.submit(c, () -> {
-                    for (int x = 0; x < width; x++) {
-                        final int west = MathHelper.mirrorCoordinate(x - 1, width);
-                        final int east = MathHelper.mirrorCoordinate(x + 1, width);
-                        final float adj = buffR[west] + buffR[east] + buffN[x] + buffS[x];
-                        final float diag = buffN[west] + buffN[east] + buffS[west] + buffS[east];
-                        newBuffR[x] = normGabW[0][c] * buffR[x] + normGabW[1][c] * adj + normGabW[2][c] * diag;
-                    }
-                });
+        for (int c = 0; c < getColorChannelCount(); c++) {
+            float[][] buffC = buffer[c];
+            int height = buffC.length;
+            int width = buffC[0].length;
+            float[][] newBuffer = new float[height][width];
+            for (int y = 0; y < height; y++) {
+                int north = (y == 0 ? 0 : y - 1);
+                int south = (y + 1 == height) ? height - 1 : y + 1;
+                float[] buffR = buffC[y];
+                float[] buffN = buffC[north];
+                float[] buffS = buffC[south];
+                float[] newBuffR = newBuffer[y];
+                for (int x = 0; x < width; x++) {
+                    int west = (x == 0 ? 0 : x - 1);
+                    int east = (x + 1 == width ? width - 1 : x + 1);
+                    float adj = buffR[west] + buffR[east] + buffN[x] + buffS[x];
+                    float diag = buffN[west] + buffN[east] + buffS[west] + buffS[east];
+                    newBuffR[x] = normGabBase[c] * buffR[x] + normGabAdj[c] * adj + normGabDiag[c] * diag;
+                }
             }
-            tasks.collect(c);
             buffer[c] = newBuffer;
         }
     }
 
     private void performEdgePreservingFilter() throws InvalidBitstreamException {
-        final float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
-
-        final IntPoint size = getPaddedFrameSize();
-        final int blockW = MathHelper.ceilDiv(size.x, 8);
-        final int blockH = MathHelper.ceilDiv(size.y, 8);
-        final float[][] inverseSigma = new float[blockH][blockW];
-        final int dimS = header.logLFGroupDim - 3;
-        CompletableFuture<?>[] futures;
-        {
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            CompletableFuture<?>[] futures0 = new CompletableFuture[size.y];
-            futures = futures0;
-        }
+        float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
+        Dimension paddedSize = getPaddedFrameSize();
+        int blockHeight = (paddedSize.height + 7) >> 3;
+        int blockWidth = (paddedSize.width + 7) >> 3;
+        float[][] inverseSigma = new float[blockHeight][blockWidth];
+        int dimS = header.logLFGroupDim - 3;
 
         if (header.encoding == FrameFlags.MODULAR) {
-            final float inv = 1f / header.restorationFilter.epfSigmaForModular;
-            for (int y = 0; y < blockH; y++)
+            float inv = 1f / header.restorationFilter.epfSigmaForModular;
+            for (int y = 0; y < blockHeight; y++)
                 Arrays.fill(inverseSigma[y], inv);
         } else {
-            for (int y0 = 0; y0 < blockH; y0++) {
-                final int y = y0;
-                final float[] invSY = inverseSigma[y];
-                final int lfY = y >> dimS;
-                final int bY = y - (lfY << dimS);
-                final int lfR = lfY * lfGroupRowStride;
-                futures[y] = CompletableFuture.runAsync(() -> {
-                    for (int x = 0; x < blockW; x++) {
-                        final int lfX = x >> dimS;
-                        final int bX = x - (lfX << dimS);
-                        final LFGroup lfg = lfGroups[lfR + lfX];
-                        final int hf = lfg.hfMetadata.blockMap[bY][bX].hfMult();
-                        final int sharpness = lfg.hfMetadata.hfStreamBuffer[3][bY][bX];
-                        if (sharpness < 0 || sharpness > 7)
-                            FunctionalHelper.sneakyThrow(new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness));
-                        final float sigma = hf * header.restorationFilter.epfSharpLut[sharpness];
-                        invSY[x] = 1f / sigma;
-                    }
-                });
+            for (int y = 0; y < blockHeight; y++) {
+                float[] invSY = inverseSigma[y];
+                int lfY = y >> dimS;
+                int bY = y - (lfY << dimS);
+                int lfR = lfY * lfGroupRowStride;
+                for (int x = 0; x < blockWidth; x++) {
+                    int lfX = x >> dimS;
+                    int bX = x - (lfX << dimS);
+                    LFGroup lfg = lfGroups[lfR + lfX];
+                    int hf = lfg.hfMetadata.hfMultiplier[bY][bX];
+                    int sharpness = lfg.hfMetadata.hfStreamBuffer[3][bY][bX];
+                    if (sharpness < 0 || sharpness > 7)
+                        throw new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness);
+                    float sigma = hf * header.restorationFilter.epfSharpLut[sharpness];
+                    invSY[x] = 1f / sigma;
+                }
             }
-            for (int y = 0; y < blockH; y++)
-                futures[y].join();
         }
 
-        final float[][][] outputBuffer = new float[getColorChannelCount()][size.y][size.x];
+        float[][][] outputBuffer = new float[getColorChannelCount()][paddedSize.height][paddedSize.width];
 
-        for (final int i : FlowHelper.range(3)) {
+        for (int i = 0; i < 3; i++) {
             if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
-            final float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
+            float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
-            final IntPoint[] pc = i == 0 ? epfDoubleCross : epfCross;
-            for (final int y : FlowHelper.range(size.y)) {
-                final float[] invSY = inverseSigma[y >> 3];
-                futures[y] = CompletableFuture.runAsync(() -> {
-                    for (int x = 0; x < size.x; x++) {
-                        float sumWeights = 0f;
-                        final float[] sumChannels = new float[outputBuffer.length];
-                        final float s = invSY[x >> 3];
-                        if (s != s || s > 3.333333333f) {
-                            for (int c = 0; c < outputBuffer.length; c++)
-                                outputBuffer[c][y][x] = buffer[c][y][x];
-                            continue;
-                        }
-                        for (int j = 0; j < pc.length; j++) {
-                            final IntPoint ip = pc[j];
-                            final int nX = x + ip.x;
-                            final int nY = y + ip.y;
-                            final int mX = MathHelper.mirrorCoordinate(nX, size.x);
-                            final int mY = MathHelper.mirrorCoordinate(nY, size.y);
-                            final float dist = i == 2 ? epfDistance2(buffer, outputBuffer.length, x, y, nX, nY, size)
-                                : epfDistance1(buffer, outputBuffer.length, x, y, nX, nY, size);
-                            final float weight = epfWeight(sigmaScale, dist, s, x, y);
-                            sumWeights += weight;
-                            for (int c = 0; c < outputBuffer.length; c++)
-                                sumChannels[c] += buffer[c][mY][mX] * weight;
-                        }
+            Point[] crossList = i == 0 ? epfDoubleCross : epfCross;
+            for (int y = 0; y < paddedSize.height; y++) {
+                float[] invSY = inverseSigma[y >> 3];
+                for (int x = 0; x < paddedSize.width; x++) {
+                    float sumWeights = 0f;
+                    final float[] sumChannels = new float[outputBuffer.length];
+                    final float s = invSY[x >> 3];
+                    if (s != s || s > 3.333333333f) {
                         for (int c = 0; c < outputBuffer.length; c++)
-                            outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
+                            outputBuffer[c][y][x] = buffer[c][y][x];
+                        continue;
                     }
-                });
+                    for (Point cross : crossList) {
+                        int nY = y + cross.y;
+                        int nX = x + cross.x;
+                        int mY = MathHelper.mirrorCoordinate(nY, paddedSize.height);
+                        int mX = MathHelper.mirrorCoordinate(nX, paddedSize.width);
+                        float dist = i == 2 ? epfDistance2(buffer, outputBuffer.length, y, x, nY, nX, paddedSize)
+                            : epfDistance1(buffer, outputBuffer.length, y, x, nY, nX, paddedSize);
+                        float weight = epfWeight(sigmaScale, dist, s, y, x);
+                        sumWeights += weight;
+                        for (int c = 0; c < outputBuffer.length; c++)
+                            sumChannels[c] += buffer[c][mY][mX] * weight;
+                    }
+                    for (int c = 0; c < outputBuffer.length; c++)
+                        outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
+                }
             }
-            for (int y = 0; y < size.y; y++)
-                futures[y].join();
             for (int c = 0; c < outputBuffer.length; c++) {
                 /* swapping lets us re-use the output buffer without re-allocing */
-                final float[][] tmp = buffer[c];
+                float[][] tmp = buffer[c];
                 buffer[c] = outputBuffer[c];
                 outputBuffer[c] = tmp;
             }
         }
     }
 
-    private float epfDistance1(final float[][][] buffer, final int colors, final int basePosX, final int basePosY,
-            final int distPosX, final int distPosY, final IntPoint size) {
+    private float epfDistance1(float[][][] buffer, int colors, int basePosY, int basePosX,
+            int distPosY, int distPosX, Dimension frameSize) {
         float dist = 0;
         for (int c = 0; c < colors; c++) {
-            final float[][] buffC = buffer[c];
-            final float scale = header.restorationFilter.epfChannelScale[c];
-            for (int i = 0; i < epfCross.length; i++) {
-                final IntPoint p = epfCross[i];
-                final int pX = MathHelper.mirrorCoordinate(basePosX + p.x, size.x);
-                final int pY = MathHelper.mirrorCoordinate(basePosY + p.y, size.y);
-                final int dX = MathHelper.mirrorCoordinate(distPosX + p.x, size.x);
-                final int dY = MathHelper.mirrorCoordinate(distPosY + p.y, size.y);
+            float[][] buffC = buffer[c];
+            float scale = header.restorationFilter.epfChannelScale[c];
+            for (Point cross : epfCross) {
+                int pY = MathHelper.mirrorCoordinate(basePosY + cross.y, frameSize.height);
+                int pX = MathHelper.mirrorCoordinate(basePosX + cross.x, frameSize.width);
+                int dY = MathHelper.mirrorCoordinate(distPosY + cross.y, frameSize.height);
+                int dX = MathHelper.mirrorCoordinate(distPosX + cross.x, frameSize.width);
                 dist += Math.abs(buffC[pY][pX] - buffC[dY][dX]) * scale;
             }
         }
@@ -682,46 +637,39 @@ public class Frame {
         return dist;
     }
 
-    private float epfDistance2(final float[][][] buffer, final int colors, final int basePosX, final int basePosY,
-    final int distPosX, final int distPosY, final IntPoint size) {
-        float dist = 0;
+    private float epfDistance2(float[][][] buffer, int colors, int basePosY, int basePosX,
+            int distPosY, int distPosX, Dimension frameSize) {
+        float dist = 0f;
         for (int c = 0; c < colors; c++) {
-            final float[][] buffC = buffer[c];
-            final int dX = MathHelper.mirrorCoordinate(distPosX, size.x);
-            final int dY = MathHelper.mirrorCoordinate(distPosY, size.y);
+            float[][] buffC = buffer[c];
+            int dY = MathHelper.mirrorCoordinate(distPosY, frameSize.height);
+            int dX = MathHelper.mirrorCoordinate(distPosX, frameSize.width);
             dist += Math.abs(buffC[basePosY][basePosX] - buffC[dY][dX]) * header.restorationFilter.epfChannelScale[c];
         }
         return dist;
     }
 
-    private float epfWeight(final float stepMultiplier, final float distance,
-            final float inverseSigma, final int refX, final int refY) {
-        final int modX = refX & 0b111;
-        final int modY = refY & 0b111;
-        final float dist;
+    private float epfWeight(float stepMultiplier, float distance, float inverseSigma, int refY, int refX) {
+        int modY = refY & 0b111;
+        int modX = refX & 0b111;
         if (modX == 0 || modX == 7 || modY == 0 || modY == 7)
-            dist = distance * header.restorationFilter.epfBorderSadMul;
-        else
-            dist = distance;
-        final float v = 1f - dist * stepMultiplier * inverseSigma;
-        if (v <= 0)
-            return 0f;
+            distance *= header.restorationFilter.epfBorderSadMul;
 
-        return v;
+        float v = 1f - distance * stepMultiplier * inverseSigma;
+        return v < 0f ? 0f : v;
     }
 
     private void invertSubsampling() {
         for (int c = 0; c < 3; c++) {
-            int xShift = header.jpegUpsampling[c].x;
-            int yShift = header.jpegUpsampling[c].y;
+            int xShift = header.jpegUpsamplingX[c];
             while (xShift-- > 0) {
-                final float[][] oldChannel = buffer[c];
-                final float[][] newChannel = new float[oldChannel.length][];
+                float[][] oldChannel = buffer[c];
+                float[][] newChannel = new float[oldChannel.length][];
                 for (int y = 0; y < oldChannel.length; y++) {
-                    final float[] oldRow = oldChannel[y];
-                    final float[] newRow = new float[oldRow.length * 2];
+                    float[] oldRow = oldChannel[y];
+                    float[] newRow = new float[oldRow.length * 2];
                     for (int x = 0; x < oldRow.length; x++) {
-                        final float b75 = 0.75f * oldRow[x];
+                        float b75 = 0.75f * oldRow[x];
                         newRow[2*x] = b75 + 0.25f * oldRow[x == 0 ? 0 : x - 1];
                         newRow[2*x + 1] = b75 + 0.25f * oldRow[x + 1 == oldRow.length ? oldRow.length - 1 : x + 1];
                     }
@@ -729,22 +677,23 @@ public class Frame {
                 }
                 buffer[c] = newChannel;
             }
+            int yShift =  header.jpegUpsamplingY[c];
             while (yShift-- > 0) {
-                final float[][] oldChannel = buffer[c];
-                final float[][] newChannel = new float[oldChannel.length * 2][];
+                float[][] oldChannel = buffer[c];
+                float[][] newChannel = new float[oldChannel.length * 2][];
                 for (int y = 0; y < oldChannel.length; y++) {
-                    final float[] oldRow = oldChannel[y];
-                    final float[] oldRowPrev = oldChannel[y == 0 ? 0 : y - 1];
-                    final float[] oldRowNext = oldChannel[y + 1 == oldChannel.length ? oldChannel.length - 1 : y + 1];
-                    final float[] firstNewRow = new float[oldRow.length];
-                    final float[] secondNewRow = new float[oldRow.length];
+                    float[] oldRow = oldChannel[y];
+                    float[] oldRowPrev = oldChannel[y == 0 ? 0 : y - 1];
+                    float[] oldRowNext = oldChannel[y + 1 == oldChannel.length ? oldChannel.length - 1 : y + 1];
+                    float[] firstNewRow = new float[oldRow.length];
+                    float[] secondNewRow = new float[oldRow.length];
                     for (int x = 0; x < oldRow.length; x++) {
-                        final float b75 = 0.75f * oldRow[x];
+                        float b75 = 0.75f * oldRow[x];
                         firstNewRow[x] = b75 + 0.25f * oldRowPrev[x];
                         secondNewRow[x] = b75 + 0.25f * oldRowNext[x];
                     }
                     newChannel[2*y] = firstNewRow;
-                    newChannel[2*y+1] = secondNewRow;
+                    newChannel[2*y + 1] = secondNewRow;
                 }
                 buffer[c] = newChannel;
             }
@@ -754,9 +703,10 @@ public class Frame {
     public void upsample() {
         for (int c = 0; c < buffer.length; c++)
             buffer[c] = performUpsampling(buffer[c], c);
-        width *= header.upsampling;
-        height *= header.upsampling;
-        header.origin = header.origin.times(header.upsampling);
+        bounds.size.height *= header.upsampling;
+        bounds.size.width *= header.upsampling;
+        bounds.origin.y *= header.upsampling;
+        bounds.origin.x *= header.upsampling;
     }
 
     public void renderSplines() {
@@ -771,41 +721,30 @@ public class Frame {
     public void initializeNoise(long seed0) {
         if (lfGlobal.noiseParameters == null)
             return;
-        int rowStride = MathHelper.ceilDiv(header.width, header.groupDim);
-        float[][][] localNoiseBuffer = new float[3][header.height][header.width];
-        int numGroups = rowStride * MathHelper.ceilDiv(header.height, header.groupDim);
-        TaskList<Void> tasks = new TaskList<>(flowHelper.getThreadPool());
+        int colors = getColorChannelCount();
+        float[][][] localNoiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
+        NoiseGroup[] noiseGroups = new NoiseGroup[numGroups];
         for (int group = 0; group < numGroups; group++) {
-            IntPoint groupXYUp = IntPoint.coordinates(group, rowStride).times(header.upsampling);
-            // SPEC: spec doesn't mention how noise groups interact with upsampling
-            for (int iy = 0; iy < header.upsampling; iy++) {
-                for (int ix = 0; ix < header.upsampling; ix++) {
-                    int x0 = (groupXYUp.x + ix) * header.groupDim;
-                    int y0 = (groupXYUp.y + iy) * header.groupDim;
-                    tasks.submit(() -> new NoiseGroup(header, seed0, localNoiseBuffer, x0, y0));
-                }
-            }
+            Point groupLocation = getGroupLocation(group);
+            noiseGroups[group] = new NoiseGroup(header, seed0, localNoiseBuffer, groupLocation.y, groupLocation.x);
         }
 
         if (laplacian == null) {
             laplacian = new float[5][5];
-            for (int i = 0; i < 5; i++) {
-                for (int j = 0; j < 5; j++) {
-                    laplacian[i][j] = (i == 2 && j == 2 ? -3.84f : 0.16f);
-                }
-            }
+            for (int i = 0; i < 5; i++)
+                Arrays.fill(laplacian[i], 0.16f);
+            laplacian[2][2] = -3.84f;
         }
 
-        noiseBuffer = new float[3][header.height][header.width];
-        tasks.collect();
+        noiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
 
-        for (int c = 0; c < 3; c++) {
-            for (int y = 0; y < header.height; y++) {
-                for (int x = 0; x < header.width; x++) {
+        for (int c = 0; c < colors; c++) {
+            for (int y = 0; y < bounds.size.height; y++) {
+                for (int x = 0; x < bounds.size.width; x++) {
                     for (int iy = 0; iy < 5; iy++) {
                         for (int ix = 0; ix < 5; ix++) {
-                            int cy = MathHelper.mirrorCoordinate(y + iy - 2, header.height);
-                            int cx = MathHelper.mirrorCoordinate(x + ix - 2, header.width);
+                            int cy = MathHelper.mirrorCoordinate(y + iy - 2, bounds.size.height);
+                            int cx = MathHelper.mirrorCoordinate(x + ix - 2, bounds.size.width);
                             noiseBuffer[c][y][x] += localNoiseBuffer[c][cy][cx] * laplacian[iy][ix];
                         }
                     }
@@ -819,40 +758,39 @@ public class Frame {
             return;
         float[] lut = lfGlobal.noiseParameters.lut;
         // header.width here to avoid upsampling
-        for (IntPoint p : FlowHelper.range2D(header.width, header.height)) {
-            int x = p.x, y = p.y;
-            // SPEC: spec doesn't mention the *0.5 here, it says *6
-            // SPEC: spec doesn't mention clamping to 0 here
-            float inScaledR = 3f * Math.max(0f, buffer[1][y][x] + buffer[0][y][x]);
-            float inScaledG = 3f * Math.max(0f, buffer[1][y][x] - buffer[0][y][x]);
-            int intInR;
-            float fracInR;
-            // LIBJXL: libjxl bug makes this >= 6D and 5, making lut[7] unused
-            // SPEC: spec bug makes this >= 8D and 7, making lut[8] overflow
-            if (inScaledR >= 7f) {
-                intInR = 6;
-                fracInR = 1f;
-            } else {
-                intInR = (int)inScaledR;
-                fracInR = inScaledR - intInR;
+        for (int y = 0; y < header.bounds.size.height; y++) {
+            for (int x = 0; x < header.bounds.size.width; x++) {
+                float inScaledR = buffer[1][y][x] + buffer[0][y][x];
+                inScaledR = inScaledR < 0f ? 0f : 3f * inScaledR;
+                float inScaledG = buffer[1][y][x] - buffer[0][y][x];
+                inScaledG = inScaledG < 0f ? 0f : 3f * inScaledG;
+                int intInR;
+                float fracInR;
+                if (inScaledR >= 7f) {
+                    intInR = 6;
+                    fracInR = 1f;
+                } else {
+                    intInR = (int)inScaledR;
+                    fracInR = inScaledR - intInR;
+                }
+                int intInG;
+                float fracInG;
+                if (inScaledG >= 7f) {
+                    intInG = 6;
+                    fracInG = 1f;
+                } else {
+                    intInG = (int)inScaledG;
+                    fracInG = inScaledG - intInG;
+                }
+                float sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
+                float sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
+                float nr = sr * (0.00171875f * noiseBuffer[0][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
+                float ng = sg * (0.00171875f * noiseBuffer[1][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
+                float nrg = nr + ng;
+                buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
+                buffer[1][y][x] += nrg;
+                buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
             }
-            int intInG;
-            float fracInG;
-            if (inScaledG >= 7f) {
-                intInG = 6;
-                fracInG = 1f;
-            } else {
-                intInG = (int)inScaledG;
-                fracInG = inScaledG - intInG;
-            }
-            float sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
-            float sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
-            float nr = 0.22f * sr * (0.0078125f * noiseBuffer[0][y][x] + 0.9921875f * noiseBuffer[2][y][x]);
-            float ng = 0.22f * sg * (0.0078125f * noiseBuffer[1][y][x] + 0.9921875f * noiseBuffer[2][y][x]);
-            float nrg = nr + ng;
-            buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
-            buffer[1][y][x] += nrg;
-            buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
         }
     }
 
@@ -868,8 +806,9 @@ public class Frame {
         return passes[index].hfPass;
     }
 
-    public LFGroup getLFGroupForGroup(int group) {
-        return lfGroups[groupXY(group).shiftRight(3).unwrapCoord(lfGroupRowStride)];
+    public LFGroup getLFGroupForGroup(int groupID) {
+        Point pos = getGroupLocation(groupID);
+        return lfGroups[(pos.y >> 3) * lfGroupRowStride + (pos.x >> 3)];
     }
 
     public int getNumLFGroups() {
@@ -901,46 +840,68 @@ public class Frame {
         return this.decoded;
     }
 
-    public IntPoint groupXY(int group) {
-        return IntPoint.coordinates(group, groupRowStride);
+    public Point getGroupLocation(int groupID) {
+        return new Point(groupID / groupRowStride, groupID % groupRowStride);
     }
 
-    public IntPoint getLFGroupXY(int lfGroup) {
-        return IntPoint.coordinates(lfGroup, lfGroupRowStride);
+    /**
+     * returns the location of the LF Group, in LF Group units
+     */
+    public Point getLFGroupLocation(int lfGroupID) {
+        return new Point(lfGroupID / lfGroupRowStride, lfGroupID % lfGroupRowStride);
     }
 
     /*
      * @return The position of this group within this LF Group, 1-incrementing
      */
-    public IntPoint groupPosInLFGroup(int lfGroupID, int groupID) {
-        return groupXY(groupID).minus(getLFGroupXY(lfGroupID).shiftLeft(3));
+    public Point groupPosInLFGroup(int lfGroupID, int groupID) {
+        Point gr = getGroupLocation(groupID);
+        Point lf = getLFGroupLocation(lfGroupID);
+        gr.y -= lf.y << 3;
+        gr.x -= lf.x << 3;
+        return gr;
     }
 
-    public IntPoint groupSize(int group) {
-        IntPoint groupxy = groupXY(group);
-        IntPoint paddedSize = getPaddedFrameSize();
-        return new IntPoint(Math.min(header.groupDim, paddedSize.x - groupxy.x * header.groupDim),
-            Math.min(header.groupDim, paddedSize.y - groupxy.y * header.groupDim));
+    public Dimension getGroupSize(int groupID) {
+        Point pos = getGroupLocation(groupID);
+        Dimension paddedSize = getPaddedFrameSize();
+        int height = Math.min(header.groupDim, paddedSize.height - pos.y * header.groupDim);
+        int width = Math.min(header.groupDim, paddedSize.width - pos.x * header.groupDim);
+        return new Dimension(height, width);
     }
 
-    public IntPoint getLFGroupSize(int lfGroup) {
-        IntPoint lfGroupXY = getLFGroupXY(lfGroup);
-        IntPoint paddedSize = getPaddedFrameSize();
-        return new IntPoint(Math.min(header.lfGroupDim, paddedSize.x - lfGroupXY.x * header.lfGroupDim),
-            Math.min(header.lfGroupDim, paddedSize.y - lfGroupXY.y * header.lfGroupDim));
+    /**
+     * returns the size of the LF Group, in pixels
+     */
+    public Dimension getLFGroupSize(int lfGroupID) {
+        Point pos = getLFGroupLocation(lfGroupID);
+        Dimension paddedSize = getPaddedFrameSize();
+        int height = Math.min(header.lfGroupDim, paddedSize.height - pos.y * header.lfGroupDim);
+        int width = Math.min(header.lfGroupDim, paddedSize.width - pos.x * header.lfGroupDim);
+        return new Dimension(height, width);
     }
 
-    public IntPoint getPaddedFrameSize() {
-        IntPoint factor = IntPoint.ONE.shiftLeft(Arrays.asList(getFrameHeader().jpegUpsampling).stream()
-            .reduce(IntPoint.ZERO, IntPoint::max));
+    public Dimension getPaddedFrameSize() {
+        int factorY = 1 << IntStream.of(getFrameHeader().jpegUpsamplingY).reduce(Math::max).getAsInt();
+        int factorX = 1 << IntStream.of(getFrameHeader().jpegUpsamplingX).reduce(Math::max).getAsInt();
+        int height, width;
+        if (header.encoding == FrameFlags.VARDCT) {
+            height = (bounds.size.height + 7) >> 3;
+            width = (bounds.size.width + 7) >> 3;
+        } else {
+            height = bounds.size.height;
+            width = bounds.size.width;
+        }
+        height = MathHelper.ceilDiv(height, factorY);
+        width = MathHelper.ceilDiv(width, factorX);
         if (header.encoding == FrameFlags.VARDCT)
-            return new IntPoint(width, height).ceilDiv(8).ceilDiv(factor).times(factor).times(8);
+            return new Dimension((height * factorY) << 3, (width * factorX) << 3);
         else
-            return new IntPoint(width, height).ceilDiv(factor).times(factor);
+            return new Dimension(height * factorY, width * factorX);
     }
 
-    public IntPoint getModularFrameSize() {
-        return new IntPoint(width, height);
+    public Dimension getModularFrameSize() {
+        return bounds.size;
     }
 
     public MATree getGlobalTree() {
@@ -960,12 +921,12 @@ public class Frame {
             && (header.duration != 0 || header.isLast);
     }
 
-    /* gets the sample for the IMAGE position x and y */
-    public float getSample(int c, int x, int y) {
-        return x < header.origin.x || y < header.origin.y
-            || x - header.origin.x >= width
-            || y - header.origin.y >= height
-            ? 0 : buffer[c][y - header.origin.y][x - header.origin.x];
+    /* gets the sample for the IMAGE position y and x */
+    public float getImageSample(int c, int y, int x) {
+        int frameY = y - bounds.origin.y;
+        int frameX = x - bounds.origin.x;
+        return frameY < 0 || frameX < 0 || frameY >= bounds.size.height || frameX >= bounds.size.width
+            ? 0f : buffer[c][frameY][frameX];
     }
 
     public void printDebugInfo() {
@@ -977,8 +938,8 @@ public class Frame {
                     : header.type == FrameFlags.SKIP_PROGRESSIVE ? "Skip Progressive"
                     : "????";
         loggers.log(Loggers.LOG_VERBOSE, "    Type: %s", type);
-        loggers.log(Loggers.LOG_VERBOSE, "    Size: %dx%d", width, height);
-        loggers.log(Loggers.LOG_VERBOSE, "    Origin: (%d, %d)", header.origin.x, header.origin.y);
+        loggers.log(Loggers.LOG_VERBOSE, "    Size: %dx%d", bounds.size.width, bounds.size.height);
+        loggers.log(Loggers.LOG_VERBOSE, "    Origin: (%d, %d)", bounds.origin.x, bounds.origin.y);
         loggers.log(Loggers.LOG_VERBOSE, "    YCbCr: %b", header.doYCbCr);
     }
 

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.traneptora.jxlatte.io.Bitreader;
-import com.traneptora.jxlatte.util.FlowHelper;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class OpsinInverseMatrix {
@@ -12,7 +11,7 @@ public class OpsinInverseMatrix {
     private static final float[][] DEFAULT_MATRIX = {
         {11.031566901960783f, -9.866943921568629f, -0.16462299647058826f},
         {-3.254147380392157f, 4.418770392156863f, -0.16462299647058826f},
-        {-3.6588512862745097f, 2.7129230470588235f, 1.9459282392156863f}
+        {-3.6588512862745097f, 2.7129230470588235f, 1.9459282392156863f},
     };
 
     private static final float[] DEFAULT_OPSIN_BIAS = {
@@ -27,7 +26,7 @@ public class OpsinInverseMatrix {
 
     private final float[][] matrix;
     private final float[] opsinBias;
-    private float[] cbrtOpsinBias;
+    private final float[] cbrtOpsinBias;
     public final float[] quantBias;
     public final float quantBiasNumerator;
     public final CIEPrimaries primaries;
@@ -46,6 +45,7 @@ public class OpsinInverseMatrix {
         this.quantBiasNumerator = quantBiasNumerator;
         this.primaries = primaries;
         this.whitePoint = whitePoint;
+        this.cbrtOpsinBias = new float[3];
         bakeCbrtBias();
     }
 
@@ -72,11 +72,11 @@ public class OpsinInverseMatrix {
         }
         this.primaries = ColorManagement.PRI_SRGB;
         this.whitePoint = ColorManagement.WP_D65;
+        this.cbrtOpsinBias = new float[3];
         bakeCbrtBias();
     }
 
     private void bakeCbrtBias() {
-        cbrtOpsinBias = new float[3];
         for (int c = 0; c < 3; c++)
             cbrtOpsinBias[c] = MathHelper.signedPow(opsinBias[c], 1f/3f);
     }
@@ -97,20 +97,28 @@ public class OpsinInverseMatrix {
             this.opsinBias, this.quantBias, this.quantBiasNumerator);
     }
 
-    public void invertXYB(float[][][] buffer, float intensityTarget, FlowHelper flowHelper) {
+    /**
+     * Inverts in place
+     */
+    public void invertXYB(float[][][] buffer, float intensityTarget) {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         final float itScale = 255f / intensityTarget;
+        final float[][] scaledMatrix = new float[3][3];
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 3; x++)
+                scaledMatrix[y][x] = matrix[y][x] * itScale;
+        }
         for (int y = 0; y < buffer[0].length; y++) {
             for (int x = 0; x < buffer[0][y].length; x++) {
-                float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
-                float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
-                float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-                float mixL = gammaL * gammaL * gammaL + opsinBias[0];
-                float mixM = gammaM * gammaM * gammaM + opsinBias[1];
-                float mixS = gammaS * gammaS * gammaS + opsinBias[2];
+                final float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
+                final float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
+                final float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
+                final float mixL = gammaL * gammaL * gammaL + opsinBias[0];
+                final float mixM = gammaM * gammaM * gammaM + opsinBias[1];
+                final float mixS = gammaS * gammaS * gammaS + opsinBias[2];
                 for (int c = 0; c < 3; c++)
-                    buffer[c][y][x] = (matrix[c][0] * mixL + matrix[c][1] * mixM + matrix[c][2] * mixS) * itScale;
+                    buffer[c][y][x] = scaledMatrix[c][0] * mixL + scaledMatrix[c][1] * mixM + scaledMatrix[c][2] * mixS;
             }
         }
     }

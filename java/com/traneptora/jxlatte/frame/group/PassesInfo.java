@@ -26,9 +26,10 @@ public class PassesInfo {
         numDS = numPasses != 1 ? reader.readU32(0, 0, 1, 0, 2, 0, 3, 1) : 0;
         if (numDS >= numPasses)
             throw new InvalidBitstreamException("num_ds < num_passes violated");
-        shift = new int[numPasses - 1];
-        for (int i = 0; i < shift.length; i++)
+        shift = new int[numPasses];
+        for (int i = 0; i < numPasses - 1; i++)
             shift[i] = reader.readBits(2);
+        shift[numPasses - 1] = 0;
         downSample = new int[numDS + 1];
         for (int i = 0; i < numDS; i++)
             downSample[i] = 1 << reader.readBits(2);

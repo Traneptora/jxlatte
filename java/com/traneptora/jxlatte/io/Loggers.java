@@ -21,32 +21,35 @@ public class Loggers {
         this.err = err;
     }
 
+    private static Object deepToThing(Object arg) {
+        if (arg == null)
+            return "null";
+        if (arg.getClass().isArray()) {
+            Class<?> argClass = arg.getClass();
+            Class<?> componentType = argClass.getComponentType();
+            if (componentType.isArray()) {
+                Object[] deep = (Object[])arg;
+                return Arrays.deepToString(deep);
+            } else {
+                try {
+                    return Arrays.class.getMethod("toString", componentType.isPrimitive() ?
+                        argClass : Object[].class).invoke(null, arg);
+                } catch (Exception ex) {
+                    FunctionalHelper.sneakyThrow(ex);
+                }
+            }
+        }
+        return arg;
+    }
+
+    public static String deepToString(Object arg) {
+        return deepToThing(arg).toString();
+    }
+
     public void log(int logLevel, String format, Object... args) {
         if (logLevel > options.verbosity)
             return;
-        Object[] things = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            if (args[i] == null) {
-                things[i] = "null";
-            } else if (args[i].getClass().isArray()) {
-                Class<?> argClass = args[i].getClass();
-                Class<?> componentType = argClass.getComponentType();
-                if (componentType.isArray()) {
-                    Object[] deep = (Object[])args[i];
-                    things[i] = Arrays.deepToString(deep);
-                } else {
-                    try {
-                        things[i] = Arrays.class.getMethod("toString",
-                            componentType.isPrimitive() ? argClass : Object[].class)
-                            .invoke(null, args[i]);
-                    } catch (Exception ex) {
-                        FunctionalHelper.sneakyThrow(ex);
-                    }
-                }
-            } else {
-                things[i] = args[i];
-            }
-        }
+        Object[] things = Arrays.asList(args).stream().map(Loggers::deepToThing).toArray();
         err.println(String.format(format, things));
         err.flush();
     }

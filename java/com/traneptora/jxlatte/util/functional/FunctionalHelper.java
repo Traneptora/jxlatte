@@ -2,6 +2,7 @@ package com.traneptora.jxlatte.util.functional;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -9,8 +10,6 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import com.traneptora.jxlatte.util.IteratorIterable;
 
 public final class FunctionalHelper {
     private FunctionalHelper() {
@@ -51,9 +50,10 @@ public final class FunctionalHelper {
     /**
      * Joins all of the futures and preserves their order
      */
-    public static <T> T[] join(IntFunction<T[]> generator, Iterable<? extends CompletableFuture<?>> futures) {
+    public static <T> T[] join(IntFunction<T[]> generator, Iterator<? extends CompletableFuture<?>> futures) {
         List<Object> results = new ArrayList<>();
-        for (CompletableFuture<?> future : futures) {
+        while (futures.hasNext()) {
+            CompletableFuture<?> future = futures.next();
             results.add(join(future));
         }
         if (generator != null)
@@ -62,14 +62,10 @@ public final class FunctionalHelper {
         return null;
     }
 
-    public static void join(Iterable<? extends CompletableFuture<?>> tasks) {
-        join(null, tasks);
-    }
-
     /**
      * Joins all of the futures and preserves their order
      */
     public static <T> T[] join(IntFunction<T[]> generator, CompletableFuture<?>... futures) {
-        return join(generator, new IteratorIterable<>(Stream.of(futures).iterator()));
+        return join(generator, Stream.of(futures).iterator());
     }
 }

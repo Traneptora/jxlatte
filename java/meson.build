@@ -14,8 +14,6 @@ src = files(
     'com/traneptora/jxlatte/bundle/ExtraChannelInfo.java',
     'com/traneptora/jxlatte/bundle/ExtraChannelType.java',
     'com/traneptora/jxlatte/bundle/ImageHeader.java',
-    'com/traneptora/jxlatte/bundle/PreviewHeader.java',
-    'com/traneptora/jxlatte/bundle/SizeHeader.java',
 
     # com.traneptora.jxlatte.color
     'com/traneptora/jxlatte/color/CIEPrimaries.java',
@@ -52,8 +50,7 @@ src = files(
     'com/traneptora/jxlatte/frame/features/noise/NoiseParameters.java',
     'com/traneptora/jxlatte/frame/features/noise/XorShiro.java',
 
-    # com.traneptora.jxlatte.frame.features.noise.spline
-    'com/traneptora/jxlatte/frame/features/spline/FloatPoint.java',
+    # com.traneptora.jxlatte.frame.features.spline
     'com/traneptora/jxlatte/frame/features/spline/Spline.java',
     'com/traneptora/jxlatte/frame/features/spline/SplineArc.java',
     'com/traneptora/jxlatte/frame/features/spline/SplinesBundle.java',
@@ -68,7 +65,6 @@ src = files(
     'com/traneptora/jxlatte/frame/modular/GlobalModular.java',
     'com/traneptora/jxlatte/frame/modular/MATree.java',
     'com/traneptora/jxlatte/frame/modular/ModularChannel.java',
-    'com/traneptora/jxlatte/frame/modular/ModularChannelInfo.java',
     'com/traneptora/jxlatte/frame/modular/ModularStream.java',
     'com/traneptora/jxlatte/frame/modular/SqueezeParam.java',
     'com/traneptora/jxlatte/frame/modular/TransformInfo.java',
@@ -85,7 +81,6 @@ src = files(
     'com/traneptora/jxlatte/frame/vardct/LFCoefficients.java',
     'com/traneptora/jxlatte/frame/vardct/Quantizer.java',
     'com/traneptora/jxlatte/frame/vardct/TransformType.java',
-    'com/traneptora/jxlatte/frame/vardct/Varblock.java',
 
     # com.traneptora.jxlatte.io
     'com/traneptora/jxlatte/io/Bitreader.java',
@@ -97,12 +92,11 @@ src = files(
     'com/traneptora/jxlatte/io/PushbackInputStream.java',
 
     # com.traneptora.jxlatte.util
-    'com/traneptora/jxlatte/util/FlowHelper.java',
-    'com/traneptora/jxlatte/util/IntPoint.java',
-    'com/traneptora/jxlatte/util/IteratorIterable.java',
+    'com/traneptora/jxlatte/util/Dimension.java',
     'com/traneptora/jxlatte/util/MathHelper.java',
     'com/traneptora/jxlatte/util/MutableLong.java',
-    'com/traneptora/jxlatte/util/TaskList.java',
+    'com/traneptora/jxlatte/util/Point.java',
+    'com/traneptora/jxlatte/util/Rectangle.java',
 
     # com.traneptora.jxlatte.util.functional
     'com/traneptora/jxlatte/util/functional/ExceptionalConsumer.java',

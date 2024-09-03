@@ -2,16 +2,16 @@ package com.traneptora.jxlatte.frame.features.noise;
 
 public class XorShiro {
 
-    private long[] state0 = new long[8];
-    private long[] state1 = new long[8];
-    private long[] batch = new long[8];
-    private int batchPos = 0;
-
     public static long splitMix64(long z) {
         z = (z ^ (z >>> 30)) * 0xbf58476d1ce4e5b9L;
         z = (z ^ (z >>> 27)) * 0x94d049bb133111ebL;
         return z ^ (z >>> 31);
     }
+
+    private long[] state0 = new long[8];
+    private long[] state1 = new long[8];
+    private long[] batch = new long[8];
+    private int batchPos = 0;
 
     public XorShiro(int seed0, int seed1, int seed2, int seed3) {
         this(((long)seed0 << 32) | ((long)seed1 & 0xFF_FF_FF_FFL),

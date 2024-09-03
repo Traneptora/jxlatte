@@ -13,7 +13,7 @@ import com.traneptora.jxlatte.color.ToneMapping;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
-import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class ImageHeader {
@@ -125,41 +125,86 @@ public class ImageHeader {
 
         return 1 + p1 + 8 * p2;
     }
-    
-    private SizeHeader size;
-    private int orientedWidth;
-    private int orientedHeight;
-    private int level = 5;
-    private int orientation;
-    private SizeHeader intrinsicSize = null;
-    private PreviewHeader previewHeader = null;
-    private AnimationHeader animationHeader = null;
-    private BitDepthHeader bitDepth;
-    private boolean modular16bitBuffers = true;
-    private ExtraChannelInfo[] extraChannelInfo;
-    private boolean xybEncoded = true;
-    private ColorEncodingBundle colorEncoding;
-    private ToneMapping toneMapping;
-    private Extensions extensions;
-    private OpsinInverseMatrix opsinInverseMatrix;
-    private float[] up2weights;
-    private float[] up4weights;
-    private float[] up8weights;
-    private float[][][][][] upWeights = null;
-    private int[] alphaIndices;
-    private byte[] encodedICC;
-    private byte[] decodedICC = null;
 
-    private ImageHeader() {
-
+    private static int getWidthFromRatio(int ratio, int height) {
+        switch (ratio) {
+            case 1:
+                return height;
+            case 2:
+                return (int)(height * 6L / 5L);
+            case 3:
+                return (int)(height * 4L / 3L);
+            case 4:
+                return (int)(height * 3L / 2L);
+            case 5:
+                return (int)(height * 16L / 9L);
+            case 6:
+                return (int)(height * 5L / 4L);
+            case 7:
+                return height * 2;
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
-    public static ImageHeader parse(Loggers loggers, Bitreader reader, int level) throws IOException {
+    private static Dimension readSizeHeader(Bitreader reader, int level) throws IOException {
+        int height, width;
+        boolean div8 = reader.readBool();
+        if (div8)
+            height = (1 + reader.readBits(5)) << 3;
+        else
+            height = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
+        int ratio = reader.readBits(3);
+        if (ratio != 0) {
+            width = getWidthFromRatio(ratio, height);
+        } else {
+            if (div8)
+                width = (1 + reader.readBits(5)) << 3;
+            else
+                width = reader.readU32(1, 9, 1, 13, 1, 18, 1, 30);
+        }
+
+        long maxDim = level <= 5 ? 1L << 18 : 1L << 28;
+        long maxTimes = level <= 5 ? 1L << 30 : 1L << 40;
+
+        if (width > maxDim || height > maxDim)
+            throw new InvalidBitstreamException(String.format("Width or height too large: %d, %d", width, height));
+        if ((long)width * (long)height > maxTimes)
+            throw new InvalidBitstreamException(String.format("Width times height too large: %d, %d", width, height));
+
+        return new Dimension(height, width);
+    }
+
+    public static Dimension readPreviewHeader(Bitreader reader) throws IOException {
+        int height, width;
+        boolean div8 = reader.readBool();
+        if (div8)
+            height = reader.readU32(16, 0, 32, 0, 1, 5, 33, 9);
+        else
+            height = reader.readU32(1, 6, 65, 8, 321, 10, 1345, 12);
+        int ratio = reader.readBits(3);
+        if (ratio != 0) {
+            width = getWidthFromRatio(ratio, height);
+        } else {
+            if (div8)
+                width = reader.readU32(16, 0, 32, 0, 1, 5, 33, 9);
+            else
+                width = reader.readU32(1, 6, 65, 8, 321, 10, 1345, 12);
+        }
+
+        if (width > 4096 || height > 4096)
+            throw new InvalidBitstreamException(String.format("preview width or preview height too large: %d, %d",
+                width, height));
+
+        return new Dimension(height, width);
+    }
+
+    public static ImageHeader read(Loggers loggers, Bitreader reader, int level) throws IOException {
         ImageHeader header = new ImageHeader();
         if (reader.readBits(16) != CODESTREAM_HEADER)
             throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch"));
         header.setLevel(level);
-        header.size = new SizeHeader(reader, level);
+        header.size = readSizeHeader(reader, level);
 
         boolean allDefault = reader.readBool();
         boolean extraFields = allDefault ? false : reader.readBool();
@@ -168,24 +213,21 @@ public class ImageHeader {
             header.orientation = 1 + reader.readBits(3);
             // have intrinsic size
             if (reader.readBool())
-                header.intrinsicSize = new SizeHeader(reader, level);
+                header.intrinsicSize = readSizeHeader(reader, level);
             // have preview header
             if (reader.readBool())
-                header.previewHeader = new PreviewHeader(reader);
+                header.previewSize = readPreviewHeader(reader);
             // have animation header
             if (reader.readBool())
-                header.animationHeader = new AnimationHeader(reader);
+                header.animationHeader = AnimationHeader.read(reader);
         } else {
             header.orientation = 1;
         }
 
-        if (header.orientation > 4) {
-            header.orientedWidth = header.size.height;
-            header.orientedHeight = header.size.width;
-        } else {
-            header.orientedWidth = header.size.width;
-            header.orientedHeight = header.size.height;
-        }
+        if (header.orientation > 4)
+            header.orientedSize = header.size.asTransposed();
+        else
+            header.orientedSize = header.size;
 
         if (allDefault) {
             header.bitDepth = new BitDepthHeader();
@@ -268,20 +310,47 @@ public class ImageHeader {
         return header;
     }
 
+    private Dimension size;
+    private Dimension orientedSize;
+    private int level = 5;
+    private int orientation;
+    private Dimension intrinsicSize = null;
+    private Dimension previewSize = null;
+    private AnimationHeader animationHeader = null;
+    private BitDepthHeader bitDepth;
+    private boolean modular16bitBuffers = true;
+    private ExtraChannelInfo[] extraChannelInfo;
+    private boolean xybEncoded = true;
+    private ColorEncodingBundle colorEncoding;
+    private ToneMapping toneMapping;
+    private Extensions extensions;
+    private OpsinInverseMatrix opsinInverseMatrix;
+    private float[] up2weights;
+    private float[] up4weights;
+    private float[] up8weights;
+    private float[][][][][] upWeights = null;
+    private int[] alphaIndices;
+    private byte[] encodedICC;
+    private byte[] decodedICC = null;
+
+    private ImageHeader() {
+
+    }
+
     public int getLevel() {
         return level;
     }
 
-    public SizeHeader getSize() {
+    public Dimension getSize() {
         return size;
     }
 
-    public PreviewHeader getPreviewHeader() {
-        return previewHeader;
+    public Dimension getIntrinsticSize() {
+        return intrinsicSize;
     }
 
-    public SizeHeader getIntrinsticSize() {
-        return intrinsicSize;
+    public Dimension getPreviewSize() {
+        return previewSize;
     }
 
     public AnimationHeader getAnimationHeader() {
@@ -340,12 +409,8 @@ public class ImageHeader {
         return toneMapping;
     }
 
-    public int getOrientedWidth() {
-        return orientedWidth;
-    }
-
-    public int getOrientedHeight() {
-        return orientedHeight;
+    public Dimension getOrientedSize() {
+        return orientedSize;
     }
 
     public Extensions getExtensions() {
@@ -455,14 +520,11 @@ public class ImageHeader {
         return 0;
     }
 
-    private byte[] shuffle(byte[] buffer, int width) {
-        int height = MathHelper.ceilDiv(buffer.length, width);
+    private static byte[] shuffle(byte[] buffer, int width) {
+        final int height = MathHelper.ceilDiv(buffer.length, width);
         byte[] result = new byte[buffer.length];
-        for (int i = 0; i < buffer.length; i++) {
-            int j = IntPoint.coordinates(i, height).transpose().unwrapCoord(width);
-            result[j] = buffer[i];
-        }
-
+        for (int i = 0; i < buffer.length; i++)
+            result[(i % height) * width + (i / height)] = buffer[i];
         return result;
     }
 

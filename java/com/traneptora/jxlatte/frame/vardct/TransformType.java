@@ -1,7 +1,7 @@
 package com.traneptora.jxlatte.frame.vardct;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
-import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.Dimension;
 
 public enum TransformType {
     DCT8("DCT 8x8", 0, 0, 1, 1, 8, 8, 8, 8, 0, 0),
@@ -89,16 +89,16 @@ public enum TransformType {
         return (float)(1D / (Math.cos(piSize / (2 * b)) * Math.cos(piSize / b) * Math.cos(2D * piSize / b)));
     }
 
-    public IntPoint getPixelSize() {
-        return new IntPoint(blockWidth, blockHeight);
+    public Dimension getPixelSize() {
+        return new Dimension(blockHeight, blockWidth);
     }
 
-    public IntPoint getMatrixSize() {
-        return new IntPoint(matrixWidth, matrixHeight);
+    public Dimension getMatrixSize() {
+        return new Dimension(matrixHeight, matrixWidth);
     }
 
-    public IntPoint getDctSelectSize() {
-        return new IntPoint(dctSelectWidth, dctSelectHeight);
+    public Dimension getDctSelectSize() {
+        return new Dimension(dctSelectHeight, dctSelectWidth);
     }
 
     private TransformType(String name, int type, int parameterIndex, int dctSelectHeight, int dctSelectWidth,

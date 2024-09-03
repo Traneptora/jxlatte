@@ -3,15 +3,17 @@ package com.traneptora.jxlatte.frame;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 
 import com.traneptora.jxlatte.bundle.Extensions;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.frame.features.RestorationFilter;
 import com.traneptora.jxlatte.frame.group.PassesInfo;
 import com.traneptora.jxlatte.io.Bitreader;
-import com.traneptora.jxlatte.util.IntPoint;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.Point;
+import com.traneptora.jxlatte.util.Rectangle;
 
 public class FrameHeader {
 
@@ -19,7 +21,8 @@ public class FrameHeader {
     public final int encoding;
     public final long flags;
     public final boolean doYCbCr;
-    public final IntPoint[] jpegUpsampling;
+    public final int[] jpegUpsamplingY;
+    public final int[] jpegUpsamplingX;
     public final int upsampling;
     public final int[] ecUpsampling;
     public final int groupSizeShift;
@@ -32,9 +35,7 @@ public class FrameHeader {
     public final PassesInfo passes;
     public final int lfLevel;
     public final boolean haveCrop;
-    public IntPoint origin;
-    public int width;
-    public int height;
+    public Rectangle bounds;
     public final BlendingInfo blendingInfo;
     public final BlendingInfo[] ecBlendingInfo;
     public final int duration;
@@ -51,7 +52,8 @@ public class FrameHeader {
         this.encoding = header.encoding;
         this.flags = header.flags;
         this.doYCbCr = header.doYCbCr;
-        this.jpegUpsampling = header.jpegUpsampling;
+        this.jpegUpsamplingY = header.jpegUpsamplingY;
+        this.jpegUpsamplingX = header.jpegUpsamplingX;
         this.upsampling = header.upsampling;
         this.ecUpsampling = header.ecUpsampling;
         this.groupSizeShift = header.groupSizeShift;
@@ -64,9 +66,7 @@ public class FrameHeader {
         this.passes = header.passes;
         this.lfLevel = header.lfLevel;
         this.haveCrop = header.haveCrop;
-        this.origin = new IntPoint(header.origin);
-        this.width = header.width;
-        this.height = header.height;
+        this.bounds = new Rectangle(header.bounds);
         this.blendingInfo =  header.blendingInfo;
         this.ecBlendingInfo = header.ecBlendingInfo;
         this.duration = header.duration;
@@ -85,15 +85,28 @@ public class FrameHeader {
         encoding = allDefault ? FrameFlags.VARDCT : reader.readBits(1);
         flags = allDefault ? 0 : reader.readU64();
         doYCbCr = (!allDefault && !parent.isXYBEncoded()) ? reader.readBool() : false;
-        jpegUpsampling = new IntPoint[3];
+        jpegUpsamplingY = new int[3];
+        jpegUpsamplingX = new int[3];
         if (doYCbCr && (flags & FrameFlags.USE_LF_FRAME) == 0) {
             for (int i = 0; i < 3; i++) {
-                int y = reader.readBits(1);
-                int x = reader.readBits(1);
-                jpegUpsampling[i] = new IntPoint(x ^ y, y);
+                int mode = reader.readBits(2);
+                switch (mode) {
+                    case 1:
+                        jpegUpsamplingY[i] = 1;
+                        jpegUpsamplingX[i] = 1;
+                        break;
+                    case 2:
+                        jpegUpsamplingY[i] = 0;
+                        jpegUpsamplingX[i] = 1;
+                        break;
+                    case 3:
+                        jpegUpsamplingY[i] = 1;
+                        jpegUpsamplingX[i] = 0;
+                        break;
+                    default:
+                        break;
+                }
             }
-        } else {
-            Arrays.fill(jpegUpsampling, new IntPoint());
         }
         ecUpsampling = new int[parent.getExtraChannelCount()];
         if (!allDefault && (flags & FrameFlags.USE_LF_FRAME) == 0) {
@@ -124,29 +137,29 @@ public class FrameHeader {
         passes = (!allDefault && type != FrameFlags.REFERENCE_ONLY) ? new PassesInfo(reader) : new PassesInfo();
         lfLevel = type == FrameFlags.LF_FRAME ? 1 + reader.readBits(2) : 0;
         haveCrop = (!allDefault && type != FrameFlags.LF_FRAME) ? reader.readBool() : false;
+        bounds = new Rectangle();
         if (haveCrop && type != FrameFlags.REFERENCE_ONLY) {
             int x0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
             int y0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
-            x0 = MathHelper.unpackSigned(x0);
-            y0 = MathHelper.unpackSigned(y0);
-            this.origin = new IntPoint(x0, y0);
-        } else {
-            this.origin = new IntPoint();
+            bounds.origin.x = MathHelper.unpackSigned(x0);
+            bounds.origin.y = MathHelper.unpackSigned(y0);
         }
         if (haveCrop) {
-            width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
-            height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            bounds.size.width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
+            bounds.size.height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
         } else {
-            width = parent.getSize().width;
-            height = parent.getSize().height;
+            bounds.size = new Dimension(parent.getSize());
         }
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
-        boolean fullFrame = origin.x <= 0 && origin.y <= 0 && (width + origin.x) >= parent.getSize().width
-            && (height + origin.y) >= parent.getSize().height;
-        width = MathHelper.ceilDiv(width, upsampling);
-        height = MathHelper.ceilDiv(height, upsampling);
-        width = MathHelper.ceilDiv(width, 1 << (3 * lfLevel));
-        height = MathHelper.ceilDiv(height, 1 << (3 * lfLevel));
+        Point lowerCorner = bounds.computeLowerCorner();
+        boolean fullFrame = bounds.origin.y <= 0 && bounds.origin.x <= 0
+            && lowerCorner.y >= parent.getSize().height
+            && lowerCorner.x >= parent.getSize().width;
+        // intentionally computed after fullFrame
+        bounds.size.height = MathHelper.ceilDiv(bounds.size.height, upsampling);
+        bounds.size.width = MathHelper.ceilDiv(bounds.size.width, upsampling);
+        bounds.size.height = MathHelper.ceilDiv(bounds.size.height, 1 << (3 * lfLevel));
+        bounds.size.width = MathHelper.ceilDiv(bounds.size.width, 1 << (3 * lfLevel));
         ecBlendingInfo = new BlendingInfo[parent.getExtraChannelCount()];
         if (normalFrame) {
             blendingInfo = new BlendingInfo(reader, ecBlendingInfo.length > 0, fullFrame);
@@ -178,22 +191,23 @@ public class FrameHeader {
         }
         restorationFilter = allDefault ? new RestorationFilter() : new RestorationFilter(reader, encoding);
         extensions = allDefault ? new Extensions() : new Extensions(reader);
-        int maxJPX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
-        int maxJPY = Stream.of(jpegUpsampling).mapToInt(p -> p.y).reduce(Math::max).getAsInt();
-        width = MathHelper.ceilDiv(width, 1 << maxJPX) << maxJPX;
-        height = MathHelper.ceilDiv(height, 1 << maxJPY) << maxJPY;
+        int maxJPY = IntStream.of(jpegUpsamplingY).reduce(Math::max).getAsInt();
+        int maxJPX = IntStream.of(jpegUpsamplingX).reduce(Math::max).getAsInt();
+        bounds.size.height = MathHelper.ceilDiv(bounds.size.height, 1 << maxJPY) << maxJPY;
+        bounds.size.width = MathHelper.ceilDiv(bounds.size.width, 1 << maxJPX) << maxJPX;
         for (int i = 0; i < 3; i++) {
-            jpegUpsampling[i] = new IntPoint(maxJPX, maxJPY).minus(jpegUpsampling[i]);
+            jpegUpsamplingY[i] = maxJPY - jpegUpsamplingY[i];
+            jpegUpsamplingX[i] = maxJPX - jpegUpsamplingX[i];
         }
     }
 
     @Override
     public String toString() {
         return String.format(
-                "FrameHeader [type=%s, encoding=%s, flags=%s, doYCbCr=%s, jpegUpsampling=%s, upsampling=%s, ecUpsampling=%s, groupSizeShift=%s, groupDim=%s, lfGroupDim=%s, logGroupDim=%s, logLFGroupDim=%s, xqmScale=%s, bqmScale=%s, passes=%s, lfLevel=%s, haveCrop=%s, origin=%s, width=%s, height=%s, blendingInfo=%s, ecBlendingInfo=%s, duration=%s, timecode=%s, isLast=%s, saveAsReference=%s, saveBeforeCT=%s, name=%s, restorationFilter=%s, extensions=%s]",
-                type, encoding, flags, doYCbCr, Arrays.toString(jpegUpsampling), upsampling,
-                Arrays.toString(ecUpsampling), groupSizeShift, groupDim, lfGroupDim, logGroupDim, logLFGroupDim,
-                xqmScale, bqmScale, passes, lfLevel, haveCrop, origin, width, height, blendingInfo,
+                "FrameHeader [type=%s, encoding=%s, flags=%s, doYCbCr=%s, jpegUpsamplingY=%s, jpegUpsamplingX=%s, upsampling=%s, ecUpsampling=%s, groupSizeShift=%s, groupDim=%s, lfGroupDim=%s, logGroupDim=%s, logLFGroupDim=%s, xqmScale=%s, bqmScale=%s, passes=%s, lfLevel=%s, haveCrop=%s, bounds=%s, blendingInfo=%s, ecBlendingInfo=%s, duration=%s, timecode=%s, isLast=%s, saveAsReference=%s, saveBeforeCT=%s, name=%s, restorationFilter=%s, extensions=%s]",
+                type, encoding, flags, doYCbCr, Arrays.toString(jpegUpsamplingY), Arrays.toString(jpegUpsamplingX),
+                upsampling, Arrays.toString(ecUpsampling), groupSizeShift, groupDim, lfGroupDim, logGroupDim,
+                logLFGroupDim, xqmScale, bqmScale, passes, lfLevel, haveCrop, bounds, blendingInfo,
                 Arrays.toString(ecBlendingInfo), duration, timecode, isLast, saveAsReference, saveBeforeCT, name,
                 restorationFilter, extensions);
     }

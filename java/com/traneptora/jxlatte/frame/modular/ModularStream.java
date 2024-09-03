@@ -12,6 +12,7 @@ import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
 public class ModularStream {
@@ -46,7 +47,7 @@ public class ModularStream {
     private EntropyStream stream = null;
     private boolean transformed = false;
 
-    private List<ModularChannelInfo> channels = new ArrayList<>();
+    private List<ModularChannel> channels = new ArrayList<>();
 
     private Map<Integer, SqueezeParam[]> squeezeMap = new HashMap<>();
 
@@ -56,11 +57,12 @@ public class ModularStream {
     }
 
     public ModularStream(Bitreader reader, Frame frame,
-            int streamIndex, ModularChannelInfo[] channelArray) throws IOException {
+            int streamIndex, ModularChannel[] channelArray) throws IOException {
         this(reader, frame, streamIndex, channelArray.length, 0, channelArray);
     }
 
-    private ModularStream(Bitreader reader, Frame frame, int streamIndex, int channelCount, int ecStart, ModularChannelInfo[] channelArray) throws IOException {
+    private ModularStream(Bitreader reader, Frame frame, int streamIndex,
+            int channelCount, int ecStart, ModularChannel[] channelArray) throws IOException {
         this.frame = frame;
         this.streamIndex = streamIndex;
         if (channelCount == 0) {
@@ -78,11 +80,10 @@ public class ModularStream {
             transforms[i] = new TransformInfo(reader);
 
         if (channelArray == null) {
-            int w = frame.getModularFrameSize().x;
-            int h = frame.getModularFrameSize().y;
+            Dimension size = frame.getModularFrameSize();
             for (int i = 0; i < channelCount; i++) {
                 int dimShift = i < ecStart ? 0 : frame.globalMetadata.getExtraChannelInfo(i - ecStart).dimShift;
-                channels.add(new ModularChannelInfo(w, h, dimShift, dimShift));
+                channels.add(new ModularChannel(size.height, size.width, dimShift, dimShift));
             }
         } else {
             channels.addAll(Arrays.asList(channelArray));
@@ -101,30 +102,29 @@ public class ModularStream {
                     channels.remove(start);
                 if (transforms[i].nbDeltas > 0 && transforms[i].dPred == 6)
                     channels.get(transforms[i].beginC).forceWP = true;
-                channels.add(0, new ModularChannelInfo(transforms[i].nbColors, transforms[i].numC, -1, -1));
+                channels.add(0, new ModularChannel(transforms[i].numC, transforms[i].nbColors, -1, -1));
             } else if (transforms[i].tr == TransformInfo.SQUEEZE) {
                 List<SqueezeParam> squeezeList = new ArrayList<>();
                 if (transforms[i].sp.length == 0) {
                     int first = nbMetaChannels;
                     int count = channels.size() - first;
-                    int w = channels.get(first).width;
-                    int h = channels.get(first).height;
-                    if (count > 2 && channels.get(first + 1).width == w && channels.get(first + 1).height == h) {
+                    Dimension size = new Dimension(channels.get(0).size);
+                    if (count > 2 && size.equals(channels.get(first + 1).size)) {
                         squeezeList.add(new SqueezeParam(true, false, first + 1, 2));
                         squeezeList.add(new SqueezeParam(false, false, first + 1, 2));
                     }
-                    if (h >= w && h > 8) {
+                    if (size.height >= size.width && size.height > 8) {
                         squeezeList.add(new SqueezeParam(false, true, first, count));
-                        h = (h + 1) / 2;
+                        size.height = (size.height + 1) / 2;
                     }
-                    while (w > 8 || h > 8) {
-                        if (w > 8) {
+                    while (size.width > 8 || size.height > 8) {
+                        if (size.width > 8) {
                             squeezeList.add(new SqueezeParam(true, true, first, count));
-                            w = (w + 1) / 2;
+                            size.width = (size.width + 1) / 2;
                         }
-                        if (h > 8) {
+                        if (size.height > 8) {
                             squeezeList.add(new SqueezeParam(false, true, first, count));
-                            h = (h + 1) / 2;
+                            size.height = (size.height + 1) / 2;
                         }
                     }
                 } else {
@@ -144,21 +144,21 @@ public class ModularStream {
                         nbMetaChannels += spa[j].numC;
                     }
                     for (int k = begin; k <= end; k++) {
-                        ModularChannelInfo residu;
-                        ModularChannelInfo chan = channels.get(k);
+                        ModularChannel residu;
+                        ModularChannel chan = channels.get(k);
                         int r = offset + k - begin;
                         if (spa[j].horizontal) {
-                            int w = chan.width;
-                            chan.width = (w + 1) / 2;
+                            int w = chan.size.width;
+                            chan.size.width = (w + 1) / 2;
                             chan.hshift++;
-                            residu = new ModularChannelInfo(chan);
-                            residu.width = w / 2;
+                            residu = new ModularChannel(chan);
+                            residu.size.width = w / 2;
                         } else {
-                            int h = chan.height;
-                            chan.height = (h + 1) / 2;
+                            int h = chan.size.height;
+                            chan.size.height = (h + 1) / 2;
                             chan.vshift++;
-                            residu = new ModularChannelInfo(chan);
-                            residu.height = h / 2;
+                            residu = new ModularChannel(chan);
+                            residu.size.height = h / 2;
                         }
                         channels.add(r, residu);
                     }
@@ -177,7 +177,7 @@ public class ModularStream {
         }
         stream = new EntropyStream(tree.getStream());
 
-        distMultiplier = channels.stream().mapToInt(c -> c.width).reduce(0, Math::max);
+        distMultiplier = channels.stream().mapToInt(c -> c.size.width).reduce(0, Math::max);
     }
 
     public void decodeChannels(Bitreader reader) throws IOException {
@@ -185,14 +185,10 @@ public class ModularStream {
     }
 
     public void decodeChannels(Bitreader reader, boolean partial) throws IOException {
-        for (int i = 0; i < channels.size(); i++) {
-            ModularChannelInfo info = channels.get(i);
-            channels.set(i, new ModularChannel(info));
-        }
         int groupDim = frame.getFrameHeader().groupDim;
         for (int i = 0; i < channels.size(); i++) {
             ModularChannel channel = getChannel(i);
-            if (partial && i >= nbMetaChannels && (channel.width > groupDim || channel.height > groupDim))
+            if (partial && i >= nbMetaChannels && (channel.size.width > groupDim || channel.size.height > groupDim))
                 break;
             channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier);
         }
@@ -207,14 +203,6 @@ public class ModularStream {
     }
 
     public ModularChannel getChannel(int index) {
-        ModularChannelInfo channel = channels.get(index);
-        if (channel instanceof ModularChannel)
-            return (ModularChannel)channel;
-        else
-            throw new IllegalStateException("Channel has not been decoded or allocated yet");
-    }
-
-    public ModularChannelInfo getChannelInfo(int index) {
         return channels.get(index);
     }
 
@@ -236,13 +224,13 @@ public class ModularStream {
                         ModularChannel residu = getChannel(r);
                         ModularChannel output;
                         if (sp.horizontal) {
-                            ModularChannelInfo outputInfo = new ModularChannelInfo(chan.width + residu.width,
-                                chan.height, chan.hshift - 1, chan.vshift);
-                            output = ModularChannel.inverseHorizontalSqueeze(frame.getFlowHelper(), outputInfo, chan, residu);
+                            ModularChannel outputInfo = new ModularChannel(chan.size.height,
+                                chan.size.width + residu.size.width, chan.vshift, chan.hshift - 1);
+                            output = ModularChannel.inverseHorizontalSqueeze(outputInfo, chan, residu);
                         } else {
-                            ModularChannelInfo outputInfo = new ModularChannelInfo(chan.width,
-                                chan.height + residu.height, chan.hshift, chan.vshift - 1);
-                            output = ModularChannel.inverseVerticalSqueeze(frame.getFlowHelper(), outputInfo, chan, residu);
+                            ModularChannel outputInfo = new ModularChannel(chan.size.height + residu.size.height,
+                                chan.size.width, chan.vshift - 1, chan.hshift);
+                            output = ModularChannel.inverseVerticalSqueeze(outputInfo, chan, residu);
                         }
                         channels.set(c, output);
                     }
@@ -305,8 +293,8 @@ public class ModularStream {
                     default:
                         throw new IllegalStateException("Challenge complete how did we get here");
                 }
-                for (int y = 0; y < v[0].height; y++) {
-                    for (int x = 0; x < v[0].width; x++)
+                for (int y = 0; y < v[0].size.height; y++) {
+                    for (int x = 0; x < v[0].size.width; x++)
                         rct.consume(x, y);
                 }
                 for (int j = 0; j < 3; j++)
@@ -323,8 +311,8 @@ public class ModularStream {
                 }
                 for (int c = 0; c < transforms[i].numC; c++) {
                     ModularChannel chan = getChannel(first + c);
-                    for (int y = 0; y < firstChannel.height; y++) {
-                        for (int x = 0; x < firstChannel.width; x++) {
+                    for (int y = 0; y < firstChannel.size.height; y++) {
+                        for (int x = 0; x < firstChannel.size.width; x++) {
                             int index = chan.buffer[y][x];
                             boolean isDelta = index < transforms[i].nbDeltas;
                             int value;
@@ -353,12 +341,15 @@ public class ModularStream {
                             }
                             chan.buffer[y][x] = value;
                             if (isDelta)
-                                chan.buffer[y][x] += chan.prediction(x, y, transforms[i].dPred);
+                                chan.buffer[y][x] += chan.prediction(y, x, transforms[i].dPred);
                         }
                     }
                 }
                 channels.remove(0);
-                nbMetaChannels--;
+                if (transforms[i].beginC < nbMetaChannels)
+                    nbMetaChannels -= 2 - transforms[i].numC;
+                else
+                    nbMetaChannels--;
             }
         }
     }

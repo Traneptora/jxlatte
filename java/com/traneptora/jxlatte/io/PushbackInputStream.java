@@ -6,8 +6,6 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.function.Supplier;
 
-import com.traneptora.jxlatte.util.functional.ExceptionalSupplier;
-
 public class PushbackInputStream extends InputStream {
     private byte[] buffer = null;
     private int bufferPos = 0;
@@ -15,7 +13,7 @@ public class PushbackInputStream extends InputStream {
     private Queue<byte[]> fifo = new ArrayDeque<>();
     private InputStream in = null;
 
-    public PushbackInputStream(ExceptionalSupplier<byte[]> supplier) {
+    public PushbackInputStream(Supplier<byte[]> supplier) {
         this.supplier = supplier;
     }
 

@@ -6,13 +6,13 @@ public class NoiseGroup {
 
     private XorShiro rng;
 
-    public NoiseGroup(FrameHeader header, long seed0, float[][][] noiseBuffer, int x0, int y0) {
-        long seed1 = ((long)x0 << 32) | (long)y0;      
-        int xSize = Math.min(header.groupDim, header.width - x0);
-        int ySize = Math.min(header.groupDim, header.height - y0);
+    public NoiseGroup(FrameHeader header, long seed0, float[][][] noiseBuffer, int y0, int x0) {
+        long seed1 = (((long)x0 & 0xFFFFFFFFL) << 32) | ((long)y0 & 0xFFFFFFFFL);
+        int ySize = Math.min(header.groupDim, header.bounds.size.height - y0);
+        int xSize = Math.min(header.groupDim, header.bounds.size.width - x0);
         rng = new XorShiro(seed0, seed1);
         int[] bits = new int[16];
-        for (int c = 0; c < 3; c++) {
+        for (int c = 0; c < noiseBuffer.length; c++) {
             for (int y = 0; y < ySize; y++) {
                 for (int x = 0; x < xSize; x += 16) {
                     rng.fill(bits);
@@ -21,7 +21,6 @@ public class NoiseGroup {
                         noiseBuffer[c][y0 + y][x0 + x + i] = Float.intBitsToFloat(f);
                     }
                 }
-                // LIBJXL: libjxl bug generates an extra unused batch here if xSize % 16 == 0
             }
         }
     }

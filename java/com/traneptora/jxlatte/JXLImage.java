@@ -8,13 +8,10 @@ import com.traneptora.jxlatte.color.CIEXY;
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.ColorManagement;
-import com.traneptora.jxlatte.util.FlowHelper;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.functional.FloatUnaryOperator;
 
 public class JXLImage {
-    private FlowHelper flowHelper;
-
     private ImageHeader imageHeader;
     private int colorEncoding;
     private int alphaIndex;
@@ -35,10 +32,9 @@ public class JXLImage {
 
     private float[][] buffer;
 
-    protected JXLImage(float[][][] buffer, ImageHeader header, FlowHelper flowHelper) throws IOException {
+    protected JXLImage(float[][][] buffer, ImageHeader header) throws IOException {
         this.width = buffer[0][0].length;
         this.height = buffer[0].length;
-        this.flowHelper = flowHelper;
         int channels = header.getTotalChannelCount();
         this.buffer = new float[channels][width * height];
         for (int c = 0; c < channels; c++) {
@@ -65,7 +61,6 @@ public class JXLImage {
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
-        this.flowHelper = image.flowHelper;
         this.imageHeader = image.imageHeader;
         this.colorEncoding = image.colorEncoding;
         this.alphaIndex = image.alphaIndex;

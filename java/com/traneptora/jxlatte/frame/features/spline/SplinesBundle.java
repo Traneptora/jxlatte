@@ -6,16 +6,16 @@ import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
-import com.traneptora.jxlatte.util.IntPoint;
 import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.Point;
 
 public class SplinesBundle {
 
     public final int numSplines;
     public final int quantAdjust;
-    public final IntPoint[] splinePos;
+    public final Point[] splinePos;
     public final int[] controlCount;
-    public final IntPoint[][] controlPoints;
+    public final Point[][] controlPoints;
     public final int[][] coeffX;
     public final int[][] coeffY;
     public final int[][] coeffB;
@@ -24,7 +24,7 @@ public class SplinesBundle {
     public SplinesBundle(Loggers loggers, Bitreader reader) throws IOException {
         EntropyStream stream = new EntropyStream(loggers, reader, 6);
         numSplines = 1 + stream.readSymbol(reader, 2);
-        splinePos = new IntPoint[numSplines];
+        splinePos = new Point[numSplines];
         for (int i = 0; i < numSplines; i++) {
             int x = stream.readSymbol(reader, 1);
             int y = stream.readSymbol(reader, 1);
@@ -32,31 +32,34 @@ public class SplinesBundle {
                 x = MathHelper.unpackSigned(x) + splinePos[i - 1].x;
                 y = MathHelper.unpackSigned(y) + splinePos[i - 1].y;
             }
-            splinePos[i] = new IntPoint(x, y);
+            splinePos[i] = new Point(y, x);
         }
         quantAdjust = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
         controlCount = new int[numSplines];
-        controlPoints = new IntPoint[numSplines][];
+        controlPoints = new Point[numSplines][];
         coeffX = new int[numSplines][32];
         coeffY = new int[numSplines][32];
         coeffB = new int[numSplines][32];
         coeffSigma = new int[numSplines][32];
         for (int i = 0; i < numSplines; i++) {
             controlCount[i] = 1 + stream.readSymbol(reader, 3);
-            controlPoints[i] = new IntPoint[controlCount[i]];
-            controlPoints[i][0] = new IntPoint(splinePos[i]);
-            IntPoint[] delta = new IntPoint[controlCount[i] - 1];
-            for (int j = 0; j < delta.length; j++) {
-                int x = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
-                int y = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
-                delta[j] = new IntPoint(x, y);
+            controlPoints[i] = new Point[controlCount[i]];
+            controlPoints[i][0] = new Point(splinePos[i]);
+            int[] deltaY = new int[controlCount[i] - 1];
+            int[] deltaX = new int[deltaY.length];
+            for (int j = 0; j < deltaY.length; j++) {
+                deltaX[j] = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
+                deltaY[j] = MathHelper.unpackSigned(stream.readSymbol(reader, 4));
             }
-            IntPoint current = new IntPoint(controlPoints[i][0]);
-            IntPoint deltaPoint = new IntPoint();
+            int cY = controlPoints[i][0].y;
+            int cX = controlPoints[i][0].x;
+            int dY = 0, dX = 0;
             for (int j = 1; j < controlCount[i]; j++) {
-                deltaPoint = deltaPoint.plus(delta[j - 1]);
-                current = current.plus(deltaPoint);
-                controlPoints[i][j] = new IntPoint(current);
+                dY += deltaY[j - 1];
+                dX += deltaX[j - 1];
+                cY += dY;
+                cX += dX;
+                controlPoints[i][j] = new Point(cY, cX);
             }
             for (int j = 0; j < 32; j++)
                 coeffX[i][j] = MathHelper.unpackSigned(stream.readSymbol(reader, 5));

@@ -10,6 +10,8 @@ public final class MathHelper {
     public static final float PHI_BAR = (float)((StrictMath.sqrt(5D) * 0.5D) - 0.5D);
     public static final float PHI = (float)((StrictMath.sqrt(5D) * 0.5D) + 0.5D);
 
+    private static final Point ZERO = new Point();
+
     // s, n, k
     private static float[][][] cosineLut = new float[9][][];
 
@@ -62,83 +64,79 @@ public final class MathHelper {
         return absErf;
     }
 
-    public static void inverseDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut,
-            final int xLogLength, final int xLength) {
-        final float[] d = dest[yOut];
-        final float[] s = src[yIn];
-        Arrays.fill(d, xStartOut, xStartOut + xLength, s[xStartIn]);
+    public static void inverseDCTHorizontal(float[] src, float[] dest,
+            int xStartIn, int xStartOut, int xLogLength, int xLength) {
+        Arrays.fill(dest, xStartOut, xStartOut + xLength, src[xStartIn]);
         for (int n = 1; n < xLength; n++) {
             final float[] lut = cosineLut[xLogLength][n - 1];
-            final float s2 = s[xStartIn + n];
+            final float s2 = src[xStartIn + n];
             for (int k = 0; k < xLength; k++)
-                d[xStartOut + k] += s2 * lut[k];
+                dest[xStartOut + k] += s2 * lut[k];
         }
     }
 
-    public static void forwardDCTHorizontal(final float[][] src, final int yIn, final int xStartIn,
-            final float[][] dest, final int yOut, final int xStartOut,
-            final int xLogLength, final int xLength) {
+    public static void forwardDCTHorizontal(float[] src, float[] dest,
+            int xStartIn, int xStartOut, int xLogLength, int xLength) {
         final float invLength = 1f / xLength;
-        final float[] d = dest[yOut];
-        final float[] s = src[yIn];
-        float d2 = 0f;
-        for (int x = 0; x < xLength; ++x)
-            d2 += s[xStartIn + x];
-        d[xStartOut] = d2 * invLength;
+        float d2 = src[xStartIn];
+        for (int x = 1; x < xLength; ++x)
+            d2 += src[xStartIn + x];
+        dest[xStartOut] = d2 * invLength;
         for (int k = 1; k < xLength; ++k) {
-            d2 = 0f;
             final float[] lut = cosineLut[xLogLength][k - 1];
-            for (int n = 0; n < xLength; ++n)
-                d2 += s[xStartIn + n] * lut[n];
-            d[xStartOut + k] = d2 * invLength;
+            d2 = src[xStartIn] * lut[0];
+            for (int n = 1; n < xLength; ++n)
+                d2 += src[xStartIn + n] * lut[n];
+            dest[xStartOut + k] = d2 * invLength;
         }
     }
 
-    public static void inverseDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn,
-            final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1,
-            final float[][] scratchSpace2, boolean transposed) {
-        final int xLogLength = ceilLog2(length.x);
-        final int yLogLength = ceilLog2(length.y);
-        for (int y = 0; y < length.y; y++)
-            inverseDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
+    public static void inverseDCT2D(float[][] src, float[][] dest, Point startIn, Point startOut, Dimension length,
+            float[][] scratchSpace0, float[][] scratchSpace1, boolean transposed) {
+        final int yLogLength = ceilLog2(length.height);
+        final int xLogLength = ceilLog2(length.width);
+        for (int y = 0; y < length.height; y++)
+            inverseDCTHorizontal(src[y + startIn.y], scratchSpace0[y],
+                startIn.x, 0, xLogLength, length.width);
+        transposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, length.height, length.width);
         if (transposed) {
-            for (int y = 0; y < length.x; y++)
-                inverseDCTHorizontal(scratchSpace2, y, 0, dest,
-                    startOut.y + y, startOut.x, yLogLength, length.y);
+            for (int x = 0; x < length.width; x++)
+                inverseDCTHorizontal(scratchSpace1[x], dest[startOut.y + x],
+                    0, startOut.x, yLogLength, length.height);
         } else {
-            for (int x = 0; x < length.x; x++)
-                inverseDCTHorizontal(scratchSpace2, x, 0, scratchSpace1,
-                    x, 0, yLogLength, length.y);
-            transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());  
+            for (int x = 0; x < length.width; x++)
+                inverseDCTHorizontal(scratchSpace1[x], scratchSpace0[x],
+                    0, 0, yLogLength, length.height);
+            transposeMatrixInto(scratchSpace0, dest, ZERO, startOut, length.width, length.height);
         }
     }
 
-    public static void forwardDCT2D(final float[][] src, final float[][] dest, final IntPoint startIn,
-            final IntPoint startOut, final IntPoint length, final float[][] scratchSpace1,
-            final float[][] scratchSpace2) {
-        final int xLogLength = ceilLog2(length.x);
-        final int yLogLength = ceilLog2(length.y);
-        for (int y = 0; y < length.y; y++)
-            forwardDCTHorizontal(src, y + startIn.y, startIn.x, scratchSpace1, y, 0, xLogLength, length.x);
-        transposeMatrixInto(scratchSpace1, scratchSpace2, IntPoint.ZERO, IntPoint.ZERO, length);
-        for (int x = 0; x < length.x; x++)
-            forwardDCTHorizontal(scratchSpace2, x, 0, scratchSpace1, x, 0, yLogLength, length.y);
-        transposeMatrixInto(scratchSpace1, dest, IntPoint.ZERO, startOut, length.transpose());
+    public static void forwardDCT2D(float[][] src, float[][] dest, Point startIn, Point startOut,
+            Dimension length, float[][] scratchSpace0, float[][] scratchSpace1) {
+        final int yLogLength = ceilLog2(length.height);
+        final int xLogLength = ceilLog2(length.width);
+        for (int y = 0; y < length.height; y++)
+            forwardDCTHorizontal(src[y + startIn.y], scratchSpace0[y],
+                startIn.x, 0, xLogLength, length.width);
+        transposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, length.height, length.width);
+        for (int x = 0; x < length.width; x++)
+            forwardDCTHorizontal(scratchSpace1[x], scratchSpace0[x],
+                0, 0, yLogLength, length.height);
+        transposeMatrixInto(scratchSpace0, dest, ZERO, startOut, length.width, length.height);
     }
 
-    public static void transposeMatrixInto(final float[][] src, final float[][] dest, IntPoint srcStart, IntPoint destStart, IntPoint srcSize) {
-        for (int y = 0; y < srcSize.y; y++) {
+    public static void transposeMatrixInto(float[][] src, float[][] dest,
+            Point srcStart, Point destStart, int srcHeight, int srcWidth) {
+        for (int y = 0; y < srcHeight; y++) {
             final float[] srcy = src[srcStart.y + y];
-            for (int x = 0; x < srcSize.x; x++)
+            for (int x = 0; x < srcWidth; x++)
                 dest[destStart.y + x][destStart.x + y] = srcy[srcStart.x + x];
         }
     }
 
-    public static float[][] transposeMatrix(float[][] matrix, IntPoint inSize) {
-        final float[][] dest = new float[inSize.x][inSize.y];
-        transposeMatrixInto(matrix, dest, IntPoint.ZERO, IntPoint.ZERO, inSize);
+    public static float[][] transposeMatrix(float[][] matrix, int height, int width) {
+        final float[][] dest = new float[width][height];
+        transposeMatrixInto(matrix, dest, ZERO, ZERO, height, width);
         return dest;
     }
 

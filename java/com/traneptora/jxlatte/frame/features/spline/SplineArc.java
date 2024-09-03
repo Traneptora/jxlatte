@@ -1,12 +1,13 @@
 package com.traneptora.jxlatte.frame.features.spline;
 
 public class SplineArc {
-    public final FloatPoint location;
+    public final float locationY;
+    public final float locationX;
     public final float arcLength;
 
-    public SplineArc(FloatPoint location, float arcLength) {
-        this.location = location;
+    public SplineArc(float locationY, float locationX, float arcLength) {
+        this.locationY = locationY;
+        this.locationX = locationX;
         this.arcLength = arcLength;
     }
-
 }
