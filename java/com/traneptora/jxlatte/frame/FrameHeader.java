@@ -138,6 +138,7 @@ public class FrameHeader {
         lfLevel = type == FrameFlags.LF_FRAME ? 1 + reader.readBits(2) : 0;
         haveCrop = (!allDefault && type != FrameFlags.LF_FRAME) ? reader.readBool() : false;
         bounds = new Rectangle();
+        Dimension imageSize = parent.getSize();
         if (haveCrop && type != FrameFlags.REFERENCE_ONLY) {
             int x0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
             int y0 = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
@@ -148,13 +149,13 @@ public class FrameHeader {
             bounds.size.width = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
             bounds.size.height = reader.readU32(0, 8, 256, 11, 2304, 14, 18688, 30);
         } else {
-            bounds.size = new Dimension(parent.getSize());
+            bounds.size = new Dimension(imageSize);
         }
         boolean normalFrame = !allDefault && (type == FrameFlags.REGULAR_FRAME || type == FrameFlags.SKIP_PROGRESSIVE);
         Point lowerCorner = bounds.computeLowerCorner();
         boolean fullFrame = bounds.origin.y <= 0 && bounds.origin.x <= 0
-            && lowerCorner.y >= parent.getSize().height
-            && lowerCorner.x >= parent.getSize().width;
+            && lowerCorner.y >= imageSize.height
+            && lowerCorner.x >= imageSize.width;
         // intentionally computed after fullFrame
         bounds.size.height = MathHelper.ceilDiv(bounds.size.height, upsampling);
         bounds.size.width = MathHelper.ceilDiv(bounds.size.width, upsampling);

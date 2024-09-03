@@ -230,14 +230,13 @@ public class JXLCodestreamDecoder {
 
     public void blendFrame(float[][][] canvas, float[][][][] reference, Frame frame)
             throws InvalidBitstreamException {
-        int height = imageHeader.getSize().height;
-        int width = imageHeader.getSize().width;
+        Dimension imageSize = imageHeader.getSize();
         FrameHeader header = frame.getFrameHeader();
         int frameStartY = header.bounds.origin.y < 0 ? 0 : header.bounds.origin.y;
         int frameStartX = header.bounds.origin.x < 0 ? 0 : header.bounds.origin.x;
         Point lowerCorner = header.bounds.computeLowerCorner();
-        int frameHeight = Math.min(lowerCorner.y, height);
-        int frameWidth = Math.min(lowerCorner.x, width);
+        int frameHeight = Math.min(lowerCorner.y, imageSize.height) - frameStartY;
+        int frameWidth = Math.min(lowerCorner.x, imageSize.width) - frameStartX;
         int frameColors = frame.getColorChannelCount();
         int imageColors = imageHeader.getColorChannelCount();
         boolean hasAlpha = imageHeader.hasAlpha();
@@ -246,9 +245,9 @@ public class JXLCodestreamDecoder {
             float[][] frameBuffer = frame.getBuffer()[frameC];
             BlendingInfo info;
             if (frameC < frameColors)
-                info = frame.getFrameHeader().blendingInfo;
+                info = header.blendingInfo;
             else
-                info = frame.getFrameHeader().ecBlendingInfo[frameC - frameColors];
+                info = header.ecBlendingInfo[frameC - frameColors];
             boolean isAlpha = c >= imageColors &&
                 imageHeader.getExtraChannelInfo(c - imageColors).type == ExtraChannelType.ALPHA;
             boolean premult = hasAlpha && imageHeader.getExtraChannelInfo(info.alphaChannel).alphaAssociated;
@@ -386,7 +385,7 @@ public class JXLCodestreamDecoder {
         float[][][] canvas = null;
         if (!options.parseOnly)
             canvas = new float[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()]
-                [imageHeader.getSize().height][imageHeader.getSize().width];
+                [size.height][size.width];
 
         long invisibleFrames = 0;
         long visibleFrames = 0;
