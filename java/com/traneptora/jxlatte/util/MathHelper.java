@@ -67,8 +67,9 @@ public final class MathHelper {
     public static void inverseDCTHorizontal(float[] src, float[] dest,
             int xStartIn, int xStartOut, int xLogLength, int xLength) {
         Arrays.fill(dest, xStartOut, xStartOut + xLength, src[xStartIn]);
+        float[][] lutX = cosineLut[xLogLength];
         for (int n = 1; n < xLength; n++) {
-            final float[] lut = cosineLut[xLogLength][n - 1];
+            final float[] lut = lutX[n - 1];
             final float s2 = src[xStartIn + n];
             for (int k = 0; k < xLength; k++)
                 dest[xStartOut + k] += s2 * lut[k];
