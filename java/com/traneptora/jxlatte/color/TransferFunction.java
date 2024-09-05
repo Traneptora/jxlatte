@@ -36,11 +36,27 @@ public interface TransferFunction {
         }
 
         @Override
+        public float fromLinearF(float f) {
+            if (f < 0.00313066844250063f)
+                return f * 12.92f;
+            else
+                return 1.055f * (float)Math.pow(f, 0.4166666666666667D) + -0.055f;
+        }
+
+        @Override
         public double toLinear(double f) {
             if (f < 0.0404482362771082D)
                 return f * 0.07739938080495357D;
             else
                 return Math.pow((f + 0.055D) * 0.9478672985781991D, 2.4D);
+        }
+
+        @Override
+        public float toLinearF(float f) {
+            if (f < 0.0404482362771082f)
+                return f * 0.07739938080495357f;
+            else
+                return (float)Math.pow(f * 0.9478672985781991f + 0.052132701f, 2.4D);
         }
     };
 
