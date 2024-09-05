@@ -36,6 +36,7 @@ public class PNGWriter {
     private byte[] iccProfile = null;
     private boolean hdr;
     private int tf;
+    private int maxValue;
 
     public PNGWriter(JXLImage image) {
         this(image, -1, false, JXLOptions.PEAK_DETECT_AUTO);
@@ -62,6 +63,7 @@ public class PNGWriter {
         this.iccProfile = image.getICCProfile();
         image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);
         this.bitDepth = bitDepth;
+        this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.alphaIndex = image.getAlphaIndex();
@@ -74,45 +76,37 @@ public class PNGWriter {
             this.colorChannels = 3;
         }
         boolean coerce = image.isAlphaPremultiplied();
-        ImageBuffer[] b = image.getBuffer(false);
+        this.buffer = image.getBuffer(true);
         if (!coerce) {
-            for (int c = 0; c < b.length; c++) {
-                if (b[c].isInt() && image.getTaggedBitDepth(c) != bitDepth) {
+            for (int c = 0; c < buffer.length; c++) {
+                if (buffer[c].isInt() && image.getTaggedBitDepth(c) != bitDepth) {
                     coerce = true;
                     break;
                 }
             }
         }
         if (coerce) {
-            b = image.getBuffer(true);
-            for (int c = 0; c < b.length; c++) {
-                b[c].castToFloatIfInt(~(~0 << image.getTaggedBitDepth(c)));
+            for (int c = 0; c < buffer.length; c++) {
+                buffer[c].castToFloatIfInt(~(~0 << image.getTaggedBitDepth(c)));
             }
         }
         if (image.isAlphaPremultiplied()) {
-            float[][] a = b[alphaIndex].getFloatBuffer();
+            float[][] a = buffer[alphaIndex].getFloatBuffer();
             for (int c = 0; c < colorChannels; c++) {
-                float[][] buff = b[c].getFloatBuffer();
-                for (int y = 0; y < b[c].height; y++) {
-                    for (int x = 0; x < b[c].width; x++) {
+                float[][] buff = buffer[c].getFloatBuffer();
+                for (int y = 0; y < buffer[c].height; y++) {
+                    for (int x = 0; x < buffer[c].width; x++) {
                         buff[y][x] /= a[y][x];
                     }
                 }
             }
         }
-        ImageBuffer[] bOrig = image.getBuffer(false);
-        this.buffer = new ImageBuffer[b.length];
-        for (int c = 0; c < b.length; c++) {
-            if (b[c].isInt() && image.getTaggedBitDepth(c) == bitDepth) {
-                buffer[c] = b[c];
-                continue;
-            }
-            if (b[c] == bOrig[c]) {
-                buffer[c] = new ImageBuffer(b[c]);
+        for (int c = 0; c < buffer.length; c++) {
+            if (buffer[c].isInt() && image.getTaggedBitDepth(c) == bitDepth) {
+                buffer[c].clamp(maxValue);
             } else {
-                buffer[c] = b[c];
-            }
-            buffer[c].castToIntIfFloat(~(~0 << bitDepth));
+                buffer[c].castToIntIfFloat(maxValue);
+            }            
         }
     }
 

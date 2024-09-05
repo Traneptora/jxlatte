@@ -754,9 +754,8 @@ public class JXLCodestreamDecoder {
             if (header.encoding == FrameFlags.VARDCT && options.renderVarblocks)
                 frame.drawVarblocks();
             if (canvas[0] == null) {
-                for (int c = 0; c < canvas.length; c++) {
+                for (int c = 0; c < canvas.length; c++)
                     canvas[c] = new ImageBuffer(frame.getBuffer()[0].getType(), size.height, size.width);
-                }
             }
             if (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE) {
                 boolean found = false;
