@@ -20,10 +20,9 @@ public class PFMWriter {
     public void write(OutputStream out) throws IOException {
         DataOutputStream dout = new DataOutputStream(out);
         // PFM spec requires \n here, not \r\n, so no %n
-        int width = image.getWidth();
         int height = image.getHeight();
-        String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF",
-            image.getWidth(), image.getHeight());
+        int width = image.getWidth();
+        String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF", width, height);
         dout.writeBytes(header);
         ImageBuffer[] buffer = image.getBuffer(false);
         ImageBuffer[] nb = new ImageBuffer[buffer.length];
@@ -35,7 +34,7 @@ public class PFMWriter {
                 nb[c] = buffer[c];
             }
         }
-        final int cCount = gray ? 1 : 3;
+        int cCount = gray ? 1 : 3;
         // pfm is in backwards scanline order, bottom to top
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {
