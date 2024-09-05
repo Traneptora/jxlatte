@@ -293,7 +293,7 @@ public class HFGlobal {
                 info[2] = new ModularChannel(tt.matrixHeight, tt.matrixWidth, 0, 0);
                 ModularStream stream = new ModularStream(reader, frame, 1 + 3 * frame.getNumLFGroups() + index, info);
                 stream.decodeChannels(reader);
-                m = new float[3][tt.matrixWidth * tt.matrixHeight];
+                m = new float[3][tt.matrixHeight * tt.matrixWidth];
                 int[][][] b = stream.getDecodedBuffer();
                 for (int c = 0; c < 3; c++) {
                     for (int y = 0; y < b[c].length; y++) {
@@ -305,6 +305,12 @@ public class HFGlobal {
                 loggers.log(Loggers.LOG_TRACE, "weights: %s", (Object)m);
                 params[index] = new DCTParams(null, m, encodingMode, den);
                 break;
+            case TransformType.MODE_DCT4_8:
+                m = new float[3][1];
+                for (int y = 0; y < 3; y++) {
+                    m[y][0] = reader.readF16();
+                }
+                params[index] = new DCTParams(readDCTParams(reader), m, encodingMode);
             case TransformType.MODE_AFV:
                 m = new float[3][9];
                 for (int y = 0; y < 3; y++) {
@@ -348,17 +354,17 @@ public class HFGlobal {
             for (int x = 0; x < 4; x++) {
                 if (x < 2 && y < 2)
                     continue;
-                weight[2 * y][2 * x] = interpolate(afvFreqs[y * 4 + x] - low, high - low + 1e-6f, bands);
-            }
-            for (int x = 0; x < 4; x++) {
-                if (x == 0 && y == 0)
-                    continue;
-                weight[2 * y][2 * x + 1] = weights4x4[y][x];
+                weight[2 * x][2 * y] = interpolate(afvFreqs[y * 4 + x] - low, high - low + 1e-6f, bands);
             }
             for (int x = 0; x < 8; x++) {
                 if (x == 0 && y == 0)
                     continue;
                 weight[2 * y + 1][x] = weights4x8[y][x];
+            }
+            for (int x = 0; x < 4; x++) {
+                if (x == 0 && y == 0)
+                    continue;
+                weight[2 * y][2 * x + 1] = weights4x4[y][x];
             }
         }
 
