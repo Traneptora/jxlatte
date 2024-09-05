@@ -3,7 +3,6 @@ package com.traneptora.jxlatte.entropy;
 import java.io.IOException;
 
 import com.traneptora.jxlatte.io.Bitreader;
-import com.traneptora.jxlatte.util.MutableLong;
 
 public abstract class SymbolDistribution {
     protected HybridIntegerConfig config;
@@ -11,5 +10,5 @@ public abstract class SymbolDistribution {
     protected int alphabetSize;
     protected int logAlphabetSize;
 
-    public abstract int readSymbol(Bitreader reader, MutableLong state) throws IOException;
+    public abstract int readSymbol(Bitreader reader, EntropyState state) throws IOException;
 }

@@ -6,7 +6,6 @@ import java.util.Deque;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
-import com.traneptora.jxlatte.util.MutableLong;
 
 public class ANSSymbolDistribution extends SymbolDistribution {
 
@@ -26,7 +25,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4},
         {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4},
         {10, 3}, {0, 5},  {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4},
-        {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}
+        {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4},
     });
 
     private int[] frequencies;
@@ -136,8 +135,8 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     }
 
     @Override
-    public int readSymbol(Bitreader reader, MutableLong stateObj) throws IOException {
-        int state =  stateObj.value == -1L ? reader.readBits(32) : (int)stateObj.value;
+    public int readSymbol(Bitreader reader, EntropyState stateObj) throws IOException {
+        int state =  stateObj.hasState() ? stateObj.getState() : reader.readBits(32);
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
         int pos = index & ((1 << logBucketSize) - 1);
@@ -147,7 +146,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         state = frequencies[symbol] * (state >>> 12) + offset;
         if ((state & 0xFFFF0000) == 0)
             state = (state << 16) | reader.readBits(16);
-        stateObj.value = 0xFFFFFFFFL & (long)state;
+        stateObj.setState(state);
 
         return symbol;
     }

@@ -6,7 +6,6 @@ import java.util.Arrays;
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.util.MathHelper;
-import com.traneptora.jxlatte.util.MutableLong;
 
 public class PrefixSymbolDistribution extends SymbolDistribution {
 
@@ -195,7 +194,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
     }
 
     @Override
-    public int readSymbol(Bitreader reader, MutableLong state) throws IOException {
+    public int readSymbol(Bitreader reader, EntropyState state) throws IOException {
         if (table == null)
             return defaultSymbol;
         return table.getVLC(reader);

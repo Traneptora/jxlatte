@@ -5,7 +5,6 @@ import java.io.IOException;
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
-import com.traneptora.jxlatte.util.MutableLong;
 
 public class EntropyStream {
 
@@ -21,7 +20,8 @@ public class EntropyStream {
         {-4, 6}, {6, 4}, {-6, 4}, {2, 7}, {-2, 7}, {7, 2}, {-7, 2}, {3, 7}, {-3, 7}, {7, 3},
         {-7, 3}, {5, 6}, {-5, 6}, {6, 5}, {-6, 5}, {8, 0}, {4, 7}, {-4, 7}, {7, 4}, {-7, 4},
         {8, 1}, {8, 2}, {6, 6}, {-6, 6}, {8, 3}, {5, 7}, {-5, 7}, {7, 5}, {-7, 5}, {8, 4}, {6, 7},
-        {-6, 7}, {7, 6}, {-7, 6}, {8, 5}, {7, 7}, {-7, 7}, {8, 6}, {8, 7}};
+        {-6, 7}, {7, 6}, {-7, 6}, {8, 5}, {7, 7}, {-7, 7}, {8, 6}, {8, 7},
+    };
 
     private boolean usesLZ77;
     private int lz77MinSymbol;
@@ -34,7 +34,7 @@ public class EntropyStream {
     private int copyPos77;
     private int numDecoded77;
     private int[] window;
-    private final MutableLong ansState = new MutableLong(-1L);
+    private EntropyState ansState = new EntropyState();
     private Loggers loggers;
 
     /**  
@@ -155,11 +155,11 @@ public class EntropyStream {
 
     public void reset() {
         this.numToCopy77 = 0;
-        ansState.value = -1L;
+        ansState.reset();
     }
 
     public boolean validateFinalState() {
-        return ansState.value == -1L || ansState.value == 0x130000L;
+        return !ansState.hasState() || ansState.getState() == 0x130000;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
@@ -199,7 +199,7 @@ public class EntropyStream {
             if (distance > numDecoded77)
                 distance = numDecoded77;
             copyPos77 = numDecoded77 - distance;
-            return readSymbol(reader, context, distanceMultiplier);
+            return readSymbol(reader, context);
         }
 
         int hybridInt = readHybridInteger(reader, dist.config, token);

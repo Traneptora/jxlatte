@@ -28,6 +28,7 @@ src = files(
 
     # com.traneptora.jxlatte.entropy
     'com/traneptora/jxlatte/entropy/ANSSymbolDistribution.java',
+    'com/traneptora/jxlatte/entropy/EntropyState.java',
     'com/traneptora/jxlatte/entropy/EntropyStream.java',
     'com/traneptora/jxlatte/entropy/HybridIntegerConfig.java',
     'com/traneptora/jxlatte/entropy/PrefixSymbolDistribution.java',
@@ -95,7 +96,6 @@ src = files(
     'com/traneptora/jxlatte/util/Dimension.java',
     'com/traneptora/jxlatte/util/ImageBuffer.java',
     'com/traneptora/jxlatte/util/MathHelper.java',
-    'com/traneptora/jxlatte/util/MutableLong.java',
     'com/traneptora/jxlatte/util/Point.java',
     'com/traneptora/jxlatte/util/Rectangle.java',
 
