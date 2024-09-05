@@ -29,7 +29,8 @@ public class ModularStream {
         {96, 0, 0}, {128, 128, 128}, {64, 0, 64}, {144, 144, 144}, {96, 96, 0}, {-36, -36, 36},
         {45, -24, -45}, {45, -45, -24}, {0, 0, -96}, {0, 128, 128}, {0, 96, 0}, {45, 24, -45},
         {-128, 0, 0}, {24, -45, 24}, {-45, 24, -45}, {64, 0, -64}, {64, -64, -64}, {96, 0, 96},
-        {45, -45, 24}, {24, 45, -45}, {64, 64, -64}, {128, 128, 0}, {0, 0, -128}, {-24, 45, -45} };
+        {45, -45, 24}, {24, 45, -45}, {64, 64, -64}, {128, 128, 0}, {0, 0, -128}, {-24, 45, -45},
+    };
     
     private static final int[][] permutationLut = new int[][]{
         {0, 1, 2}, {1, 2, 0}, {2, 0, 1},
@@ -188,7 +189,7 @@ public class ModularStream {
         int groupDim = frame.getFrameHeader().groupDim;
         for (int i = 0; i < channels.size(); i++) {
             ModularChannel channel = getChannel(i);
-            if (partial && i >= nbMetaChannels && (channel.size.width > groupDim || channel.size.height > groupDim))
+            if (partial && i >= nbMetaChannels && (channel.size.height > groupDim || channel.size.width > groupDim))
                 break;
             channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier);
         }
