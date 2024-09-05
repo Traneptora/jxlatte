@@ -1,7 +1,5 @@
 package com.traneptora.jxlatte.color;
 
-import java.util.function.DoubleUnaryOperator;
-
 import com.traneptora.jxlatte.util.MathHelper;
 
 public final class ColorManagement {
@@ -25,8 +23,6 @@ public final class ColorManagement {
     public static final CIEXY WP_D50 = ColorFlags.getWhitePoint(ColorFlags.WP_D50);
     public static final CIEXY WP_DCI = ColorFlags.getWhitePoint(ColorFlags.WP_DCI);
     public static final CIEXY WP_E = ColorFlags.getWhitePoint(ColorFlags.WP_E);
-
-    public static final DoubleUnaryOperator TRC_LINEAR = DoubleUnaryOperator.identity();
 
     private static float[] getXYZ(CIEXY xy) {
         validateXY(xy);
@@ -73,7 +69,7 @@ public final class ColorManagement {
         float[][] primariesTr = new float[][]{
             getXYZ(primaries.red),
             getXYZ(primaries.green),
-            getXYZ(primaries.blue)
+            getXYZ(primaries.blue),
         };
         float[][] primariesMatrix = MathHelper.transposeMatrix(primariesTr, 3, 3);
         float[][] inversePrimaries = MathHelper.invertMatrix3x3(primariesMatrix);
@@ -82,7 +78,7 @@ public final class ColorManagement {
         float[][] a = new float[][]{
             {xyz[0], 0, 0},
             {0, xyz[1], 0},
-            {0, 0, xyz[2]}
+            {0, 0, xyz[2]},
         };
         return MathHelper.matrixMutliply(primariesMatrix, a);
     }
@@ -127,4 +123,3 @@ public final class ColorManagement {
         throw new IllegalArgumentException("Invalid transfer function");
     }
 }
-

@@ -78,7 +78,7 @@ public class OpsinInverseMatrix {
 
     private void bakeCbrtBias() {
         for (int c = 0; c < 3; c++)
-            cbrtOpsinBias[c] = MathHelper.signedPow(opsinBias[c], 1f/3f);
+            cbrtOpsinBias[c] = (float)Math.cbrt(opsinBias[c]);
     }
 
     @Override
