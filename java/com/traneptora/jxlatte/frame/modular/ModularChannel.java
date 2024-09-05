@@ -99,7 +99,7 @@ public class ModularChannel {
     }
 
     private int northWest(int x, int y) {
-        return x > 0 && y > 0 ? buffer[y - 1][x - 1] : west(x, y);
+        return x > 0 ? (y > 0 ? buffer[y - 1][x - 1] : buffer[y][x - 1]) : (y > 0 ? buffer[y - 1][x] : 0);
     }
 
     private int northEast(int x, int y) {
