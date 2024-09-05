@@ -311,6 +311,7 @@ public class HFGlobal {
                     m[y][0] = reader.readF16();
                 }
                 params[index] = new DCTParams(readDCTParams(reader), m, encodingMode);
+                break;
             case TransformType.MODE_AFV:
                 m = new float[3][9];
                 for (int y = 0; y < 3; y++) {
