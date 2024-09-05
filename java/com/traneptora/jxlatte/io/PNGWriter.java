@@ -18,15 +18,14 @@ import com.traneptora.jxlatte.color.CIEPrimaries;
 import com.traneptora.jxlatte.color.CIEXY;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.ColorManagement;
-import com.traneptora.jxlatte.util.MathHelper;
+import com.traneptora.jxlatte.util.ImageBuffer;
 
 public class PNGWriter {
     private int bitDepth;
-    private float[][] buffer;
+    private ImageBuffer[] buffer;
     private DataOutputStream out;
-    private int maxValue;
-    private int width;
     private int height;
+    private int width;
     private int colorMode;
     private int colorChannels;
     private int alphaIndex;
@@ -63,7 +62,6 @@ public class PNGWriter {
         this.iccProfile = image.getICCProfile();
         image = iccProfile != null ? image : image.transform(primaries, whitePoint, tf, peakDetect);
         this.bitDepth = bitDepth;
-        this.maxValue = ~(~0 << bitDepth);
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.alphaIndex = image.getAlphaIndex();
@@ -75,14 +73,46 @@ public class PNGWriter {
             this.colorMode = alphaIndex >= 0 ? 6 : 2;
             this.colorChannels = 3;
         }
-        if (image.isAlphaPremultiplied()) {
-            this.buffer = image.getBuffer(true);
-            for (int c = 0; c < this.colorChannels; c++) {
-                for (int p = 0; p < buffer[c].length; p++)
-                    this.buffer[c][p] /= this.buffer[image.getAlphaIndex()][p];
+        boolean coerce = image.isAlphaPremultiplied();
+        ImageBuffer[] b = image.getBuffer(false);
+        if (!coerce) {
+            for (int c = 0; c < b.length; c++) {
+                if (b[c].isInt() && image.getTaggedBitDepth(c) != bitDepth) {
+                    coerce = true;
+                    break;
+                }
             }
-        } else {
-            this.buffer = image.getBuffer(false);
+        }
+        if (coerce) {
+            b = image.getBuffer(true);
+            for (int c = 0; c < b.length; c++) {
+                b[c].castToFloatIfInt(~(~0 << image.getTaggedBitDepth(c)));
+            }
+        }
+        if (image.isAlphaPremultiplied()) {
+            float[][] a = b[alphaIndex].getFloatBuffer();
+            for (int c = 0; c < colorChannels; c++) {
+                float[][] buff = b[c].getFloatBuffer();
+                for (int y = 0; y < b[c].height; y++) {
+                    for (int x = 0; x < b[c].width; x++) {
+                        buff[y][x] /= a[y][x];
+                    }
+                }
+            }
+        }
+        ImageBuffer[] bOrig = image.getBuffer(false);
+        this.buffer = new ImageBuffer[b.length];
+        for (int c = 0; c < b.length; c++) {
+            if (b[c].isInt() && image.getTaggedBitDepth(c) == bitDepth) {
+                buffer[c] = b[c];
+                continue;
+            }
+            if (b[c] == bOrig[c]) {
+                buffer[c] = new ImageBuffer(b[c]);
+            } else {
+                buffer[c] = b[c];
+            }
+            buffer[c].castToIntIfFloat(~(~0 << bitDepth));
         }
     }
 
@@ -147,13 +177,11 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
-    private void writeSample(DataOutput dout, float sample) throws IOException {
-        int s = MathHelper.round(sample * this.maxValue);
-        s = MathHelper.clamp(s, 0, maxValue);
+    private void writeSample(DataOutput dout, int sample) throws IOException {
         if (bitDepth == 8)
-            dout.writeByte(s);
+            dout.writeByte(sample);
         else
-            dout.writeShort(s);
+            dout.writeShort(sample);
     }
 
     private void writeIDAT() throws IOException {
@@ -163,11 +191,11 @@ public class PNGWriter {
         for (int y = 0; y < height; y++) {
             dout.writeByte(0); // filter 0
             for (int x = 0; x < width; x++) {
-                final int p = y * width + x;
-                for (int c = 0; c < colorChannels; c++)
-                    writeSample(dout, buffer[c][p]);
+                for (int c = 0; c < colorChannels; c++) {
+                    writeSample(dout, buffer[c].getIntBuffer()[y][x]);
+                }
                 if (alphaIndex >= 0)
-                    writeSample(dout, buffer[colorChannels + alphaIndex][p]);
+                    writeSample(dout, buffer[colorChannels + alphaIndex].getIntBuffer()[y][x]);
             }
         }
         dout.close();

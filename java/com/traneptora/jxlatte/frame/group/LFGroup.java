@@ -10,6 +10,7 @@ import com.traneptora.jxlatte.frame.vardct.HFMetadata;
 import com.traneptora.jxlatte.frame.vardct.LFCoefficients;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.util.Dimension;
+import com.traneptora.jxlatte.util.ImageBuffer;
 
 public class LFGroup {
 
@@ -21,7 +22,7 @@ public class LFGroup {
     public final ModularStream modularLFGroup;
 
     public LFGroup(Bitreader reader, Frame parent, int index, ModularChannel[] replaced,
-            float[][][] lfBuffer) throws IOException {
+            ImageBuffer[] lfBuffer) throws IOException {
         this.lfGroupID = index;
         this.frame = parent;
         Dimension pixelSize = frame.getLFGroupSize(lfGroupID);

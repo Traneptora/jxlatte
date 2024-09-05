@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.LFGlobal;
+import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 
@@ -177,8 +178,11 @@ public class Spline {
             int yEnd = Math.min(frame.getFrameHeader().bounds.size.height - 1,
                 MathHelper.round(arc.locationY + maxDist));
             for (int c = 0; c < 3; c++) {
+                ImageBuffer buffer = frame.getBuffer()[c];
+                buffer.castToFloatIfInt(~(~0 << frame.globalMetadata.getBitDepthHeader().bitsPerSample));
+                float[][] fb = buffer.getFloatBuffer();
                 for (int y = yBegin; y <= yEnd; y++) {
-                    float[] buffer = frame.getBuffer()[c][y];
+                    float[] fby = fb[y];
                     for (int x = xBegin; x <= xEnd; x++) {
                         float dY = y - arc.locationY;
                         float dX = x - arc.locationX;
@@ -187,7 +191,7 @@ public class Spline {
                         factor -= MathHelper.erf((0.5f * distance - MathHelper.SQRT_F) * inverseSigma);
                         float extra = 0.25f * values[c] * sigma * factor * factor;
                         synchronized (buffer) {
-                            buffer[x] += extra;
+                            fby[x] += extra;
                         }
                     }
                 }

@@ -11,6 +11,7 @@ import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;
 import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.Point;
 
 public class LFCoefficients {
@@ -18,7 +19,7 @@ public class LFCoefficients {
     public final int[][] lfIndex;
     public final Frame frame;
 
-    public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame, float[][][] lfBuffer) throws IOException {
+    public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame, ImageBuffer[] lfBuffer) throws IOException {
         this.frame = frame;
         this.lfIndex = new int[parent.size.height][parent.size.width];
         FrameHeader header = frame.getFrameHeader();
@@ -46,8 +47,10 @@ public class LFCoefficients {
             int pX = pos.x << 8;
             this.dequantLFCoeff = dequantLFCoeff;
             for (int c = 0; c < 3; c++) {
+                lfBuffer[c].castToFloatIfInt(~(~0 << frame.globalMetadata.getBitDepthHeader().bitsPerSample));
+                float[][] b = lfBuffer[c].getFloatBuffer();
                 for (int y = 0; y < dequantLFCoeff[c].length; y++) {
-                    System.arraycopy(lfBuffer[c][pY + y], pX, dequantLFCoeff[c][y], 0, dequantLFCoeff[c][y].length);
+                    System.arraycopy(b[pY + y], pX, dequantLFCoeff[c][y], 0, dequantLFCoeff[c][y].length);
                 }
             }
             return;

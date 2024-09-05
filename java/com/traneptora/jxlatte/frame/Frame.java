@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.JXLOptions;
@@ -29,6 +30,7 @@ import com.traneptora.jxlatte.frame.vardct.TransformType;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
+import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 import com.traneptora.jxlatte.util.Rectangle;
@@ -65,7 +67,7 @@ public class Frame {
     private LFGlobal lfGlobal;
     public final ImageHeader globalMetadata;
     private boolean permutedTOC;
-    private float[][][] buffer;
+    private ImageBuffer[] buffer;
     private float[][][] noiseBuffer;
     private Pass[] passes;
     private boolean decoded = false;
@@ -101,15 +103,9 @@ public class Frame {
         this.lfGlobal = frame.lfGlobal;
         this.globalMetadata = frame.globalMetadata;
         this.permutedTOC = frame.permutedTOC;
-        this.buffer = new float[frame.buffer.length][][];
-        for (int c = 0; c < buffer.length; c++) {
-            buffer[c] = new float[frame.buffer[c].length][];
-            for (int y = 0; y < buffer[c].length; y++) {
-                if (copyBuffer)
-                    buffer[c][y] = Arrays.copyOf(frame.buffer[c][y], frame.buffer[c][y].length);
-                else
-                    buffer[c][y] = new float[frame.buffer[c][y].length];
-            }
+        this.buffer = new ImageBuffer[frame.buffer.length];
+        for (int c = 0; c < this.buffer.length; c++) {
+            this.buffer[c] = new ImageBuffer(frame.buffer[c], copyBuffer);
         }
         this.loggers = frame.loggers;
         this.options = frame.options;
@@ -239,7 +235,7 @@ public class Frame {
         return permutation;
     }
 
-    private float[][] performUpsampling(float[][] buffer, int c) {
+    private ImageBuffer performUpsampling(ImageBuffer ib, int c) {
         int color = getColorChannelCount();
         int k;
         if (c < color)
@@ -247,7 +243,11 @@ public class Frame {
         else
             k = header.ecUpsampling[c - color];
         if (k == 1)
-            return buffer;
+            return ib;
+        int depth = c < color ? globalMetadata.getBitDepthHeader().bitsPerSample :
+            globalMetadata.getExtraChannelInfo(c - color).bitDepth.bitsPerSample;
+        ib.castToFloatIfInt(~(~0 << depth));
+        float[][] buffer = ib.getFloatBuffer();
         int l = MathHelper.ceilLog1p(k - 1) - 1;
         float[][][][] upWeights = globalMetadata.getUpWeights()[l];
         float[][] newBuffer = new float[buffer.length * k][];
@@ -277,10 +277,10 @@ public class Frame {
                 }
             }
         }
-        return newBuffer;
+        return ib;
     }
 
-    private void decodeLFGroups(float[][][] lfBuffer) throws IOException {
+    private void decodeLFGroups(ImageBuffer[] lfBuffer) throws IOException {
 
         List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
@@ -382,17 +382,22 @@ public class Frame {
         }
 
         if (header.encoding == FrameFlags.VARDCT) {
+            float[][][] buffers = new float[3][][];
+            for (int c = 0; c < 3; c++) {
+                buffer[c].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+                buffers[c] = buffer[c].getFloatBuffer();
+            }
             for (int pass = 0; pass < numPasses; pass++) {
                 for (int group = 0; group < numGroups; group++) {
                     PassGroup passGroup = passGroups[pass][group];
                     PassGroup prev = pass > 0 ? passGroups[pass - 1][group] : null;
-                    passGroup.invertVarDCT(buffer, prev);
+                    passGroup.invertVarDCT(buffers, prev);
                 }
             }
         }
     }
 
-    public void decodeFrame(float[][][] lfBuffer) throws IOException {
+    public void decodeFrame(ImageBuffer[] lfBuffer) throws IOException {
         if (this.decoded)
             throw new IllegalStateException("Already decoded this frame");
         this.decoded = true;
@@ -401,15 +406,24 @@ public class Frame {
             .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
         Dimension paddedSize = getPaddedFrameSize();
 
-        buffer = new float[getColorChannelCount() + globalMetadata.getExtraChannelCount()][][];
+        int colors = getColorChannelCount();
+
+        buffer = new ImageBuffer[colors + globalMetadata.getExtraChannelCount()];
         for (int c = 0; c < buffer.length; c++) {
-            if (c < 3 && c < getColorChannelCount()) {
-                int shiftedHeight = paddedSize.height >> header.jpegUpsamplingY[c];
-                int shiftedWidth = paddedSize.width >> header.jpegUpsamplingX[c];
-                buffer[c] = new float[shiftedHeight][shiftedWidth];
-            } else {
-                buffer[c] = new float[paddedSize.height][paddedSize.width];
+            Dimension channelSize = new Dimension(paddedSize);
+            if (c < 3 && c < colors) {
+                channelSize.height >>= header.jpegUpsamplingY[c];
+                channelSize.width >>= header.jpegUpsamplingX[c];
             }
+            boolean isFloat;
+            if (c < colors) {
+                isFloat = globalMetadata.isXYBEncoded() || header.encoding == FrameFlags.VARDCT ||
+                    globalMetadata.getBitDepthHeader().expBits != 0;
+            } else {
+                isFloat = globalMetadata.getExtraChannelInfo(c - colors).bitDepth.expBits != 0;
+            }
+            buffer[c] = new ImageBuffer(isFloat ? ImageBuffer.TYPE_FLOAT : ImageBuffer.TYPE_INT,
+                channelSize.height, channelSize.width);
         }
 
         decodeLFGroups(lfBuffer);
@@ -430,31 +444,27 @@ public class Frame {
 
         for (int c = 0; c < modularBuffer.length; c++) {
             int cIn = c;
-            float scaleFactor;
             boolean isModularColor = header.encoding == FrameFlags.MODULAR && c < getColorChannelCount();
             boolean isModularXYB = globalMetadata.isXYBEncoded() && isModularColor;
             // X, Y, B is encoded as Y, X, (B - Y)
             int cOut = (isModularXYB ? cMap[c] : c) + buffer.length - modularBuffer.length;
-            int ecIndex = c - (header.encoding == FrameFlags.MODULAR ? globalMetadata.getColorChannelCount() : 0);
-            if (isModularXYB)
-                scaleFactor = lfGlobal.lfDequant[cOut];
-            else if (isModularColor && globalMetadata.getBitDepthHeader().expBits != 0)
-                scaleFactor = 1.0f;
-            else if (isModularColor)
-                scaleFactor = 1.0f / ~(~0L << globalMetadata.getBitDepthHeader().bitsPerSample);
-            else if (globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.expBits != 0)
-                scaleFactor = 1.0f;
-            else
-                scaleFactor = 1.0f / ~(~0L << globalMetadata.getExtraChannelInfo(ecIndex).bitDepth.bitsPerSample);
+            float scaleFactor = isModularXYB ? lfGlobal.lfDequant[cOut] : 1.0f;
             if (isModularXYB && cIn == 2) {
+                float[][] outBuffer = buffer[cOut].getFloatBuffer();
                 for (int y = 0; y < bounds.size.height; y++) {
                     for (int x = 0; x < bounds.size.width; x++)
-                        buffer[cOut][y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
+                        outBuffer[y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
+                }
+            } else if (buffer[cOut].isFloat()) {
+                float[][] outBuffer = buffer[cOut].getFloatBuffer();
+                for (int y = 0; y < bounds.size.height; y++) {
+                    for (int x = 0; x < bounds.size.width; x++)
+                        outBuffer[y][x] = scaleFactor * modularBuffer[cIn][y][x];
                 }
             } else {
+                int[][] outBuffer = buffer[cOut].getIntBuffer();
                 for (int y = 0; y < bounds.size.height; y++) {
-                    for (int x = 0; x < bounds.size.width; x++)
-                        buffer[cOut][y][x] = scaleFactor * modularBuffer[cIn][y][x];
+                    System.arraycopy(modularBuffer[cIn][y], 0, outBuffer[y], 0, bounds.size.width);
                 }
             }
         }
@@ -474,6 +484,7 @@ public class Frame {
             Point pixelPos = getLFGroupLocation(lfg.lfGroupID);
             pixelPos.y <<= 11;
             pixelPos.x <<= 11;
+            float[][][] buff = Stream.of(buffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
             for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
                 Point block = lfg.hfMetadata.blockList[i];
                 TransformType tt = lfg.hfMetadata.dctSelect[block.y][block.x];
@@ -485,19 +496,19 @@ public class Frame {
                 int cornerX = (block.x << 3) + pixelPos.x;
                 for (int y = 0; y < tt.blockHeight; y++) {
                     for (int x = 0; x < tt.blockWidth; x++) {
-                        float sampleR = buffer[0][y + cornerY][x + cornerX];
-                        float sampleG = buffer[1][y + cornerY][x + cornerX];
-                        float sampleB = buffer[2][y + cornerY][x + cornerX];
+                        float sampleR = buff[0][y + cornerY][x + cornerX];
+                        float sampleG = buff[1][y + cornerY][x + cornerX];
+                        float sampleB = buff[2][y + cornerY][x + cornerX];
                         if (x == 0 || y == 0) {
-                            buffer[1][y + cornerY][x + cornerX] = 0f;
-                            buffer[0][y + cornerY][x + cornerX] = 0f;
-                            buffer[2][y + cornerY][x + cornerX] = 0f;
+                            buff[1][y + cornerY][x + cornerX] = 0f;
+                            buff[0][y + cornerY][x + cornerX] = 0f;
+                            buff[2][y + cornerY][x + cornerX] = 0f;
                         } else {
                             float light = 0.25f * (sampleR + sampleB) + 0.5f * sampleG;
                             light = (float)Math.cbrt(light) * 0.5f + 0.25f;
-                            buffer[0][y + cornerY][x + cornerX] = rFactor * 0.5f + 0.5f * sampleR / light;
-                            buffer[1][y + cornerY][x + cornerX] = gFactor * 0.5f + 0.5f * sampleG / light;
-                            buffer[2][y + cornerY][x + cornerX] = bFactor * 0.5f + 0.5f * sampleB / light;
+                            buff[0][y + cornerY][x + cornerX] = rFactor * 0.5f + 0.5f * sampleR / light;
+                            buff[1][y + cornerY][x + cornerX] = gFactor * 0.5f + 0.5f * sampleG / light;
+                            buff[2][y + cornerY][x + cornerX] = bFactor * 0.5f + 0.5f * sampleB / light;
                         }
                     }
                 }
@@ -518,17 +529,19 @@ public class Frame {
             normGabDiag[c] = gabW2 * mult;
         }
         for (int c = 0; c < getColorChannelCount(); c++) {
-            float[][] buffC = buffer[c];
-            int height = buffC.length;
-            int width = buffC[0].length;
-            float[][] newBuffer = new float[height][width];
+            buffer[c].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+            int height = buffer[c].height;
+            int width = buffer[c].width;
+            float[][] buffC = buffer[c].getFloatBuffer();
+            ImageBuffer newBuffer = new ImageBuffer(ImageBuffer.TYPE_FLOAT, height, width);
+            float[][] newBufferF = newBuffer.getFloatBuffer();
             for (int y = 0; y < height; y++) {
                 int north = (y == 0 ? 0 : y - 1);
                 int south = (y + 1 == height) ? height - 1 : y + 1;
                 float[] buffR = buffC[y];
                 float[] buffN = buffC[north];
                 float[] buffS = buffC[south];
-                float[] newBuffR = newBuffer[y];
+                float[] newBuffR = newBufferF[y];
                 for (int x = 0; x < width; x++) {
                     int west = (x == 0 ? 0 : x - 1);
                     int east = (x + 1 == width ? width - 1 : x + 1);
@@ -548,6 +561,7 @@ public class Frame {
         int blockWidth = (paddedSize.width + 7) >> 3;
         float[][] inverseSigma = new float[blockHeight][blockWidth];
         int dimS = header.logLFGroupDim - 3;
+        int colors = getColorChannelCount();
 
         if (header.encoding == FrameFlags.MODULAR) {
             float inv = 1f / header.restorationFilter.epfSigmaForModular;
@@ -573,13 +587,19 @@ public class Frame {
             }
         }
 
-        float[][][] outputBuffer = new float[getColorChannelCount()][paddedSize.height][paddedSize.width];
+        ImageBuffer[] outputBuffer = new ImageBuffer[colors];
+        for (int c = 0; c < colors; c++) {
+            buffer[c].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+            outputBuffer[c] = new ImageBuffer(ImageBuffer.TYPE_FLOAT, paddedSize.height, paddedSize.width);
+        }
 
         for (int i = 0; i < 3; i++) {
             if (i == 0 && header.restorationFilter.epfIterations < 3)
                 continue;
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
+            float[][][] inputBuffers = Stream.of(buffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
+            float[][][] outputBuffers = Stream.of(outputBuffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
             float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
             Point[] crossList = i == 0 ? epfDoubleCross : epfCross;
@@ -591,7 +611,7 @@ public class Frame {
                     final float s = invSY[x >> 3];
                     if (s != s || s > 3.333333333f) {
                         for (int c = 0; c < outputBuffer.length; c++)
-                            outputBuffer[c][y][x] = buffer[c][y][x];
+                            outputBuffers[c][y][x] = inputBuffers[c][y][x];
                         continue;
                     }
                     for (Point cross : crossList) {
@@ -599,20 +619,20 @@ public class Frame {
                         int nX = x + cross.x;
                         int mY = MathHelper.mirrorCoordinate(nY, paddedSize.height);
                         int mX = MathHelper.mirrorCoordinate(nX, paddedSize.width);
-                        float dist = i == 2 ? epfDistance2(buffer, outputBuffer.length, y, x, nY, nX, paddedSize)
-                            : epfDistance1(buffer, outputBuffer.length, y, x, nY, nX, paddedSize);
+                        float dist = i == 2 ? epfDistance2(inputBuffers, colors, y, x, nY, nX, paddedSize)
+                            : epfDistance1(inputBuffers, colors, y, x, nY, nX, paddedSize);
                         float weight = epfWeight(sigmaScale, dist, s, y, x);
                         sumWeights += weight;
-                        for (int c = 0; c < outputBuffer.length; c++)
-                            sumChannels[c] += buffer[c][mY][mX] * weight;
+                        for (int c = 0; c < colors; c++)
+                            sumChannels[c] += inputBuffers[c][mY][mX] * weight;
                     }
                     for (int c = 0; c < outputBuffer.length; c++)
-                        outputBuffer[c][y][x] = sumChannels[c] / sumWeights;
+                        outputBuffers[c][y][x] = sumChannels[c] / sumWeights;
                 }
             }
-            for (int c = 0; c < outputBuffer.length; c++) {
-                /* swapping lets us re-use the output buffer without re-allocing */
-                float[][] tmp = buffer[c];
+            for (int c = 0; c < colors; c++) {
+                /* swapping lets us reuse the output buffer without reallocating */
+                ImageBuffer tmp = buffer[c];
                 buffer[c] = outputBuffer[c];
                 outputBuffer[c] = tmp;
             }
@@ -663,46 +683,50 @@ public class Frame {
         for (int c = 0; c < 3; c++) {
             int xShift = header.jpegUpsamplingX[c];
             while (xShift-- > 0) {
-                float[][] oldChannel = buffer[c];
-                float[][] newChannel = new float[oldChannel.length][];
+                ImageBuffer oldBuffer = buffer[c];
+                oldBuffer.castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+                float[][] oldChannel = oldBuffer.getFloatBuffer();
+                ImageBuffer newBuffer = new ImageBuffer(ImageBuffer.TYPE_FLOAT, oldBuffer.height, oldBuffer.width * 2);
+                float[][] newChannel = newBuffer.getFloatBuffer();
                 for (int y = 0; y < oldChannel.length; y++) {
                     float[] oldRow = oldChannel[y];
-                    float[] newRow = new float[oldRow.length * 2];
+                    float[] newRow = newChannel[y];
                     for (int x = 0; x < oldRow.length; x++) {
                         float b75 = 0.75f * oldRow[x];
                         newRow[2*x] = b75 + 0.25f * oldRow[x == 0 ? 0 : x - 1];
                         newRow[2*x + 1] = b75 + 0.25f * oldRow[x + 1 == oldRow.length ? oldRow.length - 1 : x + 1];
                     }
-                    newChannel[y] = newRow;
                 }
-                buffer[c] = newChannel;
+                buffer[c] = newBuffer;
             }
             int yShift =  header.jpegUpsamplingY[c];
             while (yShift-- > 0) {
-                float[][] oldChannel = buffer[c];
-                float[][] newChannel = new float[oldChannel.length * 2][];
+                ImageBuffer oldBuffer = buffer[c];
+                oldBuffer.castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+                float[][] oldChannel = oldBuffer.getFloatBuffer();
+                ImageBuffer newBuffer = new ImageBuffer(ImageBuffer.TYPE_FLOAT, oldBuffer.height * 2, oldBuffer.width);
+                float[][] newChannel = newBuffer.getFloatBuffer();
                 for (int y = 0; y < oldChannel.length; y++) {
                     float[] oldRow = oldChannel[y];
                     float[] oldRowPrev = oldChannel[y == 0 ? 0 : y - 1];
                     float[] oldRowNext = oldChannel[y + 1 == oldChannel.length ? oldChannel.length - 1 : y + 1];
-                    float[] firstNewRow = new float[oldRow.length];
-                    float[] secondNewRow = new float[oldRow.length];
+                    float[] firstNewRow = newChannel[2*y];
+                    float[] secondNewRow = newChannel[2*y + 1];
                     for (int x = 0; x < oldRow.length; x++) {
                         float b75 = 0.75f * oldRow[x];
                         firstNewRow[x] = b75 + 0.25f * oldRowPrev[x];
                         secondNewRow[x] = b75 + 0.25f * oldRowNext[x];
                     }
-                    newChannel[2*y] = firstNewRow;
-                    newChannel[2*y + 1] = secondNewRow;
                 }
-                buffer[c] = newChannel;
+                buffer[c] = newBuffer;
             }
         }
     }
 
     public void upsample() {
-        for (int c = 0; c < buffer.length; c++)
+        for (int c = 0; c < buffer.length; c++) {
             buffer[c] = performUpsampling(buffer[c], c);
+        }
         bounds.size.height *= header.upsampling;
         bounds.size.width *= header.upsampling;
         bounds.origin.y *= header.upsampling;
@@ -757,12 +781,19 @@ public class Frame {
         if (lfGlobal.noiseParameters == null)
             return;
         float[] lut = lfGlobal.noiseParameters.lut;
+        int colors = getColorChannelCount();
+        float[][][] buffers = new float[3][][];
+        for (int c = 0; c < 3; c++) {
+            int d = c < colors ? c : 0;
+            buffer[d].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+            buffers[c] = buffer[d].getFloatBuffer();
+        }
         // header.width here to avoid upsampling
         for (int y = 0; y < header.bounds.size.height; y++) {
             for (int x = 0; x < header.bounds.size.width; x++) {
-                float inScaledR = buffer[1][y][x] + buffer[0][y][x];
+                float inScaledR = buffers[1][y][x] + buffers[0][y][x];
                 inScaledR = inScaledR < 0f ? 0f : 3f * inScaledR;
-                float inScaledG = buffer[1][y][x] - buffer[0][y][x];
+                float inScaledG = buffers[1][y][x] - buffers[0][y][x];
                 inScaledG = inScaledG < 0f ? 0f : 3f * inScaledG;
                 int intInR;
                 float fracInR;
@@ -787,9 +818,11 @@ public class Frame {
                 float nr = sr * (0.00171875f * noiseBuffer[0][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float ng = sg * (0.00171875f * noiseBuffer[1][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float nrg = nr + ng;
-                buffer[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
-                buffer[1][y][x] += nrg;
-                buffer[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
+                buffers[1][y][x] += nrg;
+                if (buffers[0] != buffers[1])
+                    buffers[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
+                if (buffers[2] != buffers[1])
+                    buffers[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
             }
         }
     }
@@ -827,7 +860,7 @@ public class Frame {
         return lfGroupRowStride;
     }
 
-    public float[][][] getBuffer() {
+    public ImageBuffer[] getBuffer() {
         return buffer;
     }
 
@@ -919,14 +952,6 @@ public class Frame {
     public boolean isVisible() {
         return (header.type == FrameFlags.REGULAR_FRAME || header.type == FrameFlags.SKIP_PROGRESSIVE)
             && (header.duration != 0 || header.isLast);
-    }
-
-    /* gets the sample for the IMAGE position y and x */
-    public float getImageSample(int c, int y, int x) {
-        int frameY = y - bounds.origin.y;
-        int frameX = x - bounds.origin.x;
-        return frameY < 0 || frameX < 0 || frameY >= bounds.size.height || frameX >= bounds.size.width
-            ? 0f : buffer[c][frameY][frameX];
     }
 
     public void printDebugInfo() {

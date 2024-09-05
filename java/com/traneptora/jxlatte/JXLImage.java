@@ -1,6 +1,9 @@
 package com.traneptora.jxlatte;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.color.CIEPrimaries;
@@ -8,6 +11,8 @@ import com.traneptora.jxlatte.color.CIEXY;
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.ColorManagement;
+import com.traneptora.jxlatte.util.Dimension;
+import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.functional.FloatUnaryOperator;
 
@@ -30,21 +35,18 @@ public class JXLImage {
 
     private boolean alphaIsPremultiplied;
 
-    private float[][] buffer;
+    private ImageBuffer[] buffer;
+    private int[] bitDepths;
 
-    protected JXLImage(float[][][] buffer, ImageHeader header) throws IOException {
-        this.width = buffer[0][0].length;
-        this.height = buffer[0].length;
-        int channels = header.getTotalChannelCount();
-        this.buffer = new float[channels][width * height];
-        for (int c = 0; c < channels; c++) {
-            for (int y = 0; y < height; y++)
-                System.arraycopy(buffer[c][y], 0, this.buffer[c], y * width, width);
-        }
+    protected JXLImage(ImageBuffer[] buffer, ImageHeader header) throws IOException {
+        this.imageHeader = header;
+        Dimension size = imageHeader.getOrientedSize();
+        this.height = size.height;
+        this.width = size.width;
+        this.buffer = buffer;
         ColorEncodingBundle bundle = header.getColorEncoding();
         this.colorEncoding = bundle.colorEncoding;
         this.alphaIndex = header.hasAlpha() ? header.getAlphaIndex(0) : -1;
-        this.imageHeader = header;
         this.primaries = bundle.primaries;
         this.whitePoint = bundle.whitePoint;
         this.primariesXY = bundle.prim;
@@ -58,6 +60,14 @@ public class JXLImage {
         }
         this.taggedTransfer = bundle.tf;
         this.alphaIsPremultiplied = header.hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
+        this.bitDepths = new int[buffer.length];
+        int colors = getColorChannelCount();
+        for (int c = 0; c < bitDepths.length; c++) {
+            if (c < colors)
+                bitDepths[c] = imageHeader.getBitDepthHeader().bitsPerSample;
+            else
+                bitDepths[c] = imageHeader.getExtraChannelInfo(c - colors).bitDepth.bitsPerSample;
+        }
     }
 
     private JXLImage(JXLImage image, boolean copyBuffer) {
@@ -78,8 +88,8 @@ public class JXLImage {
 
         this.alphaIsPremultiplied = image.alphaIsPremultiplied;
 
-        if (copyBuffer)
-            this.buffer = image.getBuffer(true);
+        this.buffer = Stream.of(image.buffer).map(b -> new ImageBuffer(b, copyBuffer)).toArray(ImageBuffer[]::new);
+        this.bitDepths = Arrays.copyOf(image.bitDepths, image.bitDepths.length);
     }
 
     public JXLImage(JXLImage image) {
@@ -104,17 +114,24 @@ public class JXLImage {
     private JXLImage toneMapLinear(CIEPrimaries primaries, CIEXY whitePoint) {
         if (CIEPrimaries.matches(primariesXY, primaries) && CIEXY.matches(whiteXY, whitePoint))
             return this;
+        float[][][] buffers = new float[3][][];
+        for (int c = 0; c < 3; c++) {
+            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffers[c] = buffer[c].getFloatBuffer();
+        }
         float[][] conversionMatrix =
             ColorManagement.getConversionMatrix(primaries, whitePoint, this.primariesXY, this.whiteXY);
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new float[buffer.length][buffer[0].length];
+        float[][][] ibuffers = Stream.of(image.buffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
         final float[] rgb = new float[3];
-        for (int p = 0; p < buffer[0].length; p++) {
-            for (int c = 0; c < 3; c++)
-                rgb[c] = buffer[c][p];
-            MathHelper.matrixMutliply3InPlace(conversionMatrix, rgb);
-            for (int c = 0; c < 3; c++)
-                image.buffer[c][p] = rgb[c];
+        for (int y = 0; y < image.height; y++) {
+            for (int x = 0; x < image.width; x++) {
+                for (int c = 0; c < 3; c++)
+                    rgb[c] = buffers[c][y][x];
+                MathHelper.matrixMutliply3InPlace(conversionMatrix, rgb);
+                for (int c = 0; c < 3; c++)
+                    ibuffers[c][y][x] = rgb[c];
+            }
         }
         image.primariesXY = primaries;
         image.whiteXY = whitePoint;
@@ -127,11 +144,21 @@ public class JXLImage {
         if (this.colorEncoding != ColorFlags.CE_GRAY)
             return this;
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new float[this.buffer.length + 2][this.buffer[0].length];
-        for (int c = 0; c < 3; c++)
-            System.arraycopy(buffer[0], 0, image.buffer[c], 0, buffer[0].length);
-        for (int c = 3; c < image.buffer.length; c++)
-            System.arraycopy(buffer[c - 2], 0, image.buffer[c], 0, buffer[c - 2].length);
+        ImageBuffer[] nbuffer = new ImageBuffer[image.buffer.length + 2];
+        nbuffer[0] = new ImageBuffer(image.buffer[0].getType(), image.buffer[0].height, image.buffer[0].width);
+        nbuffer[1] = new ImageBuffer(image.buffer[0].getType(), image.buffer[0].height, image.buffer[0].width);
+        for (int c = 2; c < nbuffer.length; c++) {
+            nbuffer[c] = image.buffer[c - 2];
+        }
+        image.buffer = nbuffer;
+        for (int c = 0; c < 3; c++) {
+            for (int y = 0; y < buffer[0].height; y++)
+                System.arraycopy(buffer[0].getBackingBuffer()[y], 0, image.buffer[c].getBackingBuffer()[y], 0, buffer[0].width);
+        }
+        for (int c = 3; c < image.buffer.length; c++) {
+            for (int y = 0; y < buffer[0].height; y++)
+                System.arraycopy(buffer[c - 2].getBackingBuffer()[y], 0, image.buffer[c].getBackingBuffer()[y], 0, buffer[0].width);
+        }
         image.colorEncoding = ColorFlags.CE_RGB;
         return image;
     }
@@ -140,10 +167,17 @@ public class JXLImage {
         if (this.colorEncoding == ColorFlags.CE_GRAY)
             return this;
         JXLImage image = new JXLImage(this, false);
-        image.buffer = new float[buffer.length - 2][buffer[0].length];
-        System.arraycopy(buffer[1], 0, image.buffer[0], 0, buffer[1].length);
-        for (int c = 1; c < image.buffer.length; c++)
-            System.arraycopy(buffer[c + 2], 0, image.buffer[c], 0, buffer[c + 2].length);
+        ImageBuffer[] nbuffer = new ImageBuffer[image.buffer.length - 2];
+        for (int c = 2; c < image.buffer.length; c++) {
+            nbuffer[c - 2] = image.buffer[c];
+        }
+        image.buffer = nbuffer;
+        for (int y = 0; y < buffer[1].height; y++)
+            System.arraycopy(buffer[1].getBackingBuffer()[y], 0, image.buffer[0].getBackingBuffer()[y], 0, buffer[1].width);
+        for (int c = 1; c < image.buffer.length; c++) {
+            for (int y = 0; y < buffer[0].height; y++)
+                System.arraycopy(buffer[c + 2].getBackingBuffer()[y], 0, image.buffer[c].getBackingBuffer()[y], 0, buffer[1].width);
+        }
         image.colorEncoding = ColorFlags.CE_GRAY;
         return image;
     }
@@ -171,36 +205,54 @@ public class JXLImage {
         return transform(primaries, whitePoint, this.transfer, JXLOptions.PEAK_DETECT_OFF);
     }
 
-    public float[][] getBuffer(boolean copy) {
+    public ImageBuffer[] getBuffer(boolean copy) {
         if (!copy)
             return this.buffer;
-        final float[][] buf = new float[buffer.length][buffer[0].length];
-        for (int c = 0; c < buf.length; c++)
-            System.arraycopy(buffer[c], 0, buf[c], 0, buffer[c].length);
-        return buf;
+        return Stream.of(buffer).map(b -> new ImageBuffer(b)).toArray(ImageBuffer[]::new);
     }
 
     private float determinePeak() {
         if (transfer != ColorFlags.TF_LINEAR)
             return linearize().determinePeak();
         int c = colorEncoding == ColorFlags.CE_GRAY ? 0 : 1;
-        return MathHelper.max(buffer[c]);
+        if (buffer[c].isInt()) {
+            return Stream.of(buffer[c].getIntBuffer()).mapToInt(MathHelper::max).max().getAsInt() / (float)~(~0 << bitDepths[c]);
+        } else {
+            return Stream.of(buffer[c].getFloatBuffer()).map(MathHelper::max).max(Comparator.naturalOrder()).get();
+        }
     }
 
     private JXLImage transfer(FloatUnaryOperator op) {
+        int colors = getColorChannelCount();
+        float[][][] buffers = new float[colors][][];
+        for (int c = 0; c < colors; c++) {
+            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffers[c] = buffer[c].getFloatBuffer();
+        }
         JXLImage image = new JXLImage(this, false);
-        for (int c = 0; c < imageHeader.getColorChannelCount(); c++) {
-            for (int p = 0; p < image.buffer[0].length; p++) {
-                image.buffer[c][p] = op.applyAsFloat(buffer[c][p]);
+        for (int c = 0; c < colors; c++) {
+            float[][] b = image.buffer[c].getFloatBuffer();
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    b[y][x] = op.applyAsFloat(buffers[c][y][x]);
+                }
             }
         }
         return image;
     }
 
     private void transferInPlace(FloatUnaryOperator op) {
-        for (int c = 0; c < imageHeader.getColorChannelCount(); c++) {
-            for (int p = 0; p < buffer[0].length; p++) {
-                buffer[c][p] = op.applyAsFloat(buffer[c][p]);
+        int colors = getColorChannelCount();
+        float[][][] buffers = new float[colors][][];
+        for (int c = 0; c < colors; c++) {
+            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffers[c] = buffer[c].getFloatBuffer();
+        }
+        for (int c = 0; c < colors; c++) {
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    buffers[c][y][x] = op.applyAsFloat(buffers[c][y][x]);
+                }
             }
         }
     }
@@ -232,6 +284,10 @@ public class JXLImage {
         image.transferInPlace(ColorManagement.getTransferFunction(transfer).fromLinearFloatOp());
         image.transfer = transfer;
         return image;
+    }
+
+    public int getTaggedBitDepth(int c) {
+        return bitDepths[c];
     }
 
     public CIEPrimaries getCIEPrimaries() {

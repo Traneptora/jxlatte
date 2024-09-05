@@ -93,6 +93,7 @@ src = files(
 
     # com.traneptora.jxlatte.util
     'com/traneptora/jxlatte/util/Dimension.java',
+    'com/traneptora/jxlatte/util/ImageBuffer.java',
     'com/traneptora/jxlatte/util/MathHelper.java',
     'com/traneptora/jxlatte/util/MutableLong.java',
     'com/traneptora/jxlatte/util/Point.java',
