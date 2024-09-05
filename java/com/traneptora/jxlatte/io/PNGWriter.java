@@ -142,12 +142,14 @@ public class PNGWriter {
     }
 
     private void writeICCP() throws IOException {
+        boolean compressedICC = false;
         if (iccProfile == null) {
             if (hdr) {
-                this.iccProfile = new byte[8708];
-                try (InputStream in = JXLatte.class.getResourceAsStream("/bt2020-d65-pq.icc")) {
+                this.iccProfile = new byte[4866];
+                try (InputStream in = JXLatte.class.getResourceAsStream("/bt2020-d65-pq.icc.zz")) {
                     IOHelper.readFully(in, this.iccProfile);
                 }
+                compressedICC = true;
             } else {
                 return;
             }
@@ -159,10 +161,16 @@ public class PNGWriter {
         dout.write(s);
         dout.write(0); // null terminator
         dout.write(0); // compression method 0
-        DeflaterOutputStream defout = new DeflaterOutputStream(dout, new Deflater(deflateLevel));
-        defout.write(iccProfile);
-        defout.flush();
-        defout.close();
+        if (compressedICC) {
+            dout.write(iccProfile);
+            dout.flush();
+            dout.close();
+        } else {
+            DeflaterOutputStream defout = new DeflaterOutputStream(dout, new Deflater(deflateLevel));
+            defout.write(iccProfile);
+            defout.flush();
+            defout.close();
+        }
         byte[] buf = bout.toByteArray();
         out.writeInt(buf.length - 4);
         out.write(buf);
