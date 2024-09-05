@@ -233,12 +233,7 @@ public class ModularChannel {
     }
 
     private int propertyExpand(ModularStream parent, int channelIndex, int streamIndex,
-            WPParams wpParams, int k, int y, int x) {
-        int maxError;
-        if (wpParams != null)
-            maxError = prePredictWP(wpParams, x, y);
-        else
-            maxError = 0;
+            WPParams wpParams, int k, int maxError, int y, int x) {
         switch (k) {
             case 0:
                 return channelIndex;
@@ -304,9 +299,14 @@ public class ModularChannel {
         }
     }
 
-    private IntUnaryOperator propertyExpand(ModularStream parent, int channelIndex,
+    private IntUnaryOperator getWalkFunction(ModularStream parent, int channelIndex,
             int streamIndex, WPParams wpParams, int y, int x) {
-        return k -> propertyExpand(parent, channelIndex, streamIndex, wpParams, k, y, x);
+        int maxError;
+        if (wpParams != null)
+            maxError = prePredictWP(wpParams, x, y);
+        else
+            maxError = 0;
+        return k -> propertyExpand(parent, channelIndex, streamIndex, wpParams, k, maxError, y, x);
     }
 
     public void decode(Bitreader reader, EntropyStream stream, WPParams wpParams, MATree tree,
@@ -328,7 +328,7 @@ public class ModularChannel {
         for (int y = 0; y < size.height; y++) {
             MATree refinedTree = tree.compactify(channelIndex, streamIndex, y);
             for (int x = 0; x < size.width; x++) {
-                MATree leafNode = refinedTree.walk(propertyExpand(parent, channelIndex, streamIndex, wpParams, y, x));
+                MATree leafNode = refinedTree.walk(getWalkFunction(parent, channelIndex, streamIndex, wpParams, y, x));
                 int diff = stream.readSymbol(reader, leafNode.getContext(), distMultiplier);
                 diff = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
                 int trueValue = diff + prediction(y, x, leafNode.getPredictor());
@@ -398,5 +398,11 @@ public class ModularChannel {
             System.arraycopy(orig.buffer[res.size.height], 0, channel.buffer[2*res.size.height], 0, channel.size.width);
 
         return channel;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ModularChannel [decoded=%s, size=%s, vshift=%s, hshift=%s, origin=%s, forceWP=%s]",
+                decoded, size, vshift, hshift, origin, forceWP);
     }
 }
