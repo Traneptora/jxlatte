@@ -2,6 +2,7 @@ package com.traneptora.jxlatte.io;
 
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.JXLOptions;
 import com.traneptora.jxlatte.util.functional.FunctionalHelper;
@@ -49,7 +50,7 @@ public class Loggers {
     public void log(int logLevel, String format, Object... args) {
         if (logLevel > options.verbosity)
             return;
-        Object[] things = Arrays.asList(args).stream().map(Loggers::deepToThing).toArray();
+        Object[] things = Stream.of(args).map(Loggers::deepToThing).toArray();
         err.println(String.format(format, things));
         err.flush();
     }
