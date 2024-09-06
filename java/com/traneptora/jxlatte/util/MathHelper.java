@@ -308,11 +308,11 @@ public final class MathHelper {
     }
 
     public static int mirrorCoordinate(int coordinate, int size) {
-        if (coordinate < 0)
-            return mirrorCoordinate(~coordinate, size);
-        if (coordinate < size)
-            return coordinate;
-        return mirrorCoordinate((size << 1) + ~coordinate, size);
+        while (coordinate < 0 || coordinate >= size) {
+            int tc = ~coordinate;
+            coordinate = tc >= 0 ? tc : (size << 1) + tc;
+        }
+        return coordinate;
     }
 
     public static float floatFromF16(int bits16) {
