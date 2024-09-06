@@ -23,7 +23,8 @@ public class ImageHeader {
     public static final float[] DEFAULT_UP2 = {
         -0.01716200f, -0.03452303f, -0.04022174f, -0.02921014f, -0.00624645f,
         0.14111091f, 0.28896755f, 0.00278718f, -0.01610267f, 0.56661550f,
-        0.03777607f, -0.01986694f, -0.03144731f, -0.01185068f, -0.00213539f };
+        0.03777607f, -0.01986694f, -0.03144731f, -0.01185068f, -0.00213539f,
+    };
     
     public static final float[] DEFAULT_UP4 = {
         -0.02419067f, -0.03491987f, -0.03693351f, -0.03094285f, -0.00529785f,
@@ -36,7 +37,7 @@ public class ImageHeader {
         -0.00335467f, -0.01163294f, -0.01610294f, -0.00974088f, -0.00191622f,
         -0.01095446f, -0.03198464f, -0.04455121f, -0.02799790f, -0.00645912f,
         0.06390599f, 0.22963888f, 0.00630981f, -0.01897349f, 0.67537268f,
-        0.08483369f, -0.02534994f, -0.02205197f, -0.01667999f, -0.00384443f
+        0.08483369f, -0.02534994f, -0.02205197f, -0.01667999f, -0.00384443f,
     };
 
     public static final float[] DEFAULT_UP8 = {
@@ -81,14 +82,15 @@ public class ImageHeader {
         -0.00446511f, -0.01636187f, -0.02377053f, -0.01522848f, -0.00333334f,
         -0.00819975f, -0.02964169f, -0.04499287f, -0.02745350f, -0.00612408f,
         0.02727416f, 0.19446600f, 0.00159832f, -0.02232473f, 0.74982506f,
-        0.11452620f, -0.03348048f, -0.01605681f, -0.02070339f, -0.00458223f
+        0.11452620f, -0.03348048f, -0.01605681f, -0.02070339f, -0.00458223f,
     };
 
     private static final char[] MNTRGB = "mntrRGB XYZ ".toCharArray();
     private static final char[] ACSP = "acsp".toCharArray();
-    private static final String[] iccTags = new String[]{
-        "cprt", "wtpt", "bkpt", "rXYZ", "gXYZ", "bXYZ", "kXYZ", "rTRC", "gTRC",
-        "bTRC", "kTRC", "chad", "desc", "chrm", "dmnd", "dmdd", "lumi"
+    private static final String[] iccTags = new String[] {
+        "cprt", "wtpt", "bkpt", "rXYZ", "gXYZ", "bXYZ",
+        "kXYZ", "rTRC", "gTRC", "bTRC", "kTRC", "chad",
+        "desc", "chrm", "dmnd", "dmdd", "lumi",
     };
 
     private static int getICCContext(byte[] buffer, int index) {
@@ -448,12 +450,12 @@ public class ImageHeader {
             upWeights[l] = new float[k][k][5][5];
             for (int ky = 0; ky < k; ky++) {
                 for (int kx = 0; kx < k; kx++) {
-                    for (int ix = 0; ix < 5; ix++) {
-                        for (int iy = 0; iy < 5; iy++) {
+                    for (int iy = 0; iy < 5; iy++) {
+                        for (int ix = 0; ix < 5; ix++) {
                             int j = (ky < k/2) ? (iy + 5 * ky) : ((4 - iy) + 5 * (k - 1 - ky));
                             int i = (kx < k/2) ? (ix + 5 * kx) : ((4 - ix) + 5 * (k - 1 - kx));
-                            int x = Math.max(i, j);
-                            int y = Math.min(i, j);
+                            int x = i < j ? j : i;
+                            int y = x ^ j ^ i;
                             int index = 5 * k * y / 2 - y * (y - 1) / 2 + x - y;
                             upWeights[l][ky][kx][iy][ix] = upKWeights[index];
                         }
