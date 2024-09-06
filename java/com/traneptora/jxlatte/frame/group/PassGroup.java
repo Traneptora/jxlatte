@@ -147,7 +147,7 @@ public class PassGroup {
     }
 
     private void auxDCT2(float[][] coeffs, float[][] result, Point p, Point ps, int s) {
-        layBlock(coeffs, result, p, ps, new Dimension(s, s));
+        layBlock(coeffs, result, p, ps, new Dimension(8, 8));
         int num = s / 2;
         for (int iy = 0; iy < num; iy++) {
             for (int ix = 0; ix < num; ix++) {
@@ -294,7 +294,7 @@ public class PassGroup {
                                             continue;
                                         scratchBlock[0][y * 4 + iy][x * 4 + ix] =
                                             coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2]
-                                            + scratchBlock[0][4 * y + 1][4 * x + 1];
+                                                + scratchBlock[0][4 * y + 1][4 * x + 1];
 
                                     }
                                 }
@@ -305,21 +305,20 @@ public class PassGroup {
                         layBlock(scratchBlock[0], frameBuffer[c], zero, ppf, tt.getPixelSize());
                         break;
                     case TransformType.METHOD_DCT4:
-                        auxDCT2(coeffs[c], scratchBlock[1], ppg, zero, 2);
+                        auxDCT2(coeffs[c], scratchBlock[4], ppg, zero, 2);
                         for (int y = 0; y < 2; y++) {
                             for (int x = 0; x < 2; x++) {
-                                scratchBlock[0][0][0] = scratchBlock[1][y][x];
+                                scratchBlock[0][0][0] = scratchBlock[4][y][x];
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++)
                                         scratchBlock[0][iy][ix] = coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2];
                                 }
-                                MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[4], zero, zero,
+                                MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[1], zero, zero,
                                     new Dimension(4, 4), scratchBlock[2],
-                                    scratchBlock[3], false);
+                                    scratchBlock[3], true);
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = 0; ix < 4; ix++) {
-                                        frameBuffer[c][ppf.y + 4*y + iy][ppf.x + 4*x + ix]
-                                            = scratchBlock[4][iy][ix];
+                                        frameBuffer[c][ppf.y + 4*y + iy][ppf.x + 4*x + ix] = scratchBlock[1][iy][ix];
                                     }
                                 }
                             }
