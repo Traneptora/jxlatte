@@ -1,6 +1,8 @@
 package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
@@ -71,5 +73,26 @@ public class VLCTable {
         int length = table[index][1];
         reader.skipBits(length);
         return symbol;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.deepHashCode(table);
+        result = prime * result + Objects.hash(bits);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        VLCTable other = (VLCTable) obj;
+        return Arrays.deepEquals(table, other.table) && bits == other.bits;
     }
 }

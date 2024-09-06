@@ -915,8 +915,8 @@ public class Frame {
     }
 
     public Dimension getPaddedFrameSize() {
-        int factorY = 1 << IntStream.of(getFrameHeader().jpegUpsamplingY).reduce(Math::max).getAsInt();
-        int factorX = 1 << IntStream.of(getFrameHeader().jpegUpsamplingX).reduce(Math::max).getAsInt();
+        int factorY = 1 << IntStream.of(header.jpegUpsamplingY).max().getAsInt();
+        int factorX = 1 << IntStream.of(header.jpegUpsamplingX).max().getAsInt();
         int height, width;
         if (header.encoding == FrameFlags.VARDCT) {
             height = (bounds.size.height + 7) >> 3;
@@ -956,7 +956,8 @@ public class Frame {
 
     public void printDebugInfo() {
         loggers.log(Loggers.LOG_VERBOSE, "Frame Info:");
-        loggers.log(Loggers.LOG_VERBOSE, "    Encoding: %s", header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
+        loggers.log(Loggers.LOG_VERBOSE, "    Encoding: %s",
+            header.encoding == FrameFlags.VARDCT ? "VarDCT" : "Modular");
         String type = header.type == FrameFlags.REGULAR_FRAME ? "Regular"
                     : header.type == FrameFlags.LF_FRAME ? "LF Frame"
                     : header.type == FrameFlags.REFERENCE_ONLY ? "Reference Only"

@@ -1,6 +1,7 @@
 package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
@@ -34,5 +35,22 @@ public class HybridIntegerConfig {
     @Override
     public String toString() {
         return this.splitExponent + "-" + this.msbInToken + "-" + this.lsbInToken;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(splitExponent, msbInToken, lsbInToken);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HybridIntegerConfig other = (HybridIntegerConfig) obj;
+        return splitExponent == other.splitExponent && msbInToken == other.msbInToken && lsbInToken == other.lsbInToken;
     }
 }

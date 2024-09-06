@@ -46,6 +46,6 @@ public class Rectangle {
 
     @Override
     public String toString() {
-        return String.format("Rectangle [origin=%s, size=%s]", origin, size);
+        return String.format("Rect(origin=%s, size=%s)", origin, size);
     }
 }

@@ -38,7 +38,7 @@ public class Point {
 
     @Override
     public String toString() {
-        return String.format("Point [y=%s, x=%s]", y, x);
+        return String.format("(y=%d, x=%d)", y, x);
     }
 }
 

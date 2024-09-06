@@ -165,4 +165,18 @@ public class ImageBuffer {
             }
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format("ImageBuffer [type=%s, height=%s, width=%s]", type, height, width);
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+    public boolean equals(Object another) {
+        return this == another;
+    }
 }
