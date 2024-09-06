@@ -34,7 +34,7 @@ import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 import com.traneptora.jxlatte.util.Rectangle;
-import com.traneptora.jxlatte.util.functional.ExceptionalFunction;
+import com.traneptora.jxlatte.util.functional.ExceptionalRunnable;
 import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class Frame {
@@ -61,8 +61,8 @@ public class Frame {
     private int numGroups;
     private int numLFGroups;
 
-    private CompletableFuture<byte[]>[] buffers;
-    private int[] tocPermuation;
+    private List<CompletableFuture<Bitreader>> bitreaders = new ArrayList<>();
+    private int[] tocPermutation;
     private int[] tocLengths;
     private LFGlobal lfGlobal;
     public final ImageHeader globalMetadata;
@@ -98,7 +98,7 @@ public class Frame {
         this.header = new FrameHeader(frame.header);
         this.numGroups = frame.numGroups;
         this.numLFGroups = frame.numLFGroups;
-        this.tocPermuation = frame.tocPermuation;
+        this.tocPermutation = frame.tocPermutation;
         this.tocLengths = frame.tocLengths;
         this.lfGlobal = frame.lfGlobal;
         this.globalMetadata = frame.globalMetadata;
@@ -147,52 +147,28 @@ public class Frame {
         permutedTOC = globalReader.readBool();
         if (permutedTOC) {
             EntropyStream tocStream = new EntropyStream(loggers, globalReader, 8);
-            tocPermuation = readPermutation(globalReader, tocStream, tocEntries, 0);
+            tocPermutation = readPermutation(globalReader, tocStream, tocEntries, 0);
             if (!tocStream.validateFinalState())
                 throw new InvalidBitstreamException("Invalid final ANS state decoding TOC");
         } else {
-            tocPermuation = new int[tocEntries];
-            for (int i = 0; i < tocEntries; i++)
-                tocPermuation[i] = i;
+            tocPermutation = null;
         }
+
         loggers.log(Loggers.LOG_TRACE, "Permuted TOC: %b", permutedTOC);
         if (permutedTOC) {
-            loggers.log(Loggers.LOG_TRACE, "TOC Permutation: %s", tocPermuation);
+            loggers.log(Loggers.LOG_TRACE, "TOC Permutation: %s", tocPermutation);
         }
 
         globalReader.zeroPadToByte();
         tocLengths = new int[tocEntries];
 
-        {
-            // if we don't declare a new variable here with the unchecked assignment
-            // it won't compile, for some reason
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            CompletableFuture<byte[]>[] buffers = new CompletableFuture[tocEntries];
-            this.buffers = buffers;
-        }
-
-        for (int i = 0; i < tocEntries; i++)
-            buffers[i] = new CompletableFuture<>();
-
-        for (int i = 0; i < tocEntries; i++)
+        for (int i = 0; i < tocEntries; i++) {
+            bitreaders.add(new CompletableFuture<Bitreader>());
             tocLengths[i] = globalReader.readU32(0, 10, 1024, 14, 17408, 22, 4211712, 30);
-
-        globalReader.zeroPadToByte();
+        }
 
         loggers.log(Loggers.LOG_TRACE, "TOC Lengths: %s", tocLengths);
-
-        if (tocEntries != 1 && !options.parseOnly) {
-            new Thread(() -> {
-                for (int i = 0; i < tocEntries; i++) {
-                    try {
-                        byte[] buffer = readBuffer(i);
-                        buffers[i].complete(buffer);
-                    } catch (Throwable ex) {
-                        buffers[i].completeExceptionally(ex);
-                    }
-                }
-            }).start();
-        }
+        globalReader.zeroPadToByte();
     }
 
     private byte[] readBuffer(int index) throws IOException {
@@ -204,13 +180,10 @@ public class Frame {
         return buffer;
     }
 
-    private CompletableFuture<Bitreader> getBitreader(int index) throws IOException {
-        if (tocLengths.length == 1)
-            return CompletableFuture.completedFuture(this.globalReader);
-        int permutedIndex = tocPermuation[index];
-        return buffers[permutedIndex].thenApply((buff) -> {
-            return new Bitreader(new ByteArrayInputStream(buff));
-        });
+    private Bitreader getBitreader(int index) {
+        int i = tocPermutation != null ? tocPermutation[index] : index;
+        CompletableFuture<Bitreader> reader = bitreaders.get(i);
+        return FunctionalHelper.join(reader);
     }
 
     public static int[] readPermutation(Bitreader reader, EntropyStream stream, int size, int skip) throws IOException {
@@ -301,7 +274,7 @@ public class Frame {
         lfGroups = new LFGroup[numLFGroups];
 
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
-            Bitreader reader = FunctionalHelper.join(getBitreader(1 + lfGroupID));
+            Bitreader reader = getBitreader(1 + lfGroupID);
             Point lfGroupPos = getLFGroupLocation(lfGroupID);
             ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::new)
                 .toArray(ModularChannel[]::new);
@@ -347,7 +320,7 @@ public class Frame {
             final int pass = pass0;
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
-                Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
+                Bitreader reader = getBitreader(2 + numLFGroups + pass * numGroups + group);
                 ModularChannel[] replaced = Stream.of(passes[pass].replacedChannels).filter(Objects::nonNull)
                     .map(ModularChannel::new).toArray(ModularChannel[]::new);
                 for (ModularChannel info : replaced) {
@@ -403,8 +376,18 @@ public class Frame {
             throw new IllegalStateException("Already decoded this frame");
         this.decoded = true;
 
-        lfGlobal = FunctionalHelper.join(getBitreader(0)
-            .thenApplyAsync(ExceptionalFunction.of((reader) -> new LFGlobal(reader, this))));
+        CompletableFuture.runAsync(ExceptionalRunnable.of(() -> {
+            if (tocLengths.length != 1) {
+                for (int i = 0; i < tocLengths.length; i++) {
+                    byte[] buffer = readBuffer(i);
+                    bitreaders.get(i).complete(new Bitreader(new ByteArrayInputStream(buffer)));
+                }
+            } else {
+                 bitreaders.get(0).complete(globalReader);
+            }
+        }));
+
+        lfGlobal = new LFGlobal(getBitreader(0), this);
         Dimension paddedSize = getPaddedFrameSize();
 
         int colors = getColorChannelCount();
@@ -429,13 +412,11 @@ public class Frame {
 
         decodeLFGroups(lfBuffer);
 
-        Bitreader hfGlobalReader = FunctionalHelper.join(getBitreader(1 + numLFGroups));
-               
+        Bitreader hfGlobalReader = getBitreader(1 + numLFGroups);
         if (header.encoding == FrameFlags.VARDCT)
             hfGlobal = new HFGlobal(hfGlobalReader, this);
         else
             hfGlobal = null;
-
         decodePasses(hfGlobalReader);
 
         decodePassGroups();
@@ -471,10 +452,8 @@ public class Frame {
         }
 
         invertSubsampling();
-
         if (header.restorationFilter.gab)
             performGabConvolution();
-
         if (header.restorationFilter.epfIterations > 0)
             performEdgePreservingFilter();
     }
