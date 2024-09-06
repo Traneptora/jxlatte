@@ -181,7 +181,7 @@ public class Frame {
     }
 
     private Bitreader getBitreader(int index) {
-        int i = tocPermutation != null ? tocPermutation[index] : index;
+        int i = tocLengths.length <= 1 ? 0 : tocPermutation != null ? tocPermutation[index] : index;
         CompletableFuture<Bitreader> reader = bitreaders.get(i);
         return FunctionalHelper.join(reader);
     }
