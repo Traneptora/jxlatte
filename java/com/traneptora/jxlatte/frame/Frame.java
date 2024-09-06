@@ -578,8 +578,10 @@ public class Frame {
                 continue;
             if (i == 2 && header.restorationFilter.epfIterations < 2)
                 break;
-            float[][][] inputBuffers = Stream.of(buffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
-            float[][][] outputBuffers = Stream.of(outputBuffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
+            float[][][] inputBuffers = Stream.of(buffer).limit(colors)
+                .map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
+            float[][][] outputBuffers = Stream.of(outputBuffer).limit(colors)
+                .map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
             float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
                 i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
             Point[] crossList = i == 0 ? epfDoubleCross : epfCross;
