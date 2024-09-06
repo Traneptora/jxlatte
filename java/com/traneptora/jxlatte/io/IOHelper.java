@@ -5,10 +5,6 @@ import java.io.InputStream;
 
 public final class IOHelper {
 
-    private IOHelper(){
-        
-    }
-
     /**
      * @return How much wasn't read due to EOF
      */
@@ -56,4 +52,6 @@ public final class IOHelper {
 
         return readFully(in, buffer, 0, (int)remaining);
     }
+
+    private IOHelper(){}
 }
