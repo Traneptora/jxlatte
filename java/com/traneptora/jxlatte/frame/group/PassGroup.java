@@ -147,16 +147,10 @@ public class PassGroup {
     }
 
     private void auxDCT2(float[][] coeffs, float[][] result, Point p, Point ps, int s) {
+        layBlock(coeffs, result, p, ps, new Dimension(s, s));
         int num = s / 2;
-        for (int iy = 0; iy < 4; iy++) {
-            for (int ix = 0; ix < 4; ix++) {
-                if (iy >= num || ix >= num) {
-                    result[ps.y + iy * 2][ps.x + ix * 2] = coeffs[p.y + iy * 2][p.x + ix * 2];
-                    result[ps.y + iy * 2 + 1][ps.x + ix * 2] = coeffs[p.y + iy * 2 + 1][p.x + ix * 2];
-                    result[ps.y + iy * 2][ps.x + ix * 2 + 1] = coeffs[p.y + iy * 2][p.x + ix * 2 + 1];
-                    result[ps.y + iy * 2 + 1][ps.x + ix * 2 + 1] = coeffs[p.y + iy * 2 + 1][p.x + ix * 2 + 1];
-                    continue;
-                }
+        for (int iy = 0; iy < num; iy++) {
+            for (int ix = 0; ix < num; ix++) {
                 float c00 = coeffs[p.y + iy][p.x + ix];
                 float c01 = coeffs[p.y + iy][p.x + ix + num];
                 float c10 = coeffs[p.y + iy + num][p.x + ix];
@@ -293,7 +287,7 @@ public class PassGroup {
                                         residual += coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2];
                                     }
                                 }
-                                scratchBlock[0][4 * y + 1][4 * x + 1] = blockLF - residual / 16f;
+                                scratchBlock[0][4 * y + 1][4 * x + 1] = blockLF - residual * 0.0625f;
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = 0; ix < 4; ix++) {
                                         if (ix == 1 && iy == 1)
@@ -317,8 +311,7 @@ public class PassGroup {
                                 scratchBlock[0][0][0] = scratchBlock[1][y][x];
                                 for (int iy = 0; iy < 4; iy++) {
                                     for (int ix = (iy == 0 ? 1 : 0); ix < 4; ix++)
-                                        // This does look backwards
-                                        scratchBlock[0][iy][ix] = coeffs[c][ppg.y + y + ix * 2][ppg.x + x + iy * 2];
+                                        scratchBlock[0][iy][ix] = coeffs[c][ppg.y + y + iy * 2][ppg.x + x + ix * 2];
                                 }
                                 MathHelper.inverseDCT2D(scratchBlock[0], scratchBlock[4], zero, zero,
                                     new Dimension(4, 4), scratchBlock[2],
