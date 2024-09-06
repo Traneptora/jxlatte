@@ -282,6 +282,8 @@ public class Frame {
 
     private void decodeLFGroups(ImageBuffer[] lfBuffer) throws IOException {
 
+        Dimension frameSize = getPaddedFrameSize();
+
         List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
@@ -303,7 +305,6 @@ public class Frame {
             Point lfGroupPos = getLFGroupLocation(lfGroupID);
             ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::new)
                 .toArray(ModularChannel[]::new);
-            Dimension frameSize = getPaddedFrameSize();
             for (ModularChannel info : replaced) {
                 int lfHeight = frameSize.height >> info.vshift;
                 int lfWidth = frameSize.width >> info.hshift;
@@ -347,8 +348,8 @@ public class Frame {
             for (int group0 = 0; group0 < numGroups; group0++) {
                 final int group = group0;
                 Bitreader reader = FunctionalHelper.join(getBitreader(2 + numLFGroups + pass * numGroups + group));
-                ModularChannel[] replaced = Arrays.asList(passes[pass].replacedChannels).stream()
-                    .filter(Objects::nonNull).map(ModularChannel::new).toArray(ModularChannel[]::new);
+                ModularChannel[] replaced = Stream.of(passes[pass].replacedChannels).filter(Objects::nonNull)
+                    .map(ModularChannel::new).toArray(ModularChannel[]::new);
                 for (ModularChannel info : replaced) {
                     int groupHeight = header.groupDim >> info.vshift;
                     int groupWidth = header.groupDim >> info.hshift;
