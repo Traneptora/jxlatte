@@ -71,6 +71,7 @@ public class ModularChannel {
 
     public ModularChannel(ModularChannel channel) {
         this(channel.size.height, channel.size.width, channel.vshift, channel.hshift, channel.forceWP);
+        this.origin = new Point(channel.origin);
 
         decoded = channel.decoded;
         if (channel.buffer != null) {
