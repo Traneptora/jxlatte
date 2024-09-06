@@ -262,7 +262,7 @@ public class Frame {
         for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
             ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
             if (!chan.isDecoded()) {
-                if (chan.hshift >= 3 && chan.vshift >= 3) {
+                if (chan.vshift >= 3 && chan.hshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
                     int height = header.lfGroupDim >> chan.vshift;
                     int width = header.lfGroupDim >> chan.hshift;
@@ -294,7 +294,8 @@ public class Frame {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
                 ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
-                ModularChannel newChannelInfo = lfGroups[lfGroupID].modularLFGroup.getChannel(index);
+                channel.allocate();
+                ModularChannel newChannelInfo = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
                 int[][] newChannel = newChannelInfo.buffer;
                 for (int y = 0; y < newChannel.length; y++) {
                     System.arraycopy(newChannel[y], 0, channel.buffer[y + newChannelInfo.origin.y],
