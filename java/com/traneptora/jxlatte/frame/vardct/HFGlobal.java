@@ -14,7 +14,7 @@ import com.traneptora.jxlatte.util.MathHelper;
 
 public class HFGlobal {
 
-    private static final DCTParams[] defaultParams = new DCTParams[17];
+    private static final DCTParams[] defaultParams = getDefaultParams();
 
     private static final float[] afvFreqs = {0, 0, 0.8517778890324296f, 5.37778436506804f,
         0, 0, 4.734747904497923f, 5.449245381693219f, 1.6598270267479331f, 4, 7.275749096817861f,
@@ -51,7 +51,7 @@ public class HFGlobal {
     }
 
     private static float quantMult(float v) {
-        return v >= 0 ? 1 + v : 1 / (1 - v);
+        return v >= 0 ? 1.0f + v : 1.0f / (1.0f - v);
     }
 
     private static float[][] getDCTQuantWeights(int height, int width, float[] params) {
@@ -62,9 +62,9 @@ public class HFGlobal {
         }
         float[][] weights = new float[height][width];
         for (int y = 0; y < height; y++) {
+            float dy = (float)y / (height - 1);
             for (int x = 0; x < width; x++) {
                 float dx = (float)x / (width - 1);
-                float dy = (float)y / (height - 1);
                 float dist = (float)Math.sqrt(dx * dx + dy * dy);
                 weights[y][x] = interpolate(dist, MathHelper.SQRT_2 + 1e-6f, bands);
             }
@@ -72,16 +72,17 @@ public class HFGlobal {
         return weights;
     }
 
-    private static void setupDefaultParams() {
+    private static DCTParams[] getDefaultParams() {
+        DCTParams[] defaultParams = new DCTParams[17];
         defaultParams[0] = new DCTParams(new float[][]{
             {3150.0f, 0.0f, -0.4f, -0.4f, -0.4f, -2.0f},
              {560.0f, 0.0f, -0.3f, -0.3f, -0.3f, -0.3f},
              {512.0f, -2.0f, -1.0f, 0.0f, -1.0f, -2.0f},
         }, null, TransformType.MODE_DCT);
         defaultParams[1] = new DCTParams(null, new float[][]{
-                {280.0f, 3160.0f, 3160.0f},
-                {60.0f, 864.0f, 864.0f},
-                {18.0f, 200.0f, 200.0f},
+            {280.0f, 3160.0f, 3160.0f},
+            {60.0f, 864.0f, 864.0f},
+            {18.0f, 200.0f, 200.0f},
         }, TransformType.MODE_HORNUSS);
         defaultParams[2] = new DCTParams(null, new float[][]{
             {3840.0f, 2560.0f, 1280.0f, 640.0f, 480.0f, 300.0f},
@@ -179,10 +180,7 @@ public class HFGlobal {
             prepend(24209.44206460261196f, seqB),
             prepend(12979.84647584004484f, seqC),
         }, null, TransformType.MODE_DCT);
-    }
-
-    static {
-        setupDefaultParams();
+        return defaultParams;
     }
 
     public final DCTParams[] params;
