@@ -15,7 +15,6 @@ import com.traneptora.jxlatte.util.MathHelper;
 public class HFGlobal {
 
     private static final DCTParams[] defaultParams = new DCTParams[17];
-    private static final float[][][][] defaultWeights = new float[17][3][][];
 
     private static final float[] afvFreqs = {0, 0, 0.8517778890324296f, 5.37778436506804f,
         0, 0, 4.734747904497923f, 5.449245381693219f, 1.6598270267479331f, 4, 7.275749096817861f,
@@ -345,11 +344,6 @@ public class HFGlobal {
     private void generateWeights(int index) throws InvalidBitstreamException {
         TransformType tt = Stream.of(TransformType.values())
                     .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
-        if (params[index] == defaultParams[index]) {
-            for (int c = 0; c < 3; c++)
-                weights[index][c] = defaultWeights[index][c];
-            return;
-        }
         for (int c = 0; c < 3; c++) {
             float[][] w;
             switch (params[index].mode) {
