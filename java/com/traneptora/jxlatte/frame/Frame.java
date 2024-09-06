@@ -43,15 +43,15 @@ public class Frame {
 
     private static Point[] epfCross = new Point[] {
         new Point(0, 0),
-        new Point(1, 0), new Point(0, 1),
-        new Point(0, -1), new Point(-1, 0),
+        new Point(0, -1), new Point(0, 1),
+        new Point(-1, 0), new Point(1, 0),
     };
 
     private static Point[] epfDoubleCross = new Point[] {
         new Point(0, 0),
-        new Point(0, -1), new Point(-1, 0), new Point(0, 1), new Point(1, 0),
-        new Point(-1, 1), new Point(1, 1), new Point(-1, -1), new Point(1, -1),
-        new Point(0, 2), new Point(2, 0), new Point(0, -2), new Point(-2, 0),
+        new Point(0, -1), new Point(0, 1), new Point(-1, 0), new Point(1, 0),
+        new Point(-1, 1), new Point(1, 1), new Point(1, -1), new Point(-1, -1),
+        new Point(0, -2), new Point(0, 2), new Point(2, 0), new Point(-2, 0),
     };
 
     private static float[][] laplacian = null;
@@ -498,10 +498,11 @@ public class Frame {
     }
 
     private void performGabConvolution() {
-        float[] normGabBase = new float[getColorChannelCount()];
-        float[] normGabAdj = new float[normGabBase.length];
-        float[] normGabDiag = new float[normGabBase.length];
-        for (int c = 0; c < getColorChannelCount(); c++) {
+        int colors = getColorChannelCount();
+        float[] normGabBase = new float[colors];
+        float[] normGabAdj = new float[colors];
+        float[] normGabDiag = new float[colors];
+        for (int c = 0; c < colors; c++) {
             float gabW1 = header.restorationFilter.gab1Weights[c];
             float gabW2 = header.restorationFilter.gab2Weights[c];
             float mult = 1f / (1f + 4f * (gabW1 + gabW2));
@@ -509,7 +510,7 @@ public class Frame {
             normGabAdj[c] = gabW1 * mult;
             normGabDiag[c] = gabW2 * mult;
         }
-        for (int c = 0; c < getColorChannelCount(); c++) {
+        for (int c = 0; c < colors; c++) {
             buffer[c].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
             int height = buffer[c].height;
             int width = buffer[c].width;
@@ -536,34 +537,34 @@ public class Frame {
     }
 
     private void performEdgePreservingFilter() throws InvalidBitstreamException {
-        float stepMultiplier = (float)(1.65D * 4D * (1D - MathHelper.SQRT_H));
+        float stepMultiplier = 1.65f * 4f * (1f - MathHelper.SQRT_H);
         Dimension paddedSize = getPaddedFrameSize();
         int blockHeight = (paddedSize.height + 7) >> 3;
         int blockWidth = (paddedSize.width + 7) >> 3;
         float[][] inverseSigma = new float[blockHeight][blockWidth];
-        int dimS = header.logLFGroupDim - 3;
         int colors = getColorChannelCount();
-
+        float globalScale = 65536.0f / lfGlobal.quantizer.globalScale;
         if (header.encoding == FrameFlags.MODULAR) {
             float inv = 1f / header.restorationFilter.epfSigmaForModular;
             for (int y = 0; y < blockHeight; y++)
                 Arrays.fill(inverseSigma[y], inv);
         } else {
             for (int y = 0; y < blockHeight; y++) {
-                float[] invSY = inverseSigma[y];
-                int lfY = y >> dimS;
-                int bY = y - (lfY << dimS);
+                int lfY = y >> 8;
+                int bY = y - (lfY << 8);
                 int lfR = lfY * lfGroupRowStride;
                 for (int x = 0; x < blockWidth; x++) {
-                    int lfX = x >> dimS;
-                    int bX = x - (lfX << dimS);
+                    int lfX = x >> 8;
+                    int bX = x - (lfX << 8);
                     LFGroup lfg = lfGroups[lfR + lfX];
                     int hf = lfg.hfMetadata.hfMultiplier[bY][bX];
                     int sharpness = lfg.hfMetadata.hfStreamBuffer[3][bY][bX];
                     if (sharpness < 0 || sharpness > 7)
                         throw new InvalidBitstreamException("Invalid EPF Sharpness: " + sharpness);
-                    float sigma = hf * header.restorationFilter.epfSharpLut[sharpness];
-                    invSY[x] = 1f / sigma;
+                    for (int c = 0; c < 3; c++) {
+                        float sigma = globalScale * header.restorationFilter.epfSharpLut[sharpness] / hf;
+                        inverseSigma[y][x] = 1.0f / sigma;
+                    }
                 }
             }
         }
@@ -583,33 +584,36 @@ public class Frame {
                 .map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
             float[][][] outputBuffers = Stream.of(outputBuffer).limit(colors)
                 .map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
-            float sigmaScale = stepMultiplier * (i == 0 ? header.restorationFilter.epfPass0SigmaScale :
-                i == 1 ? 1.0f : header.restorationFilter.epfPass2SigmaScale);
+            float sigmaScale;
+            if (i == 0)
+                sigmaScale = stepMultiplier * header.restorationFilter.epfPass0SigmaScale;
+            else if (i == 2)
+                sigmaScale = stepMultiplier * header.restorationFilter.epfPass2SigmaScale;
+            else
+                sigmaScale = stepMultiplier;
             Point[] crossList = i == 0 ? epfDoubleCross : epfCross;
+            float[] sumChannels = new float[colors];
             for (int y = 0; y < paddedSize.height; y++) {
-                float[] invSY = inverseSigma[y >> 3];
                 for (int x = 0; x < paddedSize.width; x++) {
-                    float sumWeights = 0f;
-                    final float[] sumChannels = new float[outputBuffer.length];
-                    final float s = invSY[x >> 3];
-                    if (s != s || s > 3.333333333f) {
-                        for (int c = 0; c < outputBuffer.length; c++)
+                    float s = inverseSigma[y >> 3][x >> 3];
+                    if (s != s || s > (1f/0.3f)) {
+                        for (int c = 0; c < outputBuffers.length; c++)
                             outputBuffers[c][y][x] = inputBuffers[c][y][x];
                         continue;
                     }
+                    float sumWeights = 0f;
+                    Arrays.fill(sumChannels, 0.0f);
                     for (Point cross : crossList) {
-                        int nY = y + cross.y;
-                        int nX = x + cross.x;
-                        int mY = MathHelper.mirrorCoordinate(nY, paddedSize.height);
-                        int mX = MathHelper.mirrorCoordinate(nX, paddedSize.width);
-                        float dist = i == 2 ? epfDistance2(inputBuffers, colors, y, x, nY, nX, paddedSize)
-                            : epfDistance1(inputBuffers, colors, y, x, nY, nX, paddedSize);
+                        float dist = i == 2 ? epfDistance2(inputBuffers, colors, y, x, cross, paddedSize)
+                            : epfDistance1(inputBuffers, colors, y, x, cross, paddedSize);
                         float weight = epfWeight(sigmaScale, dist, s, y, x);
                         sumWeights += weight;
+                        int mY = MathHelper.mirrorCoordinate(y + cross.y, paddedSize.height);
+                        int mX = MathHelper.mirrorCoordinate(x + cross.x, paddedSize.width);
                         for (int c = 0; c < colors; c++)
                             sumChannels[c] += inputBuffers[c][mY][mX] * weight;
                     }
-                    for (int c = 0; c < outputBuffer.length; c++)
+                    for (int c = 0; c < outputBuffers.length; c++)
                         outputBuffers[c][y][x] = sumChannels[c] / sumWeights;
                 }
             }
@@ -623,16 +627,16 @@ public class Frame {
     }
 
     private float epfDistance1(float[][][] buffer, int colors, int basePosY, int basePosX,
-            int distPosY, int distPosX, Dimension frameSize) {
-        float dist = 0;
+            Point dCross, Dimension frameSize) {
+        float dist = 0f;
         for (int c = 0; c < colors; c++) {
             float[][] buffC = buffer[c];
             float scale = header.restorationFilter.epfChannelScale[c];
             for (Point cross : epfCross) {
                 int pY = MathHelper.mirrorCoordinate(basePosY + cross.y, frameSize.height);
                 int pX = MathHelper.mirrorCoordinate(basePosX + cross.x, frameSize.width);
-                int dY = MathHelper.mirrorCoordinate(distPosY + cross.y, frameSize.height);
-                int dX = MathHelper.mirrorCoordinate(distPosX + cross.x, frameSize.width);
+                int dY = MathHelper.mirrorCoordinate(basePosY + dCross.y + cross.y, frameSize.height);
+                int dX = MathHelper.mirrorCoordinate(basePosX + dCross.x + cross.x, frameSize.width);
                 dist += Math.abs(buffC[pY][pX] - buffC[dY][dX]) * scale;
             }
         }
@@ -641,24 +645,24 @@ public class Frame {
     }
 
     private float epfDistance2(float[][][] buffer, int colors, int basePosY, int basePosX,
-            int distPosY, int distPosX, Dimension frameSize) {
+            Point cross, Dimension frameSize) {
         float dist = 0f;
         for (int c = 0; c < colors; c++) {
             float[][] buffC = buffer[c];
-            int dY = MathHelper.mirrorCoordinate(distPosY, frameSize.height);
-            int dX = MathHelper.mirrorCoordinate(distPosX, frameSize.width);
+            int dY = MathHelper.mirrorCoordinate(basePosY + cross.y, frameSize.height);
+            int dX = MathHelper.mirrorCoordinate(basePosX + cross.x, frameSize.width);
             dist += Math.abs(buffC[basePosY][basePosX] - buffC[dY][dX]) * header.restorationFilter.epfChannelScale[c];
         }
         return dist;
     }
 
-    private float epfWeight(float stepMultiplier, float distance, float inverseSigma, int refY, int refX) {
+    private float epfWeight(float sigmaScale, float distance, float inverseSigma, int refY, int refX) {
         int modY = refY & 0b111;
         int modX = refX & 0b111;
-        if (modX == 0 || modX == 7 || modY == 0 || modY == 7)
+        if (modY == 0 || modY == 7 || modX == 0 || modX == 7)
             distance *= header.restorationFilter.epfBorderSadMul;
 
-        float v = 1f - distance * stepMultiplier * inverseSigma;
+        float v = 1f - distance * sigmaScale * inverseSigma;
         return v < 0f ? 0f : v;
     }
 
