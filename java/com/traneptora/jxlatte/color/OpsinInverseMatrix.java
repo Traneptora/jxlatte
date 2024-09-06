@@ -15,11 +15,13 @@ public class OpsinInverseMatrix {
     };
 
     private static final float[] DEFAULT_OPSIN_BIAS = {
-        -0.0037930732552754493f, -0.0037930732552754493f, -0.0037930732552754493f
+        -0.0037930732552754493f,
+        -0.0037930732552754493f,
+        -0.0037930732552754493f,
     };
 
     private static final float[] DEFAULT_QUANT_BIAS = {
-        1f - 0.05465007330715401f, 1f - 0.07005449891748593f, 1f - 0.049935103337343655f
+        0.945349926692846f, 0.9299455010825141f, 0.9500648966626564f,
     };
 
     private static final float DEFAULT_QBIAS_NUMERATOR = 0.145f;

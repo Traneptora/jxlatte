@@ -189,8 +189,8 @@ public class PassGroup {
                     }
                     int pixelY = sGroupY << 3;
                     int pixelX = sGroupX << 3;
-                    for (int iy = 0; iy < tt.blockHeight; iy++) {
-                        for (int ix = 0; ix < tt.blockWidth; ix++) {
+                    for (int iy = 0; iy < tt.pixelHeight; iy++) {
+                        for (int ix = 0; ix < tt.pixelWidth; ix++) {
                             hfCoefficients.quantizedCoeffs[c][pixelY + iy][pixelX + ix] +=
                                 prev.hfCoefficients.quantizedCoeffs[c][pixelY + iy][pixelX + ix];
                         }
@@ -200,7 +200,6 @@ public class PassGroup {
         }
 
         hfCoefficients.bakeDequantizedCoeffs();
-        hfCoefficients.finalizeLLF();
         Point groupLocation = frame.getGroupLocation(groupID);
         groupLocation.y <<= 8;
         groupLocation.x <<= 8;

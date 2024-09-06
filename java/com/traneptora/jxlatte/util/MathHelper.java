@@ -92,23 +92,31 @@ public final class MathHelper {
         }
     }
 
-    public static void inverseDCT2D(float[][] src, float[][] dest, Point startIn, Point startOut, Dimension length,
+    public static void inverseDCT2D(float[][] src, float[][] dest, Point startIn, Point startOut, Dimension size,
             float[][] scratchSpace0, float[][] scratchSpace1, boolean transposed) {
-        final int yLogLength = ceilLog2(length.height);
-        final int xLogLength = ceilLog2(length.width);
-        for (int y = 0; y < length.height; y++)
-            inverseDCTHorizontal(src[y + startIn.y], scratchSpace0[y],
-                startIn.x, 0, xLogLength, length.width);
-        transposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, length.height, length.width);
+        int logHeight = ceilLog2(size.height);
+        int logWidth = ceilLog2(size.width);
         if (transposed) {
-            for (int x = 0; x < length.width; x++)
-                inverseDCTHorizontal(scratchSpace1[x], dest[startOut.y + x],
-                    0, startOut.x, yLogLength, length.height);
+            for (int y = 0; y < size.height; y++) {
+                inverseDCTHorizontal(src[startIn.y + y], scratchSpace1[y],
+                    startIn.x, 0, logWidth, size.width);
+            }
+            transposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, size.height, size.width);
+            for (int y = 0; y < size.width; y++) {
+                inverseDCTHorizontal(scratchSpace0[y], dest[startOut.y + y],
+                    0, startOut.x, logHeight, size.height);
+            }
         } else {
-            for (int x = 0; x < length.width; x++)
-                inverseDCTHorizontal(scratchSpace1[x], scratchSpace0[x],
-                    0, 0, yLogLength, length.height);
-            transposeMatrixInto(scratchSpace0, dest, ZERO, startOut, length.width, length.height);
+            transposeMatrixInto(src, scratchSpace0, startIn, ZERO, size.height, size.width);
+            for (int y = 0; y < size.width; y++) {
+                inverseDCTHorizontal(scratchSpace0[y], scratchSpace1[y],
+                    0, 0, logHeight, size.height);
+            }
+            transposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, size.width, size.height);
+            for (int y = 0; y < size.height; y++) {
+                inverseDCTHorizontal(scratchSpace0[y], dest[startOut.y + y],
+                    0, startOut.x, logWidth, size.width);
+            }
         }
     }
 

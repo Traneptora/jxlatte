@@ -138,6 +138,11 @@ public class HFCoefficients {
 
     public void bakeDequantizedCoeffs() {
         dequantizeHFCoefficients();
+        chromaFromLuma();
+        finalizeLLF();
+    }
+
+    private void chromaFromLuma() {
         FrameHeader header = frame.getFrameHeader();
         // chroma from luma
         if (IntStream.of(header.jpegUpsamplingY).anyMatch(i -> i != 0)
@@ -155,7 +160,7 @@ public class HFCoefficients {
             TransformType tt = lfg.hfMetadata.dctSelect[pos.y][pos.x];
             int pPosY = pos.y << 3;
             int pPosX = pos.x << 3;
-            for (int iy = 0; iy < tt.blockHeight; iy++) {
+            for (int iy = 0; iy < tt.pixelHeight; iy++) {
                 int y = pPosY + iy;
                 int fy = y >> 6;
                 boolean by = fy << 6 == y;
@@ -163,7 +168,7 @@ public class HFCoefficients {
                 float[] bF = bFactors[fy];
                 int[] hfX = xFactorHF[fy];
                 int[] hfB = bFactorHF[fy];
-                for (int ix = 0; ix < tt.blockWidth; ix++) {
+                for (int ix = 0; ix < tt.pixelWidth; ix++) {
                     int x = pPosX + ix;
                     int fx = x >> 6;
                     float kX;
@@ -177,8 +182,7 @@ public class HFCoefficients {
                         kX = xF[fx];
                         kB = bF[fx];
                     }
-                    float dequantY =
-                        dequantHFCoeff[1][y & 0xFF][x & 0xFF];
+                    float dequantY = dequantHFCoeff[1][y & 0xFF][x & 0xFF];
                     dequantHFCoeff[0][y & 0xFF][x & 0xFF] += kX * dequantY;
                     dequantHFCoeff[2][y & 0xFF][x & 0xFF] += kB * dequantY;
                 }
@@ -186,8 +190,8 @@ public class HFCoefficients {
         }
     }
 
-    public void finalizeLLF() {
-        float[][][] scratchBlock = new float[2][256][256];
+    private void finalizeLLF() {
+        float[][][] scratchBlock = new float[2][32][32];
         // put the LF coefficients into the HF coefficent array
         FrameHeader header = frame.getFrameHeader();
         for (int i = 0; i < blocks.length; i++) {
@@ -211,7 +215,7 @@ public class HFCoefficients {
                 float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
                 float[][] dq = dequantHFCoeff[c];
                 MathHelper.forwardDCT2D(dqlf, dq, new Point(sLfgY, sLfgX),
-                    new Point(pixelGroupY, pixelGroupX), new Dimension(tt.dctSelectHeight, tt.dctSelectWidth),
+                    new Point(pixelGroupY, pixelGroupX), tt.getDctSelectSize(),
                     scratchBlock[0], scratchBlock[1]);
                 for (int y = 0; y < tt.dctSelectHeight; y++) {
                     final float[] dqy = dq[y + pixelGroupY];
@@ -223,10 +227,10 @@ public class HFCoefficients {
         }
     }
 
-    private int getBlockContext(final int c, final int orderID, final int hfMult, final int lfIndex) {
+    private int getBlockContext(int c, int orderID, int hfMult, int lfIndex) {
         int idx = (c < 2 ? 1 - c : c) * 13 + orderID;
         idx *= hfctx.qfThresholds.length + 1;
-        for (final int t : hfctx.qfThresholds) {
+        for (int t : hfctx.qfThresholds) {
             if (hfMult > t)
                 idx++;
         }
@@ -262,13 +266,18 @@ public class HFCoefficients {
     private void dequantizeHFCoefficients() {
         OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
         FrameHeader header = frame.getFrameHeader();
-        float globalScale = (float)(1 << 16) / frame.getLFGlobal().quantizer.globalScale;
+        float globalScale = 65536.0f / frame.getLFGlobal().quantizer.globalScale;
         float[] scaleFactor = new float[]{
             globalScale * (float)Math.pow(0.8D, header.xqmScale - 2D),
             globalScale,
             globalScale * (float)Math.pow(0.8D, header.bqmScale - 2D),
         };
         float[][][][] weights = frame.getHFGlobal().weights;
+        float[][] qbclut = new float[][]{
+            {-matrix.quantBias[0], 0.0f, matrix.quantBias[0]},
+            {-matrix.quantBias[1], 0.0f, matrix.quantBias[1]},
+            {-matrix.quantBias[2], 0.0f, matrix.quantBias[2]},
+        };
         for (int i = 0; i < blocks.length; i++) {
             Point pos = blocks[i];
             if (pos == null)
@@ -286,27 +295,21 @@ public class HFCoefficients {
                     continue;
                 }
                 float[][] w3 = w2[c];
-                float qbc = matrix.quantBias[c];
                 float sfc = scaleFactor[c] / lfg.hfMetadata.hfMultiplier[pos.y][pos.x];
                 int pixelGroupY = sGroupY << 3;
                 int pixelGroupX = sGroupX << 3;
-                for (int y = 0; y < tt.blockHeight; y++) {
-                    for (int x = 0; x < tt.blockWidth; x++) {
+                float[] qbc = qbclut[c];
+                for (int y = 0; y < tt.pixelHeight; y++) {
+                    for (int x = 0; x < tt.pixelWidth; x++) {
+                        if (y < tt.dctSelectHeight && x < tt.dctSelectWidth)
+                            continue;
                         int pY = pixelGroupY + y;
                         int pX = pixelGroupX + x;
                         int coeff = quantizedCoeffs[c][pY][pX];
-                        float quant;
-                        if (coeff == 0) {
-                            quant = 0f;
-                        } else if (coeff == 1) {
-                            quant = qbc;
-                        } else if (coeff == -1) {
-                            quant = -qbc;
-                        } else {
-                            quant = coeff - matrix.quantBiasNumerator / coeff;
-                        }
+                        float quant = (coeff > -2 && coeff < 2) ? qbc[coeff + 1] :
+                            coeff - matrix.quantBiasNumerator / coeff;
                         int wy = flip ? x : y;
-                        int wx = flip ? y : x;
+                        int wx = x ^ y ^ wy;
                         dequantHFCoeff[c][pY][pX] = quant * sfc * w3[wy][wx];
                     }
                 }

@@ -475,8 +475,8 @@ public class Frame {
                 float bFactor = ((float)Math.cos(hue - 4f * (float)Math.PI / 3f) + 1f) / 2f;
                 int cornerY = (block.y << 3) + pixelPos.y;
                 int cornerX = (block.x << 3) + pixelPos.x;
-                for (int y = 0; y < tt.blockHeight; y++) {
-                    for (int x = 0; x < tt.blockWidth; x++) {
+                for (int y = 0; y < tt.pixelHeight; y++) {
+                    for (int x = 0; x < tt.pixelWidth; x++) {
                         float sampleR = buff[0][y + cornerY][x + cornerX];
                         float sampleG = buff[1][y + cornerY][x + cornerX];
                         float sampleB = buff[2][y + cornerY][x + cornerX];

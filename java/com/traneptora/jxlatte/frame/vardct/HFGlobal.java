@@ -39,12 +39,14 @@ public class HFGlobal {
         return vals;
     }
 
-    private static float interpolate(float pos, float max, float[] bands) {
-        if (bands.length == 1)
+    private static float interpolate(float scaledPos, float[] bands) {
+        int len = bands.length - 1;
+        if (len == 0)
             return bands[0];
-        float scaledPos = pos * (bands.length - 1) / max;
         int scaledIndex = (int)scaledPos;
         float fracIndex = scaledPos - scaledIndex;
+        if (scaledIndex + 1 > len)
+            return bands[len];
         float a = bands[scaledIndex];
         float b = bands[scaledIndex + 1];
         return a * (float)Math.pow(b / a, fracIndex);
@@ -61,12 +63,14 @@ public class HFGlobal {
             bands[i] = bands[i - 1] * quantMult(params[i]);
         }
         float[][] weights = new float[height][width];
+        float scale = (bands.length - 1) / (MathHelper.SQRT_2 + 1e-6f);
         for (int y = 0; y < height; y++) {
-            float dy = (float)y / (height - 1);
+            float dy = (float)y * scale / (height - 1);
+            float dy2 = dy * dy;
             for (int x = 0; x < width; x++) {
-                float dx = (float)x / (width - 1);
-                float dist = (float)Math.sqrt(dx * dx + dy * dy);
-                weights[y][x] = interpolate(dist, MathHelper.SQRT_2 + 1e-6f, bands);
+                float dx = (float)x * scale / (width - 1);
+                float dist = (float)Math.sqrt(dx * dx + dy2);
+                weights[y][x] = interpolate(dist, bands);
             }
         }
         return weights;
@@ -322,7 +326,8 @@ public class HFGlobal {
             for (int x = 0; x < 4; x++) {
                 if (x < 2 && y < 2)
                     continue;
-                weight[2 * x][2 * y] = interpolate(afvFreqs[y * 4 + x] - low, high - low + 1e-6f, bands);
+                float pos = (afvFreqs[y * 4 + x] - low) / (high - low);
+                weight[2 * x][2 * y] = interpolate(pos, bands);
             }
             for (int x = 0; x < 8; x++) {
                 if (x == 0 && y == 0)
@@ -340,8 +345,7 @@ public class HFGlobal {
     }
 
     private void generateWeights(int index) throws InvalidBitstreamException {
-        TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == index && !t.isVertical()).findFirst().get();
+        TransformType tt = TransformType.getByParameterIndex(index);
         for (int c = 0; c < 3; c++) {
             float[][] w;
             switch (params[index].mode) {
@@ -416,11 +420,11 @@ public class HFGlobal {
         }
         if (params[index].mode != TransformType.MODE_RAW) {
             for (int c = 0; c < 3; c++) {
-                for (int y = 0; y < weights[index][c].length; y++) {
-                    for (int x = 0; x < weights[index][c][y].length; x++) {
+                for (int y = 0; y < tt.matrixHeight; y++) {
+                    for (int x = 0; x < tt.matrixWidth; x++) {
                         if (weights[index][c][y][x] <= 0f || !Float.isFinite(weights[index][c][y][x]))
                             throw new InvalidBitstreamException("Negative or infinite weight: " + index + ", " + c);
-                        weights[index][c][y][x] = 1f / weights[index][c][y][x];
+                        weights[index][c][y][x] = 1.0f / weights[index][c][y][x];
                     }
                 }
             }

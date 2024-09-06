@@ -41,4 +41,3 @@ public class Point {
         return String.format("(y=%d, x=%d)", y, x);
     }
 }
-
