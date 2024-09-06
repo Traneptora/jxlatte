@@ -1,7 +1,5 @@
 package com.traneptora.jxlatte.frame.vardct;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.stream.Stream;
@@ -13,7 +11,6 @@ import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.MathHelper;
-import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class HFGlobal {
 
@@ -58,7 +55,7 @@ public class HFGlobal {
         return v >= 0 ? 1 + v : 1 / (1 - v);
     }
 
-    private static float[][] getDCTQuantWeights(int width, int height, float[] params) {
+    private static float[][] getDCTQuantWeights(int height, int width, float[] params) {
         float[] bands = new float[params.length];
         bands[0] = params[0];
         for (int i = 1; i < bands.length; i++) {
@@ -185,35 +182,8 @@ public class HFGlobal {
         }, null, TransformType.MODE_DCT);
     }
 
-    private static void readDefaultWeights() throws IOException {
-        DataInputStream in = new DataInputStream(new BufferedInputStream(
-            HFGlobal.class.getResourceAsStream("/default-weights-float.dat")));
-
-        for (int i = 0; i < 17; i++) {
-            int j = i;
-            TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.parameterIndex == j && !t.isVertical()).findFirst().get();
-            for (int c = 0; c < 3; c++) {
-                defaultWeights[i][c] = new float[tt.matrixHeight][tt.matrixWidth];
-                for (int y = 0; y < tt.matrixHeight; y++) {
-                    for (int x = 0; x < tt.matrixWidth; x++) {
-                        defaultWeights[i][c][y][x] = in.readFloat();
-                    }
-                }
-            }
-        }
-
-        in.close();
-    }
-
     static {
         setupDefaultParams();
-
-        try {
-            readDefaultWeights();
-        } catch (IOException ioe) {
-            FunctionalHelper.sneakyThrow(ioe);
-        }
     }
 
     public final DCTParams[] params;
@@ -331,7 +301,7 @@ public class HFGlobal {
     }
 
     private float[][] getAFVTransformWeights(int index, int c) throws InvalidBitstreamException {
-        float[][] weights4x8 = getDCTQuantWeights(8, 4, params[index].dctParam[c]);
+        float[][] weights4x8 = getDCTQuantWeights(4, 8, params[index].dctParam[c]);
         float[][] weights4x4 = getDCTQuantWeights(4, 4, params[index].params4x4[c]);
         float low = 0.8517778890324296f;
         float high = 12.97166202570235f;
@@ -384,7 +354,7 @@ public class HFGlobal {
             float[][] w;
             switch (params[index].mode) {
                 case TransformType.MODE_DCT:
-                    weights[index][c] = getDCTQuantWeights(tt.matrixWidth, tt.matrixHeight, params[index].dctParam[c]);
+                    weights[index][c] = getDCTQuantWeights(tt.matrixHeight, tt.matrixWidth, params[index].dctParam[c]);
                     break;
                 case TransformType.MODE_DCT4:
                     weights[index][c] = new float[8][8];
@@ -428,7 +398,7 @@ public class HFGlobal {
                     break;
                 case TransformType.MODE_DCT4_8:
                     weights[index][c] = new float[8][8];
-                    w = getDCTQuantWeights(8, 4, params[index].dctParam[c]);
+                    w = getDCTQuantWeights(4, 8, params[index].dctParam[c]);
                     for (int y = 0; y < 8; y++) {
                         for (int x = 0; x < 8; x++) {
                             weights[index][c][y][x] = w[y/2][x];

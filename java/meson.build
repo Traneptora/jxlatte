@@ -114,8 +114,7 @@ src = files(
 res = structured_sources(
     files(
         'resources/bt2020-d65-pq.icc.zz',
-        'resources/natural-order.dat',
-        'resources/default-weights-float.dat',
+        'resources/natural-order.dat.zz',
     ),
 )
 

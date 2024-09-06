@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.stream.Stream;
+import java.util.zip.InflaterInputStream;
 
 import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
@@ -19,21 +20,22 @@ public class HFPass {
     private static final int[][] naturalOrderX = new int[13][];
 
     static {
-        InputStream in = new BufferedInputStream(HFPass.class.getResourceAsStream("/natural-order.dat"));
+        InputStream in = new BufferedInputStream(
+                new InflaterInputStream(HFPass.class.getResourceAsStream("/natural-order.dat.zz")));
         try {
             for (int i = 0; i < 13; i++) {
-                final int index = i;
+                final int fi = i;
                 TransformType tt = Stream.of(TransformType.values())
-                    .filter(t -> t.orderID == index && !t.isVertical()).findAny().get();
+                    .filter(t -> t.orderID == fi && !t.isVertical()).findAny().get();
                 int len = tt.blockHeight * tt.blockWidth;
-                naturalOrderX[index] = new int[len];
-                naturalOrderY[index] = new int[len];
-                naturalOrderX[index][0] = in.read();
+                naturalOrderX[i] = new int[len];
+                naturalOrderY[i] = new int[len];
+                naturalOrderX[i][0] = in.read();
                 for (int j = 1; j < len; j++)
-                    naturalOrderX[index][j] = (in.read() + naturalOrderX[index][j - 1]) & 0xFF;
-                naturalOrderY[index][0] = in.read();
+                    naturalOrderX[i][j] = (in.read() + naturalOrderX[i][j - 1]) & 0xFF;
+                naturalOrderY[i][0] = in.read();
                 for (int j = 1; j < len; j++)
-                    naturalOrderY[index][j] = (in.read() + naturalOrderY[index][j - 1]) & 0xFF;
+                    naturalOrderY[i][j] = (in.read() + naturalOrderY[i][j - 1]) & 0xFF;
             }
         } catch (IOException ioe) {
             FunctionalHelper.sneakyThrow(ioe);
