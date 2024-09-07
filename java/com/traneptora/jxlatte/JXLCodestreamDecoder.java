@@ -519,7 +519,7 @@ public class JXLCodestreamDecoder {
             if (canvas[c].getType() != frameBuffer.getType()) {
                 int depthCanvas = (c >= imageColors ? imageHeader.getExtraChannelInfo(c - imageColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
-                int depthFrame = (frameC >= imageColors ? imageHeader.getExtraChannelInfo(frameC - imageColors)
+                int depthFrame = (frameC >= frameColors ? imageHeader.getExtraChannelInfo(frameC - frameColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
                 frameBuffer.castToFloatIfInt(~(~0 << depthFrame));
                 canvas[c].castToFloatIfInt(~(~0 << depthCanvas));
