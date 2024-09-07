@@ -543,12 +543,12 @@ public class Frame {
         int blockWidth = (paddedSize.width + 7) >> 3;
         float[][] inverseSigma = new float[blockHeight][blockWidth];
         int colors = getColorChannelCount();
-        float globalScale = 65536.0f / lfGlobal.quantizer.globalScale;
         if (header.encoding == FrameFlags.MODULAR) {
             float inv = 1f / header.restorationFilter.epfSigmaForModular;
             for (int y = 0; y < blockHeight; y++)
                 Arrays.fill(inverseSigma[y], inv);
         } else {
+            float globalScale = 65536.0f / lfGlobal.quantizer.globalScale;
             for (int y = 0; y < blockHeight; y++) {
                 int lfY = y >> 8;
                 int bY = y - (lfY << 8);
