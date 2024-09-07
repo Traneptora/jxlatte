@@ -135,8 +135,8 @@ public class JXLImage {
         }
         image.primariesXY = primaries;
         image.whiteXY = whitePoint;
-        image.primaries = ColorFlags.getPrimaries(primaries);
-        image.whitePoint = ColorFlags.getWhitePoint(whitePoint);
+        image.primaries = ColorManagement.getPrimaries(primaries);
+        image.whitePoint = ColorManagement.getWhitePoint(whitePoint);
         return image;
     }
 
@@ -193,8 +193,8 @@ public class JXLImage {
     }
 
     public JXLImage transform(int primaries, int whitePoint, int transfer, int peakDetect) {
-        return transform(ColorFlags.getPrimaries(primaries), ColorFlags.getWhitePoint(whitePoint),
-            transfer, peakDetect);
+        return transform(ColorManagement.getPrimaries(primaries),
+            ColorManagement.getWhitePoint(whitePoint), transfer, peakDetect);
     }
 
     public JXLImage toneMap(CIEPrimaries primaries, CIEXY whitePoint) {

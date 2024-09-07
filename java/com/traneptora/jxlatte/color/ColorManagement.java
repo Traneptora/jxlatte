@@ -43,6 +43,52 @@ public final class ColorManagement {
         }
     }
 
+    public static CIEXY getWhitePoint(int wp) {
+        switch(wp) {
+            case ColorFlags.WP_D65:
+                return WP_D65;
+            case ColorFlags.WP_D50:
+                return WP_D50;
+            case ColorFlags.WP_DCI:
+                return WP_DCI;
+            case ColorFlags.WP_E:
+                return WP_E;
+            default:
+                return null;
+        }
+    }
+
+    public static CIEPrimaries getPrimaries(int prim) {
+        switch (prim) {
+            case ColorFlags.PRI_SRGB:
+                return PRI_SRGB;
+            case ColorFlags.PRI_P3:
+                return PRI_P3;
+            case ColorFlags.PRI_BT2100:
+                return PRI_BT2100;
+            default:
+                return null;
+        }
+    }
+
+    public static int getWhitePoint(CIEXY xy) {
+        int[] wp = new int[]{ColorFlags.WP_D65, ColorFlags.WP_E, ColorFlags.WP_DCI, ColorFlags.WP_D50};
+        for (int white : wp) {
+            if (CIEXY.matches(xy, getWhitePoint(white)))
+                return white;
+        }
+        return ColorFlags.WP_CUSTOM;
+    }
+
+    public static int getPrimaries(CIEPrimaries primaries) {
+        int[] pri = new int[]{ColorFlags.PRI_SRGB, ColorFlags.PRI_BT2100, ColorFlags.PRI_P3};
+        for (int prim : pri) {
+            if (CIEPrimaries.matches(primaries, getPrimaries(prim)))
+                return prim;
+        }
+        return ColorFlags.PRI_CUSTOM;
+    }
+
     private static float[][] adaptWhitePoint(CIEXY targetWP, CIEXY currentWP) {
         if (targetWP == null)
             targetWP = WP_D50;

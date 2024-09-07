@@ -120,7 +120,7 @@ public class ColorFlags {
         }
     }
 
-    public static CIEXY getWhitePoint(int whitePoint) {
+    static CIEXY getWhitePoint(int whitePoint) {
         switch (whitePoint) {
             case WP_D65:
                 return new CIEXY(0.3127f, 0.3290f);
@@ -134,15 +134,7 @@ public class ColorFlags {
         return null;
     }
 
-    public static int getWhitePoint(CIEXY wp) {
-        for (int white : new int[]{WP_D65, WP_E, WP_DCI, WP_D50}) {
-            if (CIEXY.matches(wp, getWhitePoint(white)))
-                return white;
-        }
-        return WP_CUSTOM;
-    }
-
-    public static CIEPrimaries getPrimaries(int primaries) {
+    static CIEPrimaries getPrimaries(int primaries) {
         switch (primaries) {
             case ColorFlags.PRI_SRGB:
                 return new CIEPrimaries(new CIEXY(0.639998686f, 0.330010138f),
@@ -159,13 +151,5 @@ public class ColorFlags {
                     new CIEXY(0.150f, 0.060f));
         }
         return null;
-    }
-
-    public static int getPrimaries(CIEPrimaries primaries) {
-        for (int prim : new int[]{PRI_SRGB, PRI_BT2100, PRI_P3}) {
-            if (CIEPrimaries.matches(primaries, getPrimaries(prim)))
-                return prim;
-        }
-        return PRI_CUSTOM;
     }
 }
