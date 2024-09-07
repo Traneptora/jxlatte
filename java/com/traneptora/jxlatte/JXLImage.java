@@ -226,7 +226,7 @@ public class JXLImage {
         int colors = getColorChannelCount();
         float[][][] buffers = new float[colors][][];
         for (int c = 0; c < colors; c++) {
-            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffer[c].castToFloatIfInt(~(~0 << bitDepths[c]));
             buffers[c] = buffer[c].getFloatBuffer();
         }
         JXLImage image = new JXLImage(this, false);
@@ -260,9 +260,8 @@ public class JXLImage {
     private JXLImage linearize() {
         if (this.transfer == ColorFlags.TF_LINEAR)
             return this;
-
         FloatUnaryOperator toLinear = ColorManagement.getTransferFunction(this.transfer).toLinearFloatOp();
-        JXLImage image = transfer(toLinear);
+        JXLImage image = this.transfer(toLinear);
         image.transfer = ColorFlags.TF_LINEAR;
         return image;
     }
