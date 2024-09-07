@@ -80,6 +80,7 @@ src = files(
     'com/traneptora/jxlatte/frame/vardct/HFPass.java',
     'com/traneptora/jxlatte/frame/vardct/LFChannelCorrelation.java',
     'com/traneptora/jxlatte/frame/vardct/LFCoefficients.java',
+    'com/traneptora/jxlatte/frame/vardct/LLFScale.java',
     'com/traneptora/jxlatte/frame/vardct/Quantizer.java',
     'com/traneptora/jxlatte/frame/vardct/TransformType.java',
 
@@ -114,7 +115,6 @@ src = files(
 res = structured_sources(
     files(
         'resources/bt2020-d65-pq.icc.zz',
-        'resources/natural-order.dat.zz',
     ),
 )
 
