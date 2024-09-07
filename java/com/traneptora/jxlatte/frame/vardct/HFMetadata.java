@@ -108,9 +108,10 @@ public class HFMetadata {
                     }
                 }
                 Point pos = new Point(y, x);
-                hfMultiplier[y][x] = mul;
-                for (int iy = 0; iy < block.dctSelectHeight; iy++)
+                for (int iy = 0; iy < block.dctSelectHeight; iy++) {
                     Arrays.fill(dctSelect[y + iy], x, x + block.dctSelectWidth, block);
+                    Arrays.fill(hfMultiplier[y + iy], x, x + block.dctSelectWidth, mul);
+                }
                 return pos;
             }
         }
