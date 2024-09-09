@@ -109,7 +109,7 @@ public class Frame {
         }
         this.loggers = frame.loggers;
         this.options = frame.options;
-        this.bounds = new Rectangle(frame.bounds);
+        this.bounds = this.header.bounds;
         this.groupRowStride = frame.groupRowStride;
         this.lfGroupRowStride = frame.lfGroupRowStride;
     }
@@ -117,7 +117,7 @@ public class Frame {
     public FrameHeader readFrameHeader() throws IOException {
         globalReader.zeroPadToByte();
         this.header = new FrameHeader(globalReader, this.globalMetadata);
-        this.bounds = new Rectangle(header.bounds);
+        this.bounds = header.bounds;
         groupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim);
         lfGroupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim << 3);
         numGroups = groupRowStride * MathHelper.ceilDiv(bounds.size.height, header.groupDim);
@@ -245,12 +245,12 @@ public class Frame {
                                 total += weights[iy][ix] * sample;
                             }
                         }
-                        newBuffer[y*k + ky][x*k + kx] = MathHelper.clamp(total, min, max);
+                        newBuffer[y*k + ky][x*k + kx] = total < min ? min : total > max ? max : total;
                     }
                 }
             }
         }
-        return ib;
+        return new ImageBuffer(newBuffer);
     }
 
     private void decodeLFGroups(ImageBuffer[] lfBuffer) throws IOException {
