@@ -11,7 +11,7 @@ public class XorShiro {
     private long[] state0 = new long[8];
     private long[] state1 = new long[8];
     private long[] batch = new long[8];
-    private int batchPos = 0;
+    private int batchPos = batch.length;
 
     public XorShiro(int seed0, int seed1, int seed2, int seed3) {
         this(((long)seed0 << 32) | ((long)seed1 & 0xFF_FF_FF_FFL),

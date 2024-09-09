@@ -743,8 +743,8 @@ public class JXLCodestreamDecoder {
             } else {
                 invisibleFrames++;
             }
-            frame.initializeNoise((visibleFrames << 32) | invisibleFrames);
             frame.upsample();
+            frame.initializeNoise((visibleFrames << 32) | invisibleFrames);
             if (save && header.saveBeforeCT)
                 reference[header.saveAsReference] = Stream.of(frame.getBuffer()).map(b -> new ImageBuffer(b)).toArray(ImageBuffer[]::new);
             computePatches(reference, frame);

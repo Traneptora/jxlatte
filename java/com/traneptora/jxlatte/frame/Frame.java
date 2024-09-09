@@ -54,7 +54,13 @@ public class Frame {
         new Point(0, -2), new Point(0, 2), new Point(2, 0), new Point(-2, 0),
     };
 
-    private static float[][] laplacian = null;
+    private static final float[][] laplacian = new float[][]{
+        {0.16f, 0.16f, 0.16f, 0.16f, 0.16f},
+        {0.16f, 0.16f, 0.16f, 0.16f, 0.16f},
+        {0.16f, 0.16f, -3.84f, 0.16f, 0.16f},
+        {0.16f, 0.16f, 0.16f, 0.16f, 0.16f},
+        {0.16f, 0.16f, 0.16f, 0.16f, 0.16f},
+    };
 
     private Bitreader globalReader;
     private FrameHeader header;
@@ -718,6 +724,10 @@ public class Frame {
         bounds.size.width *= header.upsampling;
         bounds.origin.y *= header.upsampling;
         bounds.origin.x *= header.upsampling;
+        groupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim);
+        lfGroupRowStride = MathHelper.ceilDiv(bounds.size.width, header.groupDim << 3);
+        numGroups = groupRowStride * MathHelper.ceilDiv(bounds.size.height, header.groupDim);
+        numLFGroups = lfGroupRowStride * MathHelper.ceilDiv(bounds.size.height, header.groupDim << 3);
     }
 
     public void renderSplines() {
@@ -735,16 +745,10 @@ public class Frame {
         int colors = getColorChannelCount();
         float[][][] localNoiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
         NoiseGroup[] noiseGroups = new NoiseGroup[numGroups];
-        for (int group = 0; group < numGroups; group++) {
+        for (int group = 0; group < noiseGroups.length; group++) {
             Point groupLocation = getGroupLocation(group);
-            noiseGroups[group] = new NoiseGroup(header, seed0, localNoiseBuffer, groupLocation.y, groupLocation.x);
-        }
-
-        if (laplacian == null) {
-            laplacian = new float[5][5];
-            for (int i = 0; i < 5; i++)
-                Arrays.fill(laplacian[i], 0.16f);
-            laplacian[2][2] = -3.84f;
+            noiseGroups[group] = new NoiseGroup(header, seed0, localNoiseBuffer,
+                groupLocation.y << header.logGroupDim, groupLocation.x << header.logGroupDim);
         }
 
         noiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
@@ -775,33 +779,34 @@ public class Frame {
             buffer[d].castToFloatIfInt(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
             buffers[c] = buffer[d].getFloatBuffer();
         }
-        // header.width here to avoid upsampling
-        for (int y = 0; y < header.bounds.size.height; y++) {
-            for (int x = 0; x < header.bounds.size.width; x++) {
+        for (int y = 0; y < bounds.size.height; y++) {
+            for (int x = 0; x < bounds.size.width; x++) {
                 float inScaledR = buffers[1][y][x] + buffers[0][y][x];
                 inScaledR = inScaledR < 0f ? 0f : 3f * inScaledR;
                 float inScaledG = buffers[1][y][x] - buffers[0][y][x];
                 inScaledG = inScaledG < 0f ? 0f : 3f * inScaledG;
                 int intInR;
                 float fracInR;
-                if (inScaledR >= 7f) {
+                if (inScaledR >= 7.0f) {
                     intInR = 6;
-                    fracInR = 1f;
+                    fracInR = 1.0f;
                 } else {
                     intInR = (int)inScaledR;
                     fracInR = inScaledR - intInR;
                 }
                 int intInG;
                 float fracInG;
-                if (inScaledG >= 7f) {
+                if (inScaledG >= 7.0f) {
                     intInG = 6;
-                    fracInG = 1f;
+                    fracInG = 1.0f;
                 } else {
                     intInG = (int)inScaledG;
                     fracInG = inScaledG - intInG;
                 }
                 float sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
                 float sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
+                sr = sr < 0.0f ? 0.0f : sr > 1.0f ? 1.0f : sr;
+                sg = sg < 0.0f ? 0.0f : sg > 1.0f ? 1.0f : sg;
                 float nr = sr * (0.00171875f * noiseBuffer[0][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float ng = sg * (0.00171875f * noiseBuffer[1][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float nrg = nr + ng;

@@ -7,7 +7,7 @@ public class NoiseGroup {
     private XorShiro rng;
 
     public NoiseGroup(FrameHeader header, long seed0, float[][][] noiseBuffer, int y0, int x0) {
-        long seed1 = (((long)x0 & 0xFFFFFFFFL) << 32) | ((long)y0 & 0xFFFFFFFFL);
+        long seed1 = (((long)x0 & 0xFF_FF_FF_FFL) << 32) | ((long)y0 & 0xFF_FF_FF_FFL);
         int ySize = Math.min(header.groupDim, header.bounds.size.height - y0);
         int xSize = Math.min(header.groupDim, header.bounds.size.width - x0);
         rng = new XorShiro(seed0, seed1);
