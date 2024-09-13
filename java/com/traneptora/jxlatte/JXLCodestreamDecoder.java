@@ -184,6 +184,12 @@ public class JXLCodestreamDecoder {
     private ImageHeader imageHeader;
     private JXLOptions options;
     private Demuxer demuxer;
+    private boolean skippedPreview = false;
+    private long visibleFrames = 0L;
+    private long invisibleFrames = 0L;
+    private int totalFrames = 0;
+    private ImageBuffer[][] reference = new ImageBuffer[4][];
+    private ImageBuffer[][] lfBuffer = new ImageBuffer[5][];
 
     public JXLCodestreamDecoder(PushbackInputStream in, JXLOptions options, Demuxer demuxer) {
         this.in = in;
@@ -192,7 +198,7 @@ public class JXLCodestreamDecoder {
         this.demuxer = demuxer;
     }
 
-    private void computePatches(ImageBuffer[][] references, Frame frame) throws InvalidBitstreamException {
+    private void computePatches(Frame frame) throws InvalidBitstreamException {
         FrameHeader header = frame.getFrameHeader();
         ImageBuffer[] frameBuffer = frame.getBuffer();
         int colorChannels = imageHeader.getColorChannelCount();
@@ -203,7 +209,7 @@ public class JXLCodestreamDecoder {
             Patch patch = patches[i];
             if (patch.ref > 3)
                 throw new InvalidBitstreamException("Patch out of range");
-            ImageBuffer[] refBuffer = references[patch.ref];
+            ImageBuffer[] refBuffer = reference[patch.ref];
             // technically you can reference a nonexistent frame
             // you wouldn't but it's not against the rules
             if (refBuffer == null)
@@ -489,7 +495,7 @@ public class JXLCodestreamDecoder {
         }
     }
 
-    public void blendFrame(ImageBuffer[] canvas, ImageBuffer[][] reference, Frame frame)
+    public void blendFrame(ImageBuffer[] canvas, Frame frame)
             throws InvalidBitstreamException {
         Dimension imageSize = imageHeader.getSize();
         FrameHeader header = frame.getFrameHeader();
@@ -668,40 +674,40 @@ public class JXLCodestreamDecoder {
         Loggers loggers = new Loggers(options, err);
         bitreader.showBits(16); // force the level to be populated
         int level = demuxer.getLevel();
-        this.imageHeader = ImageHeader.read(loggers, bitreader, level);
-        loggers.log(Loggers.LOG_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
-        loggers.log(Loggers.LOG_INFO, "    Level: %d", level);
-        Dimension size = imageHeader.getSize();
-        loggers.log(Loggers.LOG_INFO, "    Size: %dx%d", size.width, size.height);
-        boolean gray = imageHeader.getColorChannelCount() < 3;
-        boolean alpha = imageHeader.hasAlpha();
-        loggers.log(Loggers.LOG_INFO, "    Pixel Format: %s",
-            gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
-        loggers.log(Loggers.LOG_INFO, "    Bit Depth: %d", imageHeader.getBitDepthHeader().bitsPerSample);
-        loggers.log(Loggers.LOG_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
-        loggers.log(Loggers.LOG_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
-        ColorEncodingBundle ce = imageHeader.getColorEncoding();
-        if (!gray)
-            loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s", ColorFlags.primariesToString(ce.primaries));
-        loggers.log(Loggers.LOG_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
-        loggers.log(Loggers.LOG_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
-        if (imageHeader.getAnimationHeader() != null)
-            loggers.log(Loggers.LOG_INFO, "    Animated: true");
+        Dimension size;
+        if (this.imageHeader == null) {
+            this.imageHeader = ImageHeader.read(loggers, bitreader, level);
+            loggers.log(Loggers.LOG_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
+            loggers.log(Loggers.LOG_INFO, "    Level: %d", level);
+            size = imageHeader.getSize();
+            loggers.log(Loggers.LOG_INFO, "    Size: %dx%d", size.width, size.height);
+            boolean gray = imageHeader.getColorChannelCount() < 3;
+            boolean alpha = imageHeader.hasAlpha();
+            loggers.log(Loggers.LOG_INFO, "    Pixel Format: %s",
+                gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
+            loggers.log(Loggers.LOG_INFO, "    Bit Depth: %d", imageHeader.getBitDepthHeader().bitsPerSample);
+            loggers.log(Loggers.LOG_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
+            loggers.log(Loggers.LOG_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
+            ColorEncodingBundle ce = imageHeader.getColorEncoding();
+            if (!gray)
+                loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s", ColorFlags.primariesToString(ce.primaries));
+            loggers.log(Loggers.LOG_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
+            loggers.log(Loggers.LOG_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
+            if (imageHeader.getAnimationHeader() != null)
+                loggers.log(Loggers.LOG_INFO, "    Animated: true");
+        } else {
+            size = imageHeader.getSize();
+        }
 
-        if (imageHeader.getPreviewSize() != null) {
+        if (imageHeader.getPreviewSize() != null && !skippedPreview) {
             JXLOptions previewOptions = new JXLOptions(options);
             previewOptions.parseOnly = true;
             Frame frame = new Frame(bitreader, imageHeader, loggers, previewOptions);
             frame.readFrameHeader();
             frame.readTOC();
             frame.skipFrameData();
+            skippedPreview = true;
         }
-
-        int frameCount = 0;
-        ImageBuffer[][] reference = new ImageBuffer[4][];
-        FrameHeader header;
-        // last one is always null, avoids ugly branch later
-        ImageBuffer[][] lfBuffer = new ImageBuffer[5][];
 
         OpsinInverseMatrix matrix = null;
         if (imageHeader.isXYBEncoded()) {
@@ -711,13 +717,12 @@ public class JXLCodestreamDecoder {
 
         ImageBuffer[] canvas = new ImageBuffer[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()];
 
-        long invisibleFrames = 0;
-        long visibleFrames = 0;
+        FrameHeader header;
 
         do {
             Frame frame = new Frame(bitreader, imageHeader, loggers, options);
             header = frame.readFrameHeader();
-            if (frameCount++ == 0) {
+            if (totalFrames++ == 0) {
                 loggers.log(Loggers.LOG_INFO, "    Lossless: %s",
                     header.encoding == FrameFlags.VARDCT || imageHeader.isXYBEncoded() ? "No" : "Possibly");
             }
@@ -745,9 +750,11 @@ public class JXLCodestreamDecoder {
             }
             frame.upsample();
             frame.initializeNoise((visibleFrames << 32) | invisibleFrames);
-            if (save && header.saveBeforeCT)
-                reference[header.saveAsReference] = Stream.of(frame.getBuffer()).map(b -> new ImageBuffer(b)).toArray(ImageBuffer[]::new);
-            computePatches(reference, frame);
+            if (save && header.saveBeforeCT) {
+                reference[header.saveAsReference] = Stream.of(frame.getBuffer()).map(
+                    b -> new ImageBuffer(b)).toArray(ImageBuffer[]::new);
+            }
+            computePatches(frame);
             frame.renderSplines();
             frame.synthesizeNoise();
             performColorTransforms(matrix, frame);
@@ -767,11 +774,11 @@ public class JXLCodestreamDecoder {
                 }
                 if (found)
                     canvas = Stream.of(canvas).map(b -> new ImageBuffer(b)).toArray(ImageBuffer[]::new);
-                blendFrame(canvas, reference, frame);
+                blendFrame(canvas, frame);
             }
             if (save && !header.saveBeforeCT)
                 reference[header.saveAsReference] = canvas;
-        } while (!header.isLast);
+        } while (!header.isLast && header.duration == 0);
 
         bitreader.zeroPadToByte();
         byte[] drain = bitreader.drainCache();
