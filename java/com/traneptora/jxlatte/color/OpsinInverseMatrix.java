@@ -111,16 +111,26 @@ public class OpsinInverseMatrix {
             for (int x = 0; x < 3; x++)
                 scaledMatrix[y][x] = matrix[y][x] * itScale;
         }
+        final float[][] xybXRBuffer = buffer[0];
+        final float[][] xybYGBuffer = buffer[1];
+        final float[][] xybBBBuffer = buffer[2];
         for (int y = 0; y < buffer[0].length; y++) {
+            final float[] xybXRBufferRow = xybXRBuffer[y];
+            final float[] xybYGBufferRow = xybYGBuffer[y];
+            final float[] xybBBBufferRow = xybBBBuffer[y];
             for (int x = 0; x < buffer[0][y].length; x++) {
-                final float gammaL = buffer[1][y][x] + buffer[0][y][x] - cbrtOpsinBias[0];
-                final float gammaM = buffer[1][y][x] - buffer[0][y][x] - cbrtOpsinBias[1];
-                final float gammaS = buffer[2][y][x] - cbrtOpsinBias[2];
-                final float mixL = gammaL * gammaL * gammaL + opsinBias[0];
-                final float mixM = gammaM * gammaM * gammaM + opsinBias[1];
-                final float mixS = gammaS * gammaS * gammaS + opsinBias[2];
-                for (int c = 0; c < 3; c++)
-                    buffer[c][y][x] = scaledMatrix[c][0] * mixL + scaledMatrix[c][1] * mixM + scaledMatrix[c][2] * mixS;
+                final float xybX = xybXRBufferRow[x];
+                final float xybY = xybYGBufferRow[x];
+                final float xybB = xybBBBufferRow[x];
+                final float gammaL = xybY + xybX - cbrtOpsinBias[0];
+                final float gammaM = xybY - xybX - cbrtOpsinBias[1];
+                final float gammaS = xybB - cbrtOpsinBias[2];
+                final float mixL = (gammaL * gammaL) * gammaL + opsinBias[0];
+                final float mixM = (gammaM * gammaM) * gammaM + opsinBias[1];
+                final float mixS = (gammaS * gammaS) * gammaS + opsinBias[2];
+                xybXRBufferRow[x] = scaledMatrix[0][0] * mixL + scaledMatrix[0][1] * mixM + scaledMatrix[0][2] * mixS;
+                xybYGBufferRow[x] = scaledMatrix[1][0] * mixL + scaledMatrix[1][1] * mixM + scaledMatrix[1][2] * mixS;
+                xybBBBufferRow[x] = scaledMatrix[2][0] * mixL + scaledMatrix[2][1] * mixM + scaledMatrix[2][2] * mixS;
             }
         }
     }
