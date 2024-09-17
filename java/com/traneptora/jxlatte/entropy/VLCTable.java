@@ -8,17 +8,19 @@ import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class VLCTable {
-    private int[][] table;
+    private static final VLCTableEntry ZERO = new VLCTableEntry(0, 0);
+
+    private VLCTableEntry[] table;
     private int bits;
 
-    public VLCTable(int bits, int[][] table) {
+    public VLCTable(int bits, VLCTableEntry[] table) {
         this.bits = bits;
         this.table = table;
     }
 
     public VLCTable(int bits, int[] lengths, int[] symbols) throws InvalidBitstreamException {
         this.bits = bits;
-        int[][] table = new int[1 << bits][2];
+        VLCTableEntry[] table = new VLCTableEntry[1 << bits];
         int[] codes = new int[lengths.length];
         int[] nLengths = new int[lengths.length];
         int[] nSymbols = new int[lengths.length];
@@ -48,12 +50,12 @@ public class VLCTable {
                 int number = 1 << (bits - nLengths[i]);
                 int offset = 1 << nLengths[i];
                 for (int j = 0; j < number; j++) {
-                    int oldSymbol = table[index][0];
-                    int oldLen = table[index][1];
+                    VLCTableEntry oldEntry = Objects.requireNonNullElse(table[index], ZERO);
+                    int oldSymbol = oldEntry.symbol;
+                    int oldLen = oldEntry.length;
                     if ((oldLen > 0 || oldSymbol > 0) && (oldLen != nLengths[i] || oldSymbol != nSymbols[i]))
                         throw new InvalidBitstreamException("Illegal VLC codes");
-                    table[index][0] = nSymbols[i];
-                    table[index][1] = nLengths[i];
+                    table[index] = new VLCTableEntry(nSymbols[i], nLengths[i]);
                     index += offset;
                 }
             } else {
@@ -61,16 +63,18 @@ public class VLCTable {
             }
         }
         for (int i = 0; i < table.length; i++) {
-            if (table[i][1] == 0)
-                table[i][0] = -1;
+            if (table[i] == null)
+                table[i] = new VLCTableEntry(-1, 0);
+            else if (table[i].length == 0)
+                table[i].symbol = -1;
         }
         this.table = table;
     }
 
     public int getVLC(Bitreader reader) throws IOException {
         int index = reader.showBits(bits);
-        int symbol = table[index][0];
-        int length = table[index][1];
+        int symbol = table[index].symbol;
+        int length = table[index].length;
         reader.skipBits(length);
         return symbol;
     }

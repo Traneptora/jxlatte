@@ -3,13 +3,14 @@ package com.traneptora.jxlatte.entropy;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class ANSSymbolDistribution extends SymbolDistribution {
 
-    private static final VLCTable distPrefixTable = new VLCTable(7, new int[][]{
+    private static final VLCTable distPrefixTable = new VLCTable(7, Stream.of(new int[][]{
         {10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4},
         {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4},
         {10, 3}, {0, 5},  {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4},
@@ -26,7 +27,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4},
         {10, 3}, {0, 5},  {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4},
         {10, 3}, {4, 4},  {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4},
-    });
+    }).map(a -> new VLCTableEntry(a[0], a[1])).toArray(VLCTableEntry[]::new));
 
     private int[] frequencies;
     private int[] cutoffs;

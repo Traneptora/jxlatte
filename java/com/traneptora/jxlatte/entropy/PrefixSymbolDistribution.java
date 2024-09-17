@@ -2,6 +2,7 @@ package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
@@ -9,10 +10,10 @@ import com.traneptora.jxlatte.util.MathHelper;
 
 public class PrefixSymbolDistribution extends SymbolDistribution {
 
-    private static final VLCTable level0Table = new VLCTable(4, new int[][]{
+    private static final VLCTable level0Table = new VLCTable(4, Stream.of(new int[][]{
         {0, 2}, {4, 2}, {3, 2}, {2, 3}, {0, 2}, {4, 2}, {3, 2}, {1, 4},
         {0, 2}, {4, 2}, {3, 2}, {2, 3}, {0, 2}, {4, 2}, {3, 2}, {5, 4}
-    });
+    }).map(a -> new VLCTableEntry(a[0], a[1])).toArray(VLCTableEntry[]::new));
 
     private static final int[] codelenMap = {1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
@@ -109,7 +110,7 @@ public class PrefixSymbolDistribution extends SymbolDistribution {
         VLCTable leve11Table;
 
         if (numCodes == 1) {
-            leve11Table = new VLCTable(0, new int[][]{{level1Symbols[17], 0}});
+            leve11Table = new VLCTable(0, new VLCTableEntry[]{new VLCTableEntry(level1Symbols[17], 0)});
         } else {
             leve11Table = new VLCTable(5, level1LengthsScrambled, level1Symbols);
         }

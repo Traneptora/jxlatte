@@ -34,6 +34,7 @@ src = files(
     'com/traneptora/jxlatte/entropy/PrefixSymbolDistribution.java',
     'com/traneptora/jxlatte/entropy/SymbolDistribution.java',
     'com/traneptora/jxlatte/entropy/VLCTable.java',
+    'com/traneptora/jxlatte/entropy/VLCTableEntry.java',
 
     # com.traneptora.jxlatte.frame
     'com/traneptora/jxlatte/frame/Frame.java',
