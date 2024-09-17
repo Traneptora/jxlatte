@@ -1,42 +1,42 @@
 package com.traneptora.jxlatte.util;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.function.DoubleUnaryOperator;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import com.traneptora.jxlatte.util.functional.FloatUnaryOperator;
 
-public class ChebyschevApproximation implements DoubleUnaryOperator {
-    private double[] c;
-    private double ab;
-    private double s;
+public class ChebyschevApproximation implements FloatUnaryOperator {
+    private final float[] c;
+    private final float ab;
+    private final float s;
 
-    public ChebyschevApproximation(double a, double b, int n, DoubleUnaryOperator func) {
+    public ChebyschevApproximation(float a, float b, int n, FloatUnaryOperator func) {
         ab = a + b;
-        s = 1.0D / (b - a); 
+        s = 1.0f / (b - a); 
 
-        double bma = 0.5 * (b - a);
-        double bpa = 0.5 * ab;
-        double[] f = IntStream.range(0, n).mapToDouble(k -> Math.cos(Math.PI * (k + 0.5D) / n) * bma + bpa).map(func).toArray();
-        double fac = 2.0D / n;
-        List<Double> l = IntStream.range(0, n).mapToDouble(j -> {
-            return fac * IntStream.range(0, n).mapToDouble(k -> f[k] * Math.cos(Math.PI * j * (k + 0.5D) / n)).sum();
-        }).boxed().collect(Collectors.toList());
-        Collections.reverse(l);
-        c = l.stream().mapToDouble(Double::doubleValue).toArray();
+        float bma = 0.5f * (b - a);
+        float bpa = 0.5f * ab;
+        float[] f = new float[n];
+        for (int k = 0; k < n; k++)
+            f[k] = func.applyAsFloat((float)Math.cos(Math.PI * (k + 0.5D) / n) * bma + bpa);
+        float fac = 2.0f / n;
+        c = new float[n];
+        for (int j = 0; j < n; j++) {
+            float tot = 0.0f;
+            for (int k = 0; k < n; k++)
+                tot += f[k] * (float)Math.cos(Math.PI * j * (k + 0.5D) / n);
+            c[n - 1 - j] = tot * fac;
+        }
     }
 
     @Override
-    public double applyAsDouble(double x) {
-        double y = (2.0D * x - ab) * s;
-        double y2 = 2.0D * y;
-        double d = c[0];
-        double dPrev = 0D;
+    public float applyAsFloat(float x) {
+        float y = (2.0f * x - ab) * s;
+        float y2 = 2.0f * y;
+        float d = c[0];
+        float dPrev = 0f;
         for (int j = 1; j < c.length - 1; j++) {
-            double d2 = y2 * d - dPrev + c[j];
+            float d2 = y2 * d - dPrev + c[j];
             dPrev = d;
             d = d2;
         }
-        return y * d - dPrev + 0.5 * c[c.length - 1];
+        return y * d - dPrev + 0.5f * c[c.length - 1];
     }
 }
