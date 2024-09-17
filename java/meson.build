@@ -14,6 +14,7 @@ src = files(
     'com/traneptora/jxlatte/bundle/ExtraChannelInfo.java',
     'com/traneptora/jxlatte/bundle/ExtraChannelType.java',
     'com/traneptora/jxlatte/bundle/ImageHeader.java',
+    'com/traneptora/jxlatte/bundle/PassesInfo.java',
 
     # com.traneptora.jxlatte.color
     'com/traneptora/jxlatte/color/CIEPrimaries.java',
@@ -59,7 +60,6 @@ src = files(
     # com.traneptora.jxlatte.frame.group
     'com/traneptora/jxlatte/frame/group/LFGroup.java',
     'com/traneptora/jxlatte/frame/group/Pass.java',
-    'com/traneptora/jxlatte/frame/group/PassesInfo.java',
     'com/traneptora/jxlatte/frame/group/PassGroup.java',
 
     # com.traneptora.jxlatte.frame.modular

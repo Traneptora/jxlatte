@@ -2,6 +2,7 @@ package com.traneptora.jxlatte.frame.group;
 
 import java.io.IOException;
 
+import com.traneptora.jxlatte.bundle.PassesInfo;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.FrameFlags;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;

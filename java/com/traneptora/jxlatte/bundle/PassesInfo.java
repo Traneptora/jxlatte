@@ -1,4 +1,4 @@
-package com.traneptora.jxlatte.frame.group;
+package com.traneptora.jxlatte.bundle;
 
 import java.io.IOException;
 import java.util.Arrays;
