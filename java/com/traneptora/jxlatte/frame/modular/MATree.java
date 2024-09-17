@@ -12,7 +12,6 @@ import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class MATree {
-
     private EntropyStream stream;
     private MATree parent;
 
@@ -93,21 +92,21 @@ public class MATree {
     }
 
     public boolean isLeafNode() {
-        return this.property < 0;
+        return property < 0;
     }
 
     public boolean usesWeightedPredictor() {
-        if (this.isLeafNode())
-            return this.predictor == 6; // WP Predictor
+        if (isLeafNode())
+            return predictor == 6; // weighted predictor
         else
-            return this.property == 15 // maxError
-                || this.leftChildNode.usesWeightedPredictor()
-                || this.rightChildNode.usesWeightedPredictor();
+            return property == 15 // max error
+                || leftChildNode.usesWeightedPredictor()
+                || rightChildNode.usesWeightedPredictor();
     }
 
     public MATree compactify(int channelIndex, int streamIndex) {
         int prop;
-        switch (this.property) {
+        switch (property) {
             case 0:
                 prop = channelIndex;
                 break;
@@ -117,13 +116,13 @@ public class MATree {
             default:
                 return this;
         }
-        MATree branch = prop > this.value ? leftChildNode : rightChildNode;
+        MATree branch = prop > value ? leftChildNode : rightChildNode;
         return branch.compactify(channelIndex, streamIndex);
     }
 
     public MATree compactify(int channelIndex, int streamIndex, int y) {
         int prop;
-        switch (this.property) {
+        switch (property) {
             case 0:
                 prop = channelIndex;
                 break;
@@ -136,22 +135,21 @@ public class MATree {
             default:
                 return this;
         }
-        MATree branch = prop > this.value ? leftChildNode : rightChildNode;
+        MATree branch = prop > value ? leftChildNode : rightChildNode;
         return branch.compactify(channelIndex, streamIndex, y);
     }
 
     public MATree walk(IntUnaryOperator property) {
         if (isLeafNode())
             return this;
-        MATree branch = property.applyAsInt(this.property) > this.value ? leftChildNode : rightChildNode;
+        MATree branch = property.applyAsInt(this.property) > value ? leftChildNode : rightChildNode;
         return branch.walk(property);
     }
 
     public int getSize() {
-        int size = 1;
-        if (!this.isLeafNode())
-            size += leftChildNode.getSize() + rightChildNode.getSize();
-        return size;
+        if (isLeafNode())
+            return 1;
+        return 1 + leftChildNode.getSize() + rightChildNode.getSize();
     }
 
     public MATree getParent() {
@@ -184,14 +182,16 @@ public class MATree {
     }
 
     public EntropyStream getStream() {
-        return this.stream;
+        return stream;
     }
 
     public String toString() {
         if (isLeafNode()) {
-            return String.format("{context=%d, predictor=%d, offset=%d, multiplier=%d}", context, predictor, offset, multiplier);
+            return String.format("{context=%d, predictor=%d, offset=%d, multiplier=%d}", context, predictor,
+                offset, multiplier);
         } else {
-            return String.format("{property=%d, value=%d, left=%s, right=%s}", property, value, leftChildNode.toString(), rightChildNode.toString());
+            return String.format("{property=%d, value=%d, left=%s, right=%s}", property, value,
+                leftChildNode.toString(), rightChildNode.toString());
         }
     }
 }
