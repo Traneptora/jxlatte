@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class ExtraChannelInfo {
     public final int type;

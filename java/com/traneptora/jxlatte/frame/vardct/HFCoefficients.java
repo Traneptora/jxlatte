@@ -3,13 +3,13 @@ package com.traneptora.jxlatte.frame.vardct;
 import java.io.IOException;
 import java.util.stream.IntStream;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.color.OpsinInverseMatrix;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.FrameHeader;
 import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
@@ -266,7 +266,7 @@ public class HFCoefficients {
     private void dequantizeHFCoefficients() {
         OpsinInverseMatrix matrix = frame.globalMetadata.getOpsinInverseMatrix();
         FrameHeader header = frame.getFrameHeader();
-        float globalScale = 65536.0f / frame.getLFGlobal().quantizer.globalScale;
+        float globalScale = 65536.0f / frame.getLFGlobal().globalScale;
         float[] scaleFactor = new float[]{
             globalScale * (float)Math.pow(0.8D, header.xqmScale - 2D),
             globalScale,

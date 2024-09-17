@@ -13,7 +13,6 @@ import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.JXLOptions;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.entropy.EntropyStream;
@@ -28,6 +27,7 @@ import com.traneptora.jxlatte.frame.vardct.HFGlobal;
 import com.traneptora.jxlatte.frame.vardct.HFPass;
 import com.traneptora.jxlatte.frame.vardct.TransformType;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.ImageBuffer;
@@ -265,8 +265,8 @@ public class Frame {
 
         List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
-        for (int i = 0; i < lfGlobal.gModular.stream.getEncodedChannelCount(); i++) {
-            ModularChannel chan = lfGlobal.gModular.stream.getChannel(i);
+        for (int i = 0; i < lfGlobal.globalModular.getEncodedChannelCount(); i++) {
+            ModularChannel chan = lfGlobal.globalModular.getChannel(i);
             if (!chan.isDecoded()) {
                 if (chan.vshift >= 3 && chan.hshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
@@ -299,7 +299,7 @@ public class Frame {
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             for (int j = 0; j < lfReplacementChannelIndicies.size(); j++) {
                 int index = lfReplacementChannelIndicies.get(j);
-                ModularChannel channel = lfGlobal.gModular.stream.getChannel(index);
+                ModularChannel channel = lfGlobal.globalModular.getChannel(index);
                 channel.allocate();
                 ModularChannel newChannelInfo = lfGroups[lfGroupID].modularLFGroup.getChannel(j);
                 int[][] newChannel = newChannelInfo.buffer;
@@ -348,7 +348,7 @@ public class Frame {
             for (int i = 0; i < passes[pass].replacedChannels.length; i++) {
                 if (passes[pass].replacedChannels[i] == null)
                     continue;
-                ModularChannel channel = lfGlobal.gModular.stream.getChannel(i);
+                ModularChannel channel = lfGlobal.globalModular.getChannel(i);
                 channel.allocate();
                 for (int group = 0; group < numGroups; group++) {
                     ModularChannel newChannelInfo = passGroups[pass][group].modularStream.getChannel(j);
@@ -428,8 +428,8 @@ public class Frame {
 
         decodePassGroups();
 
-        lfGlobal.gModular.stream.applyTransforms();
-        int[][][] modularBuffer = lfGlobal.gModular.stream.getDecodedBuffer();
+        lfGlobal.globalModular.applyTransforms();
+        int[][][] modularBuffer = lfGlobal.globalModular.getDecodedBuffer();
 
         for (int c = 0; c < modularBuffer.length; c++) {
             int cIn = c;
@@ -554,7 +554,7 @@ public class Frame {
             for (int y = 0; y < blockHeight; y++)
                 Arrays.fill(inverseSigma[y], inv);
         } else {
-            float globalScale = 65536.0f / lfGlobal.quantizer.globalScale;
+            float globalScale = 65536.0f / lfGlobal.globalScale;
             for (int y = 0; y < blockHeight; y++) {
                 int lfY = y >> 8;
                 int bY = y - (lfY << 8);

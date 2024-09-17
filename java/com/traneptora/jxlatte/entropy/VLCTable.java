@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class VLCTable {
     private int[][] table;

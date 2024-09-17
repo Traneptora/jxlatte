@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.functional.ExceptionalSupplier;
 
 public class Demuxer implements ExceptionalSupplier<byte[]>, Closeable {

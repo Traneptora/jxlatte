@@ -1,6 +1,5 @@
 src = files(
     # com.traneptora.jxlatte
-    'com/traneptora/jxlatte/InvalidBitstreamException.java',
     'com/traneptora/jxlatte/JXLatte.java',
     'com/traneptora/jxlatte/JXLCodestreamDecoder.java',
     'com/traneptora/jxlatte/JXLDecoder.java',
@@ -10,6 +9,7 @@ src = files(
     # com.traneptora.jxlatte.bundle
     'com/traneptora/jxlatte/bundle/AnimationHeader.java',
     'com/traneptora/jxlatte/bundle/BitDepthHeader.java',
+    'com/traneptora/jxlatte/bundle/BlendingInfo.java',
     'com/traneptora/jxlatte/bundle/Extensions.java',
     'com/traneptora/jxlatte/bundle/ExtraChannelInfo.java',
     'com/traneptora/jxlatte/bundle/ExtraChannelType.java',
@@ -36,7 +36,6 @@ src = files(
     'com/traneptora/jxlatte/entropy/VLCTable.java',
 
     # com.traneptora.jxlatte.frame
-    'com/traneptora/jxlatte/frame/BlendingInfo.java',
     'com/traneptora/jxlatte/frame/Frame.java',
     'com/traneptora/jxlatte/frame/FrameFlags.java',
     'com/traneptora/jxlatte/frame/FrameHeader.java',
@@ -63,7 +62,6 @@ src = files(
     'com/traneptora/jxlatte/frame/group/PassGroup.java',
 
     # com.traneptora.jxlatte.frame.modular
-    'com/traneptora/jxlatte/frame/modular/GlobalModular.java',
     'com/traneptora/jxlatte/frame/modular/MATree.java',
     'com/traneptora/jxlatte/frame/modular/ModularChannel.java',
     'com/traneptora/jxlatte/frame/modular/ModularStream.java',
@@ -81,12 +79,12 @@ src = files(
     'com/traneptora/jxlatte/frame/vardct/LFChannelCorrelation.java',
     'com/traneptora/jxlatte/frame/vardct/LFCoefficients.java',
     'com/traneptora/jxlatte/frame/vardct/LLFScale.java',
-    'com/traneptora/jxlatte/frame/vardct/Quantizer.java',
     'com/traneptora/jxlatte/frame/vardct/TransformType.java',
 
     # com.traneptora.jxlatte.io
     'com/traneptora/jxlatte/io/Bitreader.java',
     'com/traneptora/jxlatte/io/Demuxer.java',
+    'com/traneptora/jxlatte/io/InvalidBitstreamException.java',
     'com/traneptora/jxlatte/io/IOHelper.java',
     'com/traneptora/jxlatte/io/Loggers.java',
     'com/traneptora/jxlatte/io/PFMWriter.java',

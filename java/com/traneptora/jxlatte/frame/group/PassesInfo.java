@@ -3,8 +3,8 @@ package com.traneptora.jxlatte.frame.group;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class PassesInfo {
     public final int numPasses;

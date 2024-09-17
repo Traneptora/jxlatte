@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.Point;
 
 public class HFPass {

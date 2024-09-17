@@ -2,7 +2,7 @@ package com.traneptora.jxlatte.frame.vardct;
 
 import java.util.stream.Stream;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
 

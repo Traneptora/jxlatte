@@ -5,13 +5,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.OpsinInverseMatrix;
 import com.traneptora.jxlatte.color.ToneMapping;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;

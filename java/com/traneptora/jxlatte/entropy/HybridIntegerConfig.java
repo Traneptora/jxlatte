@@ -3,8 +3,8 @@ package com.traneptora.jxlatte.entropy;
 import java.io.IOException;
 import java.util.Objects;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class HybridIntegerConfig {

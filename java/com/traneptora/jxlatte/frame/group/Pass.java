@@ -28,7 +28,7 @@ public class Pass {
             }
         }
         minShift = n >= 0 ? MathHelper.ceilLog1p(passes.downSample[n] - 1) : maxShift;
-        ModularStream stream = frame.getLFGlobal().gModular.stream;
+        ModularStream stream = frame.getLFGlobal().globalModular;
         replacedChannels = new ModularChannel[stream.getEncodedChannelCount()];
         for (int i = 0; i < replacedChannels.length; i++) {
             ModularChannel chan = stream.getChannel(i);

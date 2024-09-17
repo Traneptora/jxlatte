@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
+import com.traneptora.jxlatte.bundle.BlendingInfo;
 import com.traneptora.jxlatte.bundle.Extensions;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.frame.features.RestorationFilter;

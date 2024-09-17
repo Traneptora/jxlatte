@@ -3,12 +3,12 @@ package com.traneptora.jxlatte.frame.vardct;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;
 import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 

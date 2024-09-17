@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class ANSSymbolDistribution extends SymbolDistribution {
 

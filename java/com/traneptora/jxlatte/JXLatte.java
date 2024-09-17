@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.io.PFMWriter;
 import com.traneptora.jxlatte.io.PNGWriter;

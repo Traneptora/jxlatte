@@ -6,18 +6,19 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 
+import com.traneptora.jxlatte.bundle.BlendingInfo;
 import com.traneptora.jxlatte.bundle.ExtraChannelType;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.color.OpsinInverseMatrix;
-import com.traneptora.jxlatte.frame.BlendingInfo;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.FrameFlags;
 import com.traneptora.jxlatte.frame.FrameHeader;
 import com.traneptora.jxlatte.frame.features.Patch;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.Demuxer;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.io.PushbackInputStream;
 import com.traneptora.jxlatte.util.Dimension;
@@ -190,6 +191,7 @@ public class JXLCodestreamDecoder {
     private int totalFrames = 0;
     private ImageBuffer[][] reference = new ImageBuffer[4][];
     private ImageBuffer[][] lfBuffer = new ImageBuffer[5][];
+    private ImageBuffer[] canvas;
 
     public JXLCodestreamDecoder(PushbackInputStream in, JXLOptions options, Demuxer demuxer) {
         this.in = in;
@@ -689,12 +691,15 @@ public class JXLCodestreamDecoder {
             loggers.log(Loggers.LOG_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
             loggers.log(Loggers.LOG_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
             ColorEncodingBundle ce = imageHeader.getColorEncoding();
-            if (!gray)
-                loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s", ColorFlags.primariesToString(ce.primaries));
+            if (!gray) {
+                loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s",
+                    ColorFlags.primariesToString(ce.primaries));
+            }
             loggers.log(Loggers.LOG_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
             loggers.log(Loggers.LOG_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
             if (imageHeader.getAnimationHeader() != null)
                 loggers.log(Loggers.LOG_INFO, "    Animated: true");
+            canvas = new ImageBuffer[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()];
         } else {
             size = imageHeader.getSize();
         }
@@ -714,8 +719,6 @@ public class JXLCodestreamDecoder {
             ColorEncodingBundle bundle = imageHeader.getColorEncoding();
             matrix = imageHeader.getOpsinInverseMatrix().getMatrix(bundle.prim, bundle.white);
         }
-
-        ImageBuffer[] canvas = new ImageBuffer[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()];
 
         FrameHeader header;
 
@@ -796,8 +799,6 @@ public class JXLCodestreamDecoder {
         for (int i = 0; i < orientedCanvas.length; i++)
             orientedCanvas[i] = transposeBuffer(canvas[i], orientation);
 
-        JXLImage image = new JXLImage(orientedCanvas, imageHeader);
-
-        return image;
+        return new JXLImage(orientedCanvas, imageHeader);
     }
 }

@@ -7,10 +7,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.functional.ExceptionalIntBiConsumer;

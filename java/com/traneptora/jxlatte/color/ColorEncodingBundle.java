@@ -2,8 +2,8 @@ package com.traneptora.jxlatte.color;
 
 import java.io.IOException;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 
 public class ColorEncodingBundle {
     public final boolean useIccProfile;

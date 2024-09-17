@@ -1,8 +1,9 @@
-package com.traneptora.jxlatte.frame;
+package com.traneptora.jxlatte.bundle;
 
 import java.io.IOException;
 import java.util.Objects;
 
+import com.traneptora.jxlatte.frame.FrameFlags;
 import com.traneptora.jxlatte.io.Bitreader;
 
 public class BlendingInfo {
@@ -61,7 +62,7 @@ public class BlendingInfo {
 
     @Override
     public String toString() {
-        return "BlendingInfo [mode=" + mode + ", alphaChannel=" + alphaChannel + ", clamp=" + clamp + ", source="
-                + source + "]";
+        return String.format("BlendingInfo [mode=%s, alphaChannel=%d, clamp=%d, source=%d]",
+            FrameFlags.getBlendModeName(mode), alphaChannel, clamp, source);
     }
 }

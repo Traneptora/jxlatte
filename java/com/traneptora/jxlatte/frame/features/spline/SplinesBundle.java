@@ -2,9 +2,9 @@ package com.traneptora.jxlatte.frame.features.spline;
 
 import java.io.IOException;
 
-import com.traneptora.jxlatte.InvalidBitstreamException;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
