@@ -13,7 +13,6 @@ import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
-import com.traneptora.jxlatte.util.functional.ExceptionalIntBiConsumer;
 
 public class ModularStream {
 
@@ -207,7 +206,7 @@ public class ModularStream {
         return channels.get(index);
     }
 
-    public void applyTransforms() {
+    public void applyTransforms() throws InvalidBitstreamException {
         if (transformed)
             return;
         transformed = true;
@@ -245,58 +244,68 @@ public class ModularStream {
                 int start = transforms[i].beginC;
                 for (int j = 0; j < 3; j++)
                     v[j] = getChannel(start + j);
-                ExceptionalIntBiConsumer rct;
+                int height = v[0].size.height;
+                int width = v[0].size.width;
+                if (!v[1].size.equals(v[0].size) || !v[2].size.equals(v[1].size))
+                    throw new InvalidBitstreamException("RCT must be performed on three equal size channels");
                 switch(type) {
                     case 0:
-                        rct = (x, y) -> {};
                         break;
                     case 1:
-                        rct = (x, y) -> {
-                            v[2].buffer[y][x] += v[0].buffer[y][x];
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                v[2].buffer[y][x] += v[0].buffer[y][x];
+                            }
+                        }
                         break;
                     case 2:
-                        rct = (x, y) -> {
-                            v[1].buffer[y][x] += v[0].buffer[y][x];
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                v[1].buffer[y][x] += v[0].buffer[y][x];
+                            }
+                        }
                         break;
                     case 3:
-                        rct = (x, y) -> {
-                            final int a = v[0].buffer[y][x];
-                            v[2].buffer[y][x] += a;
-                            v[1].buffer[y][x] += a;
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                final int a = v[0].buffer[y][x];
+                                v[2].buffer[y][x] += a;
+                                v[1].buffer[y][x] += a;
+                            }
+                        }
                         break;
                     case 4:
-                        rct = (x, y) -> {
-                            v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1;
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1;
+                            }
+                        }
                         break;
                     case 5:
-                        rct = (x, y) -> {
-                            final int a = v[0].buffer[y][x];
-                            final int ac = a + v[2].buffer[y][x];
-                            v[1].buffer[y][x] += (a + ac) >> 1;
-                            v[2].buffer[y][x] = ac;
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                final int a = v[0].buffer[y][x];
+                                final int ac = a + v[2].buffer[y][x];
+                                v[1].buffer[y][x] += (a + ac) >> 1;
+                                v[2].buffer[y][x] = ac;
+                            }
+                        }
                         break;
                     case 6:
-                        rct = (x, y) -> {
-                            final int b = v[1].buffer[y][x];
-                            final int c = v[2].buffer[y][x];
-                            final int tmp = v[0].buffer[y][x] - (c >> 1);
-                            final int f = tmp - (b >> 1);
-                            v[0].buffer[y][x] = f + b;
-                            v[1].buffer[y][x] = c + tmp;
-                            v[2].buffer[y][x] = f;
-                        };
+                        for (int y = 0; y < height; y++) {
+                            for (int x = 0; x < width; x++) {
+                                final int b = v[1].buffer[y][x];
+                                final int c = v[2].buffer[y][x];
+                                final int tmp = v[0].buffer[y][x] - (c >> 1);
+                                final int f = tmp - (b >> 1);
+                                v[0].buffer[y][x] = f + b;
+                                v[1].buffer[y][x] = c + tmp;
+                                v[2].buffer[y][x] = f;
+                            }
+                        }
                         break;
                     default:
                         throw new IllegalStateException("Challenge complete how did we get here");
-                }
-                for (int y = 0; y < v[0].size.height; y++) {
-                    for (int x = 0; x < v[0].size.width; x++)
-                        rct.consume(x, y);
                 }
                 for (int j = 0; j < 3; j++)
                     channels.set(start + permutationLut[permutation][j], v[j]);

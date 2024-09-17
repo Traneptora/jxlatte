@@ -101,7 +101,6 @@ src = files(
 
     # com.traneptora.jxlatte.util.functional
     'com/traneptora/jxlatte/util/functional/ExceptionalConsumer.java',
-    'com/traneptora/jxlatte/util/functional/ExceptionalIntBiConsumer.java',
     'com/traneptora/jxlatte/util/functional/ExceptionalRunnable.java',
     'com/traneptora/jxlatte/util/functional/ExceptionalSupplier.java',
     'com/traneptora/jxlatte/util/functional/FloatUnaryOperator.java',
