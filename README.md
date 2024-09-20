@@ -2,11 +2,36 @@
 Work-in-progress pure java JPEG XL decoder
 
 ## Compiling
+### [Meson]
+
 JXLatte is built with the [Meson build system](https://mesonbuild.com/).
 
 To build, create a build directory, for example, with `mkdir build && cd build`.
 
 Then run `meson setup ../` to set up the build directory, and `ninja` to compile JXLatte.
+
+### [Maven]
+
+Now you can also build JXLatte using Maven. Just run `mvn clean install`.
+
+The artifact will be installed to the local repository and then you can reference it in your project like this
+
+Maven
+```xml
+<dependency>
+  <groupId>com.traneptora</groupId>
+  <artifactId>jxlatte</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+</dependency>
+```
+Gradle
+```groovy
+implementation 'com.traneptora:jxlatte:0.0.1-SNAPSHOT'
+```
+Gradle(Kotlin)
+```kotlin
+implementation( "com.traneptora:jxlatte:0.0.1-SNAPSHOT")
+```
 
 ## Running
 JXLatte can be executed just like any normal jar file:
