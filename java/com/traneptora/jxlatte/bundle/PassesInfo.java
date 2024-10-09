@@ -16,8 +16,8 @@ public class PassesInfo {
     public PassesInfo() {
         numPasses = 1;
         numDS = 0;
-        shift = new int[0];
-        downSample = new int[0];
+        shift = new int[1];
+        downSample = new int[]{ 1 };
         lastPass = new int[0];
     }
 
