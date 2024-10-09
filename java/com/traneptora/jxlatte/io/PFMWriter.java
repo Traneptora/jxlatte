@@ -3,6 +3,8 @@ package com.traneptora.jxlatte.io;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.JXLImage;
 import com.traneptora.jxlatte.color.ColorFlags;
@@ -22,8 +24,9 @@ public class PFMWriter {
         // PFM spec requires \n here, not \r\n, so no %n
         int height = image.getHeight();
         int width = image.getWidth();
-        String header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF", width, height);
-        dout.writeBytes(header);
+        byte[] header = String.format("%s\n%d %d\n1.0\n", gray ? "Pf" : "PF", width, height)
+            .getBytes(StandardCharsets.US_ASCII);
+        dout.write(header);
         ImageBuffer[] buffer = image.getBuffer(false);
         ImageBuffer[] nb = new ImageBuffer[buffer.length];
         for (int c = 0; c < nb.length; c++) {
@@ -34,12 +37,13 @@ public class PFMWriter {
                 nb[c] = buffer[c];
             }
         }
+        float[][][] b = Stream.of(nb).map(a -> a.getFloatBuffer()).toArray(float[][][]::new);
         int cCount = gray ? 1 : 3;
         // pfm is in backwards scanline order, bottom to top
         for (int y = height - 1; y >= 0; y--) {
              for (int x = 0; x < width; x++) {
                 for (int c = 0; c < cCount; c++)
-                    dout.writeFloat(nb[c].getFloatBuffer()[y][x]);
+                    dout.writeFloat(b[c][y][x]);
             }
         }
     }
