@@ -58,7 +58,7 @@ public final class FunctionalHelper {
         }
         if (generator != null)
             return results.stream().toArray(generator);
-        
+
         return null;
     }
 
