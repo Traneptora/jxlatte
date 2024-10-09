@@ -62,7 +62,7 @@ public class BlendingInfo {
 
     @Override
     public String toString() {
-        return String.format("BlendingInfo [mode=%s, alphaChannel=%d, clamp=%d, source=%d]",
+        return String.format("BlendingInfo [mode=%s, alphaChannel=%d, clamp=%b, source=%d]",
             FrameFlags.getBlendModeName(mode), alphaChannel, clamp, source);
     }
 }
