@@ -1,5 +1,7 @@
 package com.traneptora.jxlatte;
 
+import java.util.zip.Deflater;
+
 import com.traneptora.jxlatte.io.Loggers;
 
 public class JXLOptions {
@@ -21,7 +23,7 @@ public class JXLOptions {
     public int verbosity = Loggers.LOG_BASE;
     public int hdr = HDR_AUTO;
     public int outputDepth = -1;
-    public int outputCompression = 0;
+    public int outputCompression = Deflater.BEST_SPEED;
     public boolean renderVarblocks = false;
     public int peakDetect = PEAK_DETECT_AUTO;
     public int threads = 0;
