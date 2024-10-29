@@ -467,11 +467,14 @@ public class Frame {
 
     // do this in RGB
     public void drawVarblocks() {
+        float[][][] buff = Stream.of(buffer[0], buffer[1], buffer[2]).map(b -> {
+            b.castToFloatIfInt(globalMetadata.getBitDepthHeader().getMaxValue());
+            return b.getFloatBuffer();
+        }).toArray(float[][][]::new);
         for (LFGroup lfg : lfGroups) {
             Point pixelPos = getLFGroupLocation(lfg.lfGroupID);
             pixelPos.y <<= 11;
             pixelPos.x <<= 11;
-            float[][][] buff = Stream.of(buffer).map(ImageBuffer::getFloatBuffer).toArray(float[][][]::new);
             for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
                 Point block = lfg.hfMetadata.blockList[i];
                 TransformType tt = lfg.hfMetadata.dctSelect[block.y][block.x];

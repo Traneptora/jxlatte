@@ -27,7 +27,8 @@ import com.traneptora.jxlatte.util.Point;
 
 public class JXLCodestreamDecoder {
 
-    private static void copyToCanvas(ImageBuffer canvas, Point start, Point off, Dimension size, ImageBuffer frameBuffer) {
+    private static void copyToCanvas(ImageBuffer canvas, Point start, Point off,
+            Dimension size, ImageBuffer frameBuffer) {
         Object[] canvasB = canvas.isInt() ? canvas.getIntBuffer() : canvas.getFloatBuffer();
         Object[] frameB = frameBuffer.isInt() ? frameBuffer.getIntBuffer() : frameBuffer.getFloatBuffer();
         for (int y = 0; y < size.height; y++) {

@@ -27,6 +27,10 @@ public class BitDepthHeader {
         }
     }
 
+    public int getMaxValue() {
+        return ~(~0 << bitsPerSample);
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(usesFloatSamples, bitsPerSample, expBits);
