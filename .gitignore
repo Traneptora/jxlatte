@@ -1,12 +1,18 @@
 # build directory
 build/
 builddir/
+target/
 
 # output.png
 output.png
 
 # class files
 *.class
+
+#Eclipse
+.classpath
+.project
+.settings
 
 # test files
 /*.png

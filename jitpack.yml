@@ -1,0 +1,11 @@
+jdk:
+  - openjdk21
+before_install:
+  - sdk install java 21.0.5-tem
+  - sdk use java 21.0.5-tem
+  - java -version
+  - sdk install maven 3.9.9
+  - sdk use maven 3.9.9
+  - mvn -v
+install:
+  - mvn clean install -DskipTests
