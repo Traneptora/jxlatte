@@ -1,0 +1,11 @@
+jdk:
+  - openjdk11
+before_install:
+  - sdk install java 11.0.25-zulu
+  - sdk use java 11.0.25-zulu
+  - java -version
+  - sdk install maven 3.9.9
+  - sdk use maven 3.9.9
+  - mvn -v
+install:
+  - mvn clean install -DskipTests
