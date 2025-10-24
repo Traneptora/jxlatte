@@ -13,6 +13,7 @@ import com.traneptora.jxlatte.frame.vardct.HFBlockContext;
 import com.traneptora.jxlatte.frame.vardct.LFChannelCorrelation;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
+import com.traneptora.jxlatte.io.Loggers;
 
 public class LFGlobal {
     public final Frame frame;
@@ -80,6 +81,7 @@ public class LFGlobal {
         boolean hasGlobalTree = reader.readBool();
         MATree globalTree = hasGlobalTree ? new MATree(parent.getLoggers(), reader) : null;
         frame.setGlobalTree(globalTree);
+        frame.getLoggers().log(Loggers.LOG_TRACE, "global tree: %s", globalTree);
         int subModularChannelCount = extra;
         int ecStart = 0;
         if (header.encoding == FrameFlags.MODULAR) {

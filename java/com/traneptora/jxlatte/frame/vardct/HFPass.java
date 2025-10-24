@@ -15,10 +15,10 @@ public class HFPass {
     private static final Point[][] naturalOrder = new Point[13][];
 
     private static Comparator<Point> getNaturalOrderComparator(int i) {
+        final TransformType tt = TransformType.getByOrderID(i);
+        final int maxDim = Math.max(tt.dctSelectHeight, tt.dctSelectWidth);
         return new Comparator<Point>() {
             public int compare(Point a, Point b) {
-                TransformType tt = TransformType.getByOrderID(i);
-                int maxDim = Math.max(tt.dctSelectHeight, tt.dctSelectWidth);
                 boolean aLLF = a.y < tt.dctSelectHeight && a.x < tt.dctSelectWidth;
                 boolean bLLF = b.y < tt.dctSelectHeight && b.x < tt.dctSelectWidth;
                 if (aLLF && !bLLF)

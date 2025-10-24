@@ -110,6 +110,7 @@ src = files(
 res = structured_sources(
     files(
         'resources/bt2020-d65-pq.icc.zz',
+        'resources/bt709-d65-srgb.icc.zz',
     ),
 )
 

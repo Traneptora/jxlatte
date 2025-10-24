@@ -34,7 +34,7 @@ public class EntropyState {
         if (!hasState) {
             return "EntropyState [hasState=false]";
         } else {
-            return String.format("EntropyState [hasState=true, state=%d]", state);
+            return String.format("EntropyState [hasState=true, state=0x%x]", state);
         }
     }
 

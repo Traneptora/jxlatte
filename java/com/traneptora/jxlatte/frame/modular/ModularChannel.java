@@ -5,6 +5,7 @@ import java.util.function.IntUnaryOperator;
 
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
@@ -201,23 +202,24 @@ public class ModularChannel {
             + (nw3 - w3) * wpParams.param3e) >> 5);
         int wSum = 0;
         for (int e = 0; e < 4; e++) {
-            int eSum = errorNorth(x, y, e) + errorWest(x, y, e) + errorNorthWest(x, y, e)
+            long eSum = errorNorth(x, y, e) + errorWest(x, y, e) + errorNorthWest(x, y, e)
                 + errorWestWest(x, y, e) + errorNorthEast(x, y, e);
             if (x + 1 == size.width)
                 eSum += errorWest(x, y, e);
+            eSum &= 0xffffffffL;
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
                 shift = 0;
-            weight[e] = 4 + ((wpParams.weight[e] * oneL24OverKP1[eSum >> shift]) >> shift);
+            weight[e] = 4 + ((wpParams.weight[e] * oneL24OverKP1[(int)(eSum >>> shift)]) >>> shift);
             wSum += weight[e];
         }
         int logWeight = MathHelper.floorLog1p(wSum - 1) - 4;
         wSum = 0;
         for (int e = 0; e < 4; e++) {
-            weight[e] >>= logWeight;
+            weight[e] >>>= logWeight;
             wSum += weight[e];
         }
-        long s = (wSum >> 1) - 1L;
+        long s = (wSum >>> 1) - 1L;
         for (int e = 0; e < 4; e++)
             s += subpred[e] * weight[e];
         pred[y][x] = (int)((s * oneL24OverKP1[wSum - 1]) >> 24);
@@ -310,13 +312,13 @@ public class ModularChannel {
         return k -> propertyExpand(parent, channelIndex, streamIndex, wpParams, k, maxError, y, x);
     }
 
-    public void decode(Bitreader reader, EntropyStream stream, WPParams wpParams, MATree tree,
-            ModularStream parent, int channelIndex, int streamIndex, int distMultiplier) throws IOException {
+    public boolean decode(Bitreader reader, EntropyStream stream, WPParams wpParams, MATree tree,
+            ModularStream parent, int channelIndex, int streamIndex, int distMultiplier, Loggers loggers)
+            throws IOException {
         if (decoded)
             throw new IllegalStateException("Channel decoded twice");
         decoded = true;
         allocate();
-        tree = tree.compactify(channelIndex, streamIndex);
         boolean useWP = forceWP || tree.usesWeightedPredictor();
         if (useWP) {
             error = new int[5][size.height][size.width];
@@ -330,9 +332,17 @@ public class ModularChannel {
             MATree refinedTree = tree.compactify(channelIndex, streamIndex, y);
             for (int x = 0; x < size.width; x++) {
                 MATree leafNode = refinedTree.walk(getWalkFunction(parent, channelIndex, streamIndex, wpParams, y, x));
-                int diff = stream.readSymbol(reader, leafNode.getContext(), distMultiplier);
-                diff = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
-                int trueValue = diff + prediction(y, x, leafNode.getPredictor());
+                int diff;
+                try {
+                    int context = leafNode.getContext();
+                    diff = stream.readSymbol(reader, context, distMultiplier);
+                } catch (IOException ioe) {
+                    loggers.log(Loggers.LOG_VERBOSE, "Error at y=%d, x=%d, h=%d, w=%d, c=%d, s=%d%n", y, x,
+                        size.height, size.width, channelIndex, streamIndex);
+                    throw ioe;
+                }
+                int diff2 = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
+                int trueValue = diff2 + prediction(y, x, leafNode.getPredictor());
                 buffer[y][x] = trueValue;
                 if (useWP) {
                     for (int e = 0; e < 4; e++)
@@ -341,6 +351,7 @@ public class ModularChannel {
                 }
             }
         }
+        return true;
     }
 
     public boolean isDecoded() {

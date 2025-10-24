@@ -9,6 +9,7 @@ import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.frame.vardct.HFMetadata;
 import com.traneptora.jxlatte.frame.vardct.LFCoefficients;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.ImageBuffer;
 
@@ -34,7 +35,12 @@ public class LFGroup {
 
         modularLFGroup = new ModularStream(reader, frame, 1 + frame.getNumLFGroups() +
             lfGroupID, replaced);
-        modularLFGroup.decodeChannels(reader);
+        try {
+            modularLFGroup.decodeChannels(reader);
+        } catch (IOException ioe) {
+            frame.getLoggers().log(Loggers.LOG_VERBOSE, "Error in LF Group: %d", lfGroupID);
+            throw ioe;
+        }
 
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
             this.hfMetadata = new HFMetadata(reader, this, parent);

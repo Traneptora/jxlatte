@@ -1,6 +1,7 @@
 package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
@@ -36,6 +37,7 @@ public class EntropyStream {
     private int[] window;
     private EntropyState ansState = new EntropyState();
     private Loggers loggers;
+    private long symbolCount = 0;
 
     /**  
      * returns the number of clusters
@@ -159,7 +161,13 @@ public class EntropyStream {
     }
 
     public boolean validateFinalState() {
-        return !ansState.hasState() || ansState.getState() == 0x130000;
+        if (!ansState.hasState())
+            return true;
+        if (ansState.getState() == 0x130000)
+            return true;
+        if (ansState.getState() == (0x13 << 16))
+            return true;
+        return false;
     }
 
     public int readSymbol(Bitreader reader, int context) throws IOException {
@@ -171,6 +179,7 @@ public class EntropyStream {
             int hybridInt = window[copyPos77++ & 0xFFFFF];
             numToCopy77--;
             window[numDecoded77++ & 0xFFFFF] = hybridInt;
+            symbolCount++;
             return hybridInt;
         }
 
@@ -180,8 +189,15 @@ public class EntropyStream {
             throw new InvalidBitstreamException("Cluster Map points to nonexisted distribution");
 
         SymbolDistribution dist = dists[clusterMap[context]];
-        int token = dist.readSymbol(reader, ansState);
-
+        int token;
+        try {
+            token = dist.readSymbol(reader, ansState);
+        } catch (IOException ioe) {
+            loggers.log(Loggers.LOG_TRACE, "context, dist: %d, %d", context, clusterMap[context]);
+            loggers.log(Loggers.LOG_TRACE, "Symbol count: %d", symbolCount);
+            loggers.log(Loggers.LOG_TRACE, "Entropy Stream: %s", this);
+            throw ioe;
+        }
         if (usesLZ77 && token >= lz77MinSymbol) {
             SymbolDistribution lz77dist = dists[clusterMap[clusterMap.length - 1]];
             numToCopy77 = lz77MinLength + readHybridInteger(reader, lzLengthConfig, token - lz77MinSymbol);
@@ -191,6 +207,8 @@ public class EntropyStream {
                 distance++;
             } else if (distance < 120) {
                 distance = SPECIAL_DISTANCES[distance][0] + distanceMultiplier * SPECIAL_DISTANCES[distance][1];
+                if (distance < 1)
+                    distance = 1;
             } else {
                 distance -= 119;
             }
@@ -199,13 +217,22 @@ public class EntropyStream {
             if (distance > numDecoded77)
                 distance = numDecoded77;
             copyPos77 = numDecoded77 - distance;
-            return readSymbol(reader, context);
+            return readSymbol(reader, context, distanceMultiplier);
         }
 
-        int hybridInt = readHybridInteger(reader, dist.config, token);
+        int hybridInt;
+        try {
+            hybridInt = readHybridInteger(reader, dist.config, token);
+        } catch (IOException ioe) {
+            loggers.log(Loggers.LOG_TRACE, "context, dist: %d, %d", context, clusterMap[context]);
+            loggers.log(Loggers.LOG_TRACE, "Symbol count: %d", symbolCount);
+            loggers.log(Loggers.LOG_TRACE, "Entropy Stream: %s", this);
+            throw ioe;
+        }
         if (usesLZ77)
             window[numDecoded77++ & 0xFFFFF] = hybridInt;
 
+        symbolCount++;
         return hybridInt;
     }
 
@@ -222,5 +249,14 @@ public class EntropyStream {
         token &= (1 << config.msbInToken) - 1;
         token |= 1 << config.msbInToken;
         return (((token << n) | reader.readBits(n)) << config.lsbInToken) | low;
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "EntropyStream [usesLZ77=%s, lz77MinSymbol=%s, lz77MinLength=%s, lzLengthConfig=%s, clusterMap=%s, dists=%s, logAlphabetSize=%s, numToCopy77=%s, copyPos77=%s, numDecoded77=%s, ansState=%s, loggers=%s, symbolCount=%s]",
+                usesLZ77, lz77MinSymbol, lz77MinLength, lzLengthConfig, Arrays.toString(clusterMap),
+                Arrays.toString(dists), logAlphabetSize, numToCopy77, copyPos77, numDecoded77,
+                ansState, loggers, symbolCount);
     }
 }

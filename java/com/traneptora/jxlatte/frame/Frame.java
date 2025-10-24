@@ -179,7 +179,7 @@ public class Frame {
 
     private byte[] readBuffer(int index) throws IOException {
         int length = tocLengths[index];
-        byte[] buffer = new byte[length + 4];
+        byte[] buffer = new byte[length];
         int read = globalReader.read(buffer, 0, length);
         if (read < length)
             throw new EOFException("Unable to read full TOC entry");
@@ -261,8 +261,6 @@ public class Frame {
 
     private void decodeLFGroups(ImageBuffer[] lfBuffer) throws IOException {
 
-        Dimension frameSize = getPaddedFrameSize();
-
         List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         for (int i = 0; i < lfGlobal.globalModular.getEncodedChannelCount(); i++) {
@@ -270,9 +268,7 @@ public class Frame {
             if (!chan.isDecoded()) {
                 if (chan.vshift >= 3 && chan.hshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
-                    int height = header.lfGroupDim >> chan.vshift;
-                    int width = header.lfGroupDim >> chan.hshift;
-                    lfReplacementChannels.add(new ModularChannel(height, width, chan.vshift, chan.hshift));
+                    lfReplacementChannels.add(new ModularChannel(chan));
                 }
             }
         }
@@ -281,16 +277,16 @@ public class Frame {
 
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             Bitreader reader = getBitreader(1 + lfGroupID);
-            Point lfGroupPos = getLFGroupLocation(lfGroupID);
             ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::new)
                 .toArray(ModularChannel[]::new);
             for (ModularChannel info : replaced) {
-                int lfHeight = frameSize.height >> info.vshift;
-                int lfWidth = frameSize.width >> info.hshift;
-                info.origin.y = lfGroupPos.y * info.size.height;
-                info.origin.x = lfGroupPos.x * info.size.width;
-                info.size.height = Math.min(info.size.height, lfHeight - info.origin.y);
-                info.size.width = Math.min(info.size.width, lfWidth - info.origin.x);
+                int lfGroupHeight = header.lfGroupDim >> info.vshift;
+                int lfGroupWidth = header.lfGroupDim >> info.hshift;
+                int rowStride = MathHelper.ceilDiv(info.size.width, lfGroupWidth);
+                info.origin.y = (lfGroupID / rowStride) * lfGroupHeight;
+                info.origin.x = (lfGroupID % rowStride) * lfGroupWidth;
+                info.size.height = Math.min(info.size.height - info.origin.y, lfGroupHeight);
+                info.size.width = Math.min(info.size.width - info.origin.x, lfGroupWidth);
             }
             lfGroups[lfGroupID] = new LFGroup(reader, this, lfGroupID, replaced, lfBuffer);
         }

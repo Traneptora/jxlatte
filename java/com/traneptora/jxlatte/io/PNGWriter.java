@@ -37,6 +37,7 @@ public class PNGWriter {
     private boolean hdr;
     private int tf;
     private int maxValue;
+    private boolean writeSrgbIcc = false;
 
     public PNGWriter(JXLImage image) {
         this(image, -1, false, JXLOptions.PEAK_DETECT_AUTO);
@@ -110,6 +111,10 @@ public class PNGWriter {
         }
     }
 
+    public void setWriteSrgbIcc(boolean force) {
+        this.writeSrgbIcc = force;
+    }
+
     private void writeIHDR() throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(bout);
@@ -144,15 +149,12 @@ public class PNGWriter {
     private void writeICCP() throws IOException {
         boolean compressedICC = false;
         if (iccProfile == null) {
-            if (hdr) {
-                this.iccProfile = new byte[4866];
-                try (InputStream in = JXLatte.class.getResourceAsStream("/bt2020-d65-pq.icc.zz")) {
-                    IOHelper.readFully(in, this.iccProfile);
-                }
-                compressedICC = true;
-            } else {
-                return;
+            this.iccProfile = new byte[hdr ? 4866 : 338];
+            String streamName = hdr ? "/bt2020-d65-pq.icc.zz" : "/bt709-d65-srgb.icc.zz";
+            try (InputStream in = JXLatte.class.getResourceAsStream(streamName)) {
+                IOHelper.readFully(in, this.iccProfile);
             }
+            compressedICC = true;
         }
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(bout);
@@ -213,7 +215,7 @@ public class PNGWriter {
         this.out = new DataOutputStream(outputStream);
         out.writeLong(0x8950_4E47_0D0A_1A0AL); // png signature
         writeIHDR();
-        if (hdr || this.iccProfile != null)
+        if (hdr || this.iccProfile != null || writeSrgbIcc)
             writeICCP();
         else
             writeSRGB();

@@ -28,6 +28,7 @@ public class JXLOptions {
     public int peakDetect = PEAK_DETECT_AUTO;
     public int threads = 0;
     public boolean parseOnly = false;
+    public boolean forceSrgbIcc = false;
 
     public String input = null;
     public String output = null;
@@ -47,6 +48,7 @@ public class JXLOptions {
         this.peakDetect = options.peakDetect;
         this.threads = options.threads;
         this.parseOnly = options.parseOnly;
+        this.forceSrgbIcc = options.forceSrgbIcc;
 
         this.input = options.input;
         this.output = options.output;

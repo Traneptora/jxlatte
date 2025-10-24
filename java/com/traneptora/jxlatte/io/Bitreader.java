@@ -131,7 +131,7 @@ public class Bitreader extends InputStream {
             cacheBits += 8;
         }
         if (eof && bits > cacheBits)
-            throw new EOFException("Unable to read enough bits: " + (getBitsCount() + bits));
+            throw new EOFException(String.format("unable to read enough bits: %d + %d", getBitsCount(), bits));
         return readBits(bits);
     }
 

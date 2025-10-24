@@ -47,7 +47,8 @@ public class HFCoefficients {
     public final Point groupPos;
 
     public HFCoefficients(Bitreader reader, Frame frame, int pass, int group) throws IOException {
-        hfPreset = reader.readBits(MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1));
+        int bits = MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1);
+        hfPreset = reader.readBits(bits);
         this.groupID = group;
         this.frame = frame;
         this.hfctx = frame.getLFGlobal().hfBlockCtx;

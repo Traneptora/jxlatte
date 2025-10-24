@@ -49,8 +49,22 @@ public class TransformInfo {
 
     @Override
     public String toString() {
+        String trtype;
+        switch (tr) {
+            case RCT:
+                trtype = "RCT";
+                break;
+            case PALETTE:
+                trtype = "palette";
+                break;
+            case SQUEEZE:
+                trtype = "squeeze";
+                break;
+            default:
+                trtype = "???";
+        }
         return String.format(
-                "TransformInfo [tr=%s, beginC=%s, rctType=%s, numC=%s, nbColors=%s, nbDeltas=%s, dPred=%s, sp=%s]", tr,
-                beginC, rctType, numC, nbColors, nbDeltas, dPred, Arrays.toString(sp));
+                "TransformInfo [tr=%s, beginC=%s, rctType=%s, numC=%s, nbColors=%s, nbDeltas=%s, dPred=%s, sp=%s]",
+                    trtype, beginC, rctType, numC, nbColors, nbDeltas, dPred, Arrays.toString(sp));
     }
 }

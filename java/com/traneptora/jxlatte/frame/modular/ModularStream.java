@@ -46,6 +46,7 @@ public class ModularStream {
     private Frame frame;
     private EntropyStream stream = null;
     private boolean transformed = false;
+    private Loggers loggers;
 
     private List<ModularChannel> channels = new ArrayList<>();
 
@@ -64,6 +65,7 @@ public class ModularStream {
     private ModularStream(Bitreader reader, Frame frame, int streamIndex,
             int channelCount, int ecStart, ModularChannel[] channelArray) throws IOException {
         this.frame = frame;
+        loggers = frame.getLoggers();
         this.streamIndex = streamIndex;
         if (channelCount == 0) {
             tree = null;
@@ -89,8 +91,7 @@ public class ModularStream {
             channels.addAll(Arrays.asList(channelArray));
         }
 
-        frame.getLoggers().log(Loggers.LOG_TRACE, "Transforms: %s", (Object)transforms);
-
+        loggers.log(Loggers.LOG_TRACE, "Transforms: %s", (Object)transforms);
         for (int i = 0; i < nbTransforms; i++) {
             if (transforms[i].tr == TransformInfo.PALETTE) {
                 if (transforms[i].beginC < nbMetaChannels)
@@ -171,13 +172,15 @@ public class ModularStream {
             }
         }
         if (!useGlobalTree) {
-            tree = new MATree(frame.getLoggers(), reader);
+            tree = new MATree(loggers, reader);
+            loggers.log(Loggers.LOG_TRACE, "tree: %s", tree);
         } else {
             tree = frame.getGlobalTree();
         }
         stream = new EntropyStream(tree.getStream());
 
         distMultiplier = channels.stream().mapToInt(c -> c.size.width).reduce(0, Math::max);
+        loggers.log(Loggers.LOG_TRACE, "channels: %s", channels);
     }
 
     public void decodeChannels(Bitreader reader) throws IOException {
@@ -190,7 +193,7 @@ public class ModularStream {
             ModularChannel channel = getChannel(i);
             if (partial && i >= nbMetaChannels && (channel.size.height > groupDim || channel.size.width > groupDim))
                 break;
-            channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier);
+            channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier, loggers);
         }
         if (stream != null && !stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final modular state");

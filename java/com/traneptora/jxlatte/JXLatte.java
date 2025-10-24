@@ -39,6 +39,7 @@ public class JXLatte {
         boolean hdr = options.hdr == JXLOptions.HDR_AUTO ? image.isHDR() : options.hdr == JXLOptions.HDR_ON;
         int bitDepth = hdr ? 16 : options.outputDepth;
         PNGWriter writer = new PNGWriter(image, bitDepth, options.outputCompression, hdr, options.peakDetect);
+        writer.setWriteSrgbIcc(options.forceSrgbIcc);
         writeImage(writer::write, outputFilename);
     }
 
@@ -73,6 +74,8 @@ public class JXLatte {
             "        (BT.2020 Primaries, D65 White Point, PQ Transfer)",
             "    --png-peak-detect",
             "        Run peak detection when writing SDR PNGs",
+            "    --png-force-srgb-icc",
+            "        Force writing an ICC profile to the output PNG even when writing sRGB",
             "",
             "    --draw-varblocks",
             "        Show varblocks for VarDCT images",
@@ -137,6 +140,9 @@ public class JXLatte {
                 return true;
             case "debug":
                 options.debug = parseFlag(key, value, valueL);
+                return true;
+            case "png-force-srgb-icc":
+                options.forceSrgbIcc = parseFlag(key, value, valueL);
                 return true;
             case "png-hdr":
                 if (Arrays.asList("", "auto").contains(valueL)) {

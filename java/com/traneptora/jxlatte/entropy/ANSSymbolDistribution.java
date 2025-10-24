@@ -2,6 +2,7 @@ package com.traneptora.jxlatte.entropy;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.stream.Stream;
 
@@ -33,6 +34,7 @@ public class ANSSymbolDistribution extends SymbolDistribution {
     private int[] cutoffs;
     private int[] symbols;
     private int[] offsets;
+    private int bucketMask;
 
     public ANSSymbolDistribution(Bitreader reader, int logAlphabetSize) throws IOException {
         this.logAlphabetSize = logAlphabetSize;
@@ -140,21 +142,21 @@ public class ANSSymbolDistribution extends SymbolDistribution {
         int state =  stateObj.hasState() ? stateObj.getState() : reader.readBits(32);
         int index = state & 0xFFF;
         int i = index >>> logBucketSize;
-        int pos = index & ((1 << logBucketSize) - 1);
+        int pos = index & bucketMask;
         boolean greater = pos >= cutoffs[i];
         int symbol = greater ? symbols[i] : i;
         int offset = greater ? offsets[i] + pos : pos;
         state = frequencies[symbol] * (state >>> 12) + offset;
-        if ((state & 0xFFFF0000) == 0)
+        if (state == (state & 0xffff))
             state = (state << 16) | reader.readBits(16);
         stateObj.setState(state);
-
         return symbol;
     }
 
     private void generateAliasMapping(int uniqPos) {
 
         logBucketSize = 12 - logAlphabetSize;
+        bucketMask = (1 << logBucketSize) - 1;
         Deque<Integer> overfull = new ArrayDeque<>();
         Deque<Integer> underfull = new ArrayDeque<>();
         int bucketSize = 1 << logBucketSize;
@@ -175,26 +177,27 @@ public class ANSSymbolDistribution extends SymbolDistribution {
 
         for (int i = 0; i < alphabetSize; i++) {
             cutoffs[i] = frequencies[i];
+            symbols[i] = i;
             if (cutoffs[i] > bucketSize)
-                overfull.addFirst(i);
+                overfull.addLast(i);
             else if (cutoffs[i] < bucketSize)
-                underfull.addFirst(i);
+                underfull.addLast(i);
         }
 
         for (int i = alphabetSize; i < tableSize; i++)
-            underfull.addFirst(i);
+            underfull.addLast(i);
 
         while (!overfull.isEmpty()) {
-            int u = underfull.removeFirst();
-            int o = overfull.removeFirst();
+            int u = underfull.removeLast();
+            int o = overfull.removeLast();
             int by = bucketSize - cutoffs[u];
             cutoffs[o] -= by;
             symbols[u] = o;
             offsets[u] = cutoffs[o];
             if (cutoffs[o] < bucketSize)
-                underfull.addFirst(o);
+                underfull.addLast(o);
             else if (cutoffs[o] > bucketSize)
-                overfull.addFirst(o);
+                overfull.addLast(o);
         }
 
         for (int i = 0; i < tableSize; i++) {
@@ -206,5 +209,13 @@ public class ANSSymbolDistribution extends SymbolDistribution {
                 offsets[i] -= cutoffs[i];
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "ANSSymbolDistribution [config=%s, logBucketSize=%s, alphabetSize=%s, logAlphabetSize=%s, frequencies=%s, cutoffs=%s, symbols=%s, offsets=%s]",
+                config, logBucketSize, alphabetSize, logAlphabetSize, Arrays.toString(frequencies),
+                Arrays.toString(cutoffs), Arrays.toString(symbols), Arrays.toString(offsets));
     }
 }
