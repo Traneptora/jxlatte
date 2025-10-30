@@ -733,12 +733,12 @@ public class JXLCodestreamDecoder {
             frame.printDebugInfo();
             loggers.log(Loggers.LOG_TRACE, "%s", header);
             frame.readTOC();
-            if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
-                throw new InvalidBitstreamException("LF Level too large");
             if (options.parseOnly) {
                 frame.skipFrameData();
                 continue;
             }
+            if (lfBuffer[header.lfLevel] == null && (header.flags & FrameFlags.USE_LF_FRAME) != 0)
+                throw new InvalidBitstreamException("LF Level too large");
             frame.decodeFrame(lfBuffer[header.lfLevel]);
             if (header.lfLevel > 0)
                 lfBuffer[header.lfLevel - 1] = frame.getBuffer();
