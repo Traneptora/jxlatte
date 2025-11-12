@@ -29,7 +29,7 @@ public class PushbackInputStream extends InputStream {
     private boolean refillBuffer() throws IOException {
         if (buffer == null || bufferPos >= buffer.length) {
             bufferPos = 0;
-            buffer = fifo.poll();           
+            buffer = fifo.poll();
         }
         if (buffer == null && in == null)
             buffer = supplier.get();
@@ -71,7 +71,7 @@ public class PushbackInputStream extends InputStream {
     public int read(byte[] b, int offset, int length) throws IOException {
         if (refillBuffer())
             return -1;
-        
+
         if (buffer == null)
             return in.read(b, offset, length);
 

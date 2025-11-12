@@ -116,7 +116,7 @@ public class JXLImage {
             return this;
         float[][][] buffers = new float[3][][];
         for (int c = 0; c < 3; c++) {
-            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffer[c].castToFloatWithMax(bitDepths[c]);
             buffers[c] = buffer[c].getFloatBuffer();
         }
         float[][] conversionMatrix =
@@ -226,7 +226,7 @@ public class JXLImage {
         int colors = getColorChannelCount();
         float[][][] buffers = new float[colors][][];
         for (int c = 0; c < colors; c++) {
-            buffer[c].castToFloatIfInt(~(~0 << bitDepths[c]));
+            buffer[c].castToFloatWithMax(~(~0 << bitDepths[c]));
             buffers[c] = buffer[c].getFloatBuffer();
         }
         JXLImage image = new JXLImage(this, false);
@@ -245,7 +245,7 @@ public class JXLImage {
         int colors = getColorChannelCount();
         float[][][] buffers = new float[colors][][];
         for (int c = 0; c < colors; c++) {
-            buffer[c].castToFloatIfInt(bitDepths[c]);
+            buffer[c].castToFloatWithMax(bitDepths[c]);
             buffers[c] = buffer[c].getFloatBuffer();
         }
         for (int c = 0; c < colors; c++) {

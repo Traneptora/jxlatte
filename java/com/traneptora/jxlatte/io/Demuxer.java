@@ -104,13 +104,12 @@ public class Demuxer implements ExceptionalSupplier<byte[]>, Closeable {
                 } else {
                     return supplyExceptionally();
                 }
-            }           
+            }
         }
     }
 
     @Override
     public byte[] supplyExceptionally() throws IOException {
-
         if (!foundSignature) {
             byte[] signature = new byte[12];
             int remaining = IOHelper.readFully(in, signature);

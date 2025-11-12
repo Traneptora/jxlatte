@@ -32,7 +32,7 @@ public class PFMWriter {
         for (int c = 0; c < nb.length; c++) {
             if (buffer[c].isInt()) {
                 nb[c] = new ImageBuffer(buffer[c]);
-                nb[c].castToFloatBuffer(~(~0 << image.getTaggedBitDepth(c)));
+                nb[c].castToFloat(image.getTaggedBitDepth(c));
             } else {
                 nb[c] = buffer[c];
             }

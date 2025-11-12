@@ -91,17 +91,25 @@ public class ImageBuffer {
         return type;
     }
 
-    public void castToFloatIfInt(int maxValue) {
+    public void castToFloatWithMax(int maxValue) {
         if (isInt())
-            castToFloatBuffer(maxValue);
+            castToFloat0(maxValue);
     }
 
-    public void castToIntIfFloat(int maxValue) {
+    public void castToFloat(int depth) {
+        castToFloatWithMax(~(~0 << depth));
+    }
+
+    public void castToIntWithMax(int maxValue) {
         if (isFloat())
-            castToIntBuffer(maxValue);
+            castToInt0(maxValue);
     }
 
-    public void castToFloatBuffer(int maxValue) {
+    public void castToInt(int depth) {
+        castToIntWithMax(~(~0 << depth));
+    }
+
+    private void castToFloat0(int maxValue) {
         if (type == TYPE_FLOAT)
             throw new IllegalStateException("This is already a float buffer");
         if (maxValue < 1)
@@ -118,7 +126,7 @@ public class ImageBuffer {
         this.type = TYPE_FLOAT;
     }
 
-    public void castToIntBuffer(int maxValue) {
+    private void castToInt0(int maxValue) {
         if (type == TYPE_INT)
             throw new IllegalStateException("This is already an int buffer");
         if (maxValue < 1)

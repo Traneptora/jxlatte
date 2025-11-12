@@ -272,8 +272,8 @@ public class JXLCodestreamDecoder {
                         int depth = c == 0 ? imageHeader.getBitDepthHeader().bitsPerSample :
                             imageHeader.getExtraChannelInfo(c - 1).bitDepth.bitsPerSample;
                         int max = ~(~0 << depth);
-                        refBuffer[d].castToFloatIfInt(max);
-                        frameBuffer[d].castToFloatIfInt(max);
+                        refBuffer[d].castToFloatWithMax(max);
+                        frameBuffer[d].castToFloatWithMax(max);
                     }
                     float[][] refBufferF, frameBufferF;
                     if (toFloat) {
@@ -286,8 +286,8 @@ public class JXLCodestreamDecoder {
                     float[][] alphaBufferOld, alphaBufferNew;
                     if (info.mode > 3 && hasAlpha) {
                         int depth = imageHeader.getExtraChannelInfo(info.alphaChannel).bitDepth.bitsPerSample;
-                        frameBuffer[colorChannels + info.alphaChannel].castToFloatIfInt(~(~0 << depth));
-                        refBuffer[colorChannels + info.alphaChannel].castToFloatIfInt(~(~0 << depth));
+                        frameBuffer[colorChannels + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
+                        refBuffer[colorChannels + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
                         alphaBufferOld = frameBuffer[colorChannels + info.alphaChannel].getFloatBuffer();
                         alphaBufferNew = refBuffer[colorChannels + info.alphaChannel].getFloatBuffer();
                     } else {
@@ -476,7 +476,7 @@ public class JXLCodestreamDecoder {
         float[][][] buffers = new float[3][][];
         int depth = imageHeader.getBitDepthHeader().bitsPerSample;
         for (int c = 0; c < 3; c++) {
-            buffer[c].castToFloatIfInt(~(~0 << depth));
+            buffer[c].castToFloatWithMax(~(~0 << depth));
             buffers[c] = buffer[c].getFloatBuffer();
         }
 
@@ -530,8 +530,8 @@ public class JXLCodestreamDecoder {
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
                 int depthFrame = (frameC >= frameColors ? imageHeader.getExtraChannelInfo(frameC - frameColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
-                frameBuffer.castToFloatIfInt(~(~0 << depthFrame));
-                canvas[c].castToFloatIfInt(~(~0 << depthCanvas));
+                frameBuffer.castToFloatWithMax(~(~0 << depthFrame));
+                canvas[c].castToFloatWithMax(~(~0 << depthCanvas));
             }
             if (info.mode == FrameFlags.BLEND_REPLACE || refBuffer == null && info.mode == FrameFlags.BLEND_ADD) {
                 int offY = frameStartY - header.bounds.origin.y;
@@ -550,18 +550,18 @@ public class JXLCodestreamDecoder {
                         canvas[c].height, canvas[c].width);
                 }
                 if (!refBuffer[imageColors + info.alphaChannel].isFloat())
-                    refBuffer[imageColors + info.alphaChannel].castToFloatIfInt(~(~0 << depth));
+                    refBuffer[imageColors + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
                 if (!frameBuffers[frameColors + info.alphaChannel].isFloat())
-                    frameBuffers[frameColors + info.alphaChannel].castToFloatIfInt(~(~0 << depth));
+                    frameBuffers[frameColors + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
             }
             if (ref.getType() != frameBuffer.getType() || info.mode != FrameFlags.BLEND_ADD) {
                 int depthCanvas = (c >= imageColors ? imageHeader.getExtraChannelInfo(c - imageColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
                 int depthFrame = (frameC >= imageColors ? imageHeader.getExtraChannelInfo(frameC - imageColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
-                frameBuffer.castToFloatIfInt(~(~0 << depthFrame));
-                canvas[c].castToFloatIfInt(~(~0 << depthCanvas));
-                ref.castToFloatIfInt(~(~0 << depthCanvas));
+                frameBuffer.castToFloatWithMax(~(~0 << depthFrame));
+                canvas[c].castToFloatWithMax(~(~0 << depthCanvas));
+                ref.castToFloatWithMax(~(~0 << depthCanvas));
             }
             float[][] cf, rf, ff, oaf, naf;
             if (info.mode != FrameFlags.BLEND_ADD || frameBuffer.isFloat()) {

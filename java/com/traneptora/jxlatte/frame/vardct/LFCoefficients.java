@@ -47,7 +47,7 @@ public class LFCoefficients {
             int pX = pos.x << 8;
             this.dequantLFCoeff = dequantLFCoeff;
             for (int c = 0; c < 3; c++) {
-                lfBuffer[c].castToFloatIfInt(~(~0 << frame.globalMetadata.getBitDepthHeader().bitsPerSample));
+                lfBuffer[c].castToFloatWithMax(~(~0 << frame.globalMetadata.getBitDepthHeader().bitsPerSample));
                 float[][] b = lfBuffer[c].getFloatBuffer();
                 for (int y = 0; y < dequantLFCoeff[c].length; y++) {
                     System.arraycopy(b[pY + y], pX, dequantLFCoeff[c][y], 0, dequantLFCoeff[c][y].length);
