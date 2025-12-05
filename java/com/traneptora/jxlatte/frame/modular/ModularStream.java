@@ -189,11 +189,17 @@ public class ModularStream {
 
     public void decodeChannels(Bitreader reader, boolean partial) throws IOException {
         int groupDim = frame.getFrameHeader().groupDim;
+        int channelIndex = 0;
         for (int i = 0; i < channels.size(); i++) {
             ModularChannel channel = getChannel(i);
             if (partial && i >= nbMetaChannels && (channel.size.height > groupDim || channel.size.width > groupDim))
                 break;
-            channel.decode(reader, stream, wpParams, tree, this, i, streamIndex, distMultiplier, loggers);
+            if (channel.size.width == 0 || channel.size.height == 0) {
+                channel.allocate();
+            } else {
+                channel.decode(reader, stream, wpParams, tree, this, channelIndex, streamIndex, distMultiplier, loggers);
+                channelIndex++;
+            }
         }
         if (stream != null && !stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final modular state");
