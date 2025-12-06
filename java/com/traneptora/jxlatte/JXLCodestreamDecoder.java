@@ -590,7 +590,7 @@ public class JXLCodestreamDecoder {
             boolean isAlpha, boolean hasAlpha, boolean clamp) {
         if (isAlpha) {
             /* For the alpha channel itself, the values of the source frame are preserved: alpha = old_alpha. */
-            copyToCanvas(canvas, patchStart, frameOffset, size, ref);
+            copyToCanvas(canvas, patchStart, frameOffset, size, refAlpha);
             return;
         }
         if (!hasAlpha) {
