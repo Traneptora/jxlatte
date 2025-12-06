@@ -556,8 +556,8 @@ public class JXLCodestreamDecoder {
             ImageBuffer frameAlpha, ImageBuffer refAlpha,
             Point frameOffset, Point patchStart, Dimension size,
             boolean isAlpha, boolean hasAlpha, boolean clamp, boolean premult) {
-        float[][] oaf = hasAlpha && !isAlpha ? frameAlpha.getFloatBuffer() : null;
-        float[][] naf = hasAlpha && !isAlpha ? refAlpha.getFloatBuffer() : null;
+        float[][] oaf = hasAlpha && !isAlpha ? refAlpha.getFloatBuffer() : null;
+        float[][] naf = hasAlpha && !isAlpha ? frameAlpha.getFloatBuffer() : null;
         float[][] rf = ref.getFloatBuffer();
         float[][] ff = frame.getFloatBuffer();
         float[][] cf = canvas.getFloatBuffer();
