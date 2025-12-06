@@ -650,10 +650,6 @@ public class JXLCodestreamDecoder {
             ExtraChannelInfo extraInfo = isExtra ? imageHeader.getExtraChannelInfo(exIdx) : null;
             BlendingInfo info = isExtra ? header.ecBlendingInfo[exIdx] : header.blendingInfo;
             ImageBuffer[] refBuffers = reference[info.source];
-            if (info.mode == FrameFlags.BLEND_REPLACE || refBuffers == null && info.mode == FrameFlags.BLEND_ADD) {
-                copyToCanvas(canvas[c], patchStart, frameOffset, blendSize, frameBuffer);
-                continue;
-            }
             /* is this channel an alpha channel */
             boolean isAlpha = isExtra && extraInfo.type == ExtraChannelType.ALPHA;
             /* the alpha channel associated with this channel */
@@ -665,6 +661,10 @@ public class JXLCodestreamDecoder {
             if (canvas[c].getType() != frameBuffer.getType()) {
                 frameBuffer.castToFloat(bitDepth.bitsPerSample);
                 canvas[c].castToFloat(bitDepth.bitsPerSample);
+            }
+            if (info.mode == FrameFlags.BLEND_REPLACE || refBuffers == null && info.mode == FrameFlags.BLEND_ADD) {
+                copyToCanvas(canvas[c], patchStart, frameOffset, blendSize, frameBuffer);
+                continue;
             }
             if (refBuffers[c] == null)
                 refBuffers[c] = new ImageBuffer(canvas[c].getType(), canvas[c].height, canvas[c].width);
