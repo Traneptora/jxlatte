@@ -192,7 +192,7 @@ public class FrameHeader {
             name = new String(buffer, StandardCharsets.UTF_8);
         }
         restorationFilter = allDefault ? new RestorationFilter() : new RestorationFilter(reader, encoding);
-        extensions = allDefault ? new Extensions() : new Extensions(reader);
+        extensions = allDefault ? new Extensions() : Extensions.readExtensions(reader);
         int maxJPY = IntStream.of(jpegUpsamplingY).reduce(Math::max).getAsInt();
         int maxJPX = IntStream.of(jpegUpsamplingX).reduce(Math::max).getAsInt();
         bounds.size.height = MathHelper.ceilDiv(bounds.size.height, 1 << maxJPY) << maxJPY;

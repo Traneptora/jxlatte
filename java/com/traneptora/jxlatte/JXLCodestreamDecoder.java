@@ -23,14 +23,15 @@ import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.io.PushbackInputStream;
 import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.ImageBuffer;
+import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 
 public class JXLCodestreamDecoder {
 
     private static void copyToCanvas(ImageBuffer canvas, Point start, Point off,
             Dimension size, ImageBuffer frameBuffer) {
-        Object[] canvasB = canvas.isInt() ? canvas.getIntBuffer() : canvas.getFloatBuffer();
-        Object[] frameB = frameBuffer.isInt() ? frameBuffer.getIntBuffer() : frameBuffer.getFloatBuffer();
+        Object[] canvasB = canvas.getBackingBuffer();
+        Object[] frameB = frameBuffer.getBackingBuffer();
         for (int y = 0; y < size.height; y++) {
             System.arraycopy(frameB[y + off.y], off.x, canvasB[y + start.y], start.x, size.width);
         }
@@ -38,7 +39,9 @@ public class JXLCodestreamDecoder {
 
     private static float[][] transposeBufferFloat(float[][] src, int orientation) {
         int srcHeight = src.length;
-        int srcWidth = src[0].length;
+        int srcWidth = srcHeight == 0 ? 0 : src[0].length;
+        if (srcHeight == 0 || srcWidth == 0)
+            return src;
         int srcH1 = srcHeight - 1;
         int srcW1 = srcWidth - 1;
         float[][] dest = orientation > 4 ? new float[srcWidth][srcHeight]
@@ -107,7 +110,9 @@ public class JXLCodestreamDecoder {
 
     private static int[][] transposeBufferInt(int[][] src, int orientation) {
         int srcHeight = src.length;
-        int srcWidth = src[0].length;
+        int srcWidth = srcHeight == 0 ? 0 : src[0].length;
+        if (srcHeight == 0 || srcWidth == 0)
+            return src;
         int srcH1 = srcHeight - 1;
         int srcW1 = srcWidth - 1;
         int[][] dest = orientation > 4 ? new int[srcWidth][srcHeight]
@@ -271,9 +276,8 @@ public class JXLCodestreamDecoder {
                     if (toFloat) {
                         int depth = c == 0 ? imageHeader.getBitDepthHeader().bitsPerSample :
                             imageHeader.getExtraChannelInfo(c - 1).bitDepth.bitsPerSample;
-                        int max = ~(~0 << depth);
-                        refBuffer[d].castToFloatWithMax(max);
-                        frameBuffer[d].castToFloatWithMax(max);
+                        refBuffer[d].castToFloat(depth);
+                        frameBuffer[d].castToFloat(depth);
                     }
                     float[][] refBufferF, frameBufferF;
                     if (toFloat) {
@@ -286,8 +290,8 @@ public class JXLCodestreamDecoder {
                     float[][] alphaBufferOld, alphaBufferNew;
                     if (info.mode > 3 && hasAlpha) {
                         int depth = imageHeader.getExtraChannelInfo(info.alphaChannel).bitDepth.bitsPerSample;
-                        frameBuffer[colorChannels + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
-                        refBuffer[colorChannels + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
+                        frameBuffer[colorChannels + info.alphaChannel].castToFloat(depth);
+                        refBuffer[colorChannels + info.alphaChannel].castToFloat(depth);
                         alphaBufferOld = frameBuffer[colorChannels + info.alphaChannel].getFloatBuffer();
                         alphaBufferNew = refBuffer[colorChannels + info.alphaChannel].getFloatBuffer();
                     } else {
@@ -476,7 +480,7 @@ public class JXLCodestreamDecoder {
         float[][][] buffers = new float[3][][];
         int depth = imageHeader.getBitDepthHeader().bitsPerSample;
         for (int c = 0; c < 3; c++) {
-            buffer[c].castToFloatWithMax(~(~0 << depth));
+            buffer[c].castToFloat(depth);
             buffers[c] = buffer[c].getFloatBuffer();
         }
 
@@ -498,17 +502,137 @@ public class JXLCodestreamDecoder {
         }
     }
 
+    private static void blendAdd(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
+            Point frameOffset, Point patchStart, Dimension size) {
+        if (frame.isInt()) {
+            int[][] cb = canvas.getIntBuffer();
+            int[][] rb = ref.getIntBuffer();
+            int[][] fb = frame.getIntBuffer();
+            for (int y = 0; y < size.height; y++) {
+                int cy = y + patchStart.y;
+                int fy = y + frameOffset.y;
+                for (int x = 0; x < size.width; x++) {
+                    int cx = x + patchStart.x;
+                    int fx = x + frameOffset.x;
+                    cb[cy][cx] = rb[cy][cx] + fb[fy][fx];
+                }
+            }
+        } else {
+            float[][] cb = canvas.getFloatBuffer();
+            float[][] rb = ref.getFloatBuffer();
+            float[][] fb = frame.getFloatBuffer();
+            for (int y = 0; y < size.height; y++) {
+                int cy = y + patchStart.y;
+                int fy = y + frameOffset.y;
+                for (int x = 0; x < size.width; x++) {
+                    int cx = x + patchStart.x;
+                    int fx = x + frameOffset.x;
+                    cb[cy][cx] = rb[cy][cx] + fb[fy][fx];
+                }
+            }
+        }
+    }
+
+    private static void blendMult(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
+            Point frameOffset, Point patchStart, Dimension size, boolean clamp) {
+        float[][] cf = canvas.getFloatBuffer();
+        float[][] rf = ref.getFloatBuffer();
+        float[][] ff = frame.getFloatBuffer();
+        for (int y = 0; y < size.height; y++) {
+            int cy = y + patchStart.y;
+            int fy = y + frameOffset.y;
+            for (int x = 0; x < size.width; x++) {
+                int cx = x + patchStart.x;
+                int fx = x + frameOffset.x;
+                float newSample = ff[fy][fx];
+                if (clamp)
+                    newSample = MathHelper.clampAsc(newSample, 0.0f, 1.0f);
+                cf[cy][cx] = newSample * rf[cy][cx];
+            }
+        }
+    }
+
+    private static void blendBlend(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
+            ImageBuffer frameAlpha, ImageBuffer refAlpha,
+            Point frameOffset, Point patchStart, Dimension size,
+            boolean isAlpha, boolean hasAlpha, boolean clamp, boolean premult) {
+        float[][] oaf = hasAlpha && !isAlpha ? frameAlpha.getFloatBuffer() : null;
+        float[][] naf = hasAlpha && !isAlpha ? refAlpha.getFloatBuffer() : null;
+        float[][] rf = ref.getFloatBuffer();
+        float[][] ff = frame.getFloatBuffer();
+        float[][] cf = canvas.getFloatBuffer();
+        for (int y = 0; y < size.height; y++) {
+            int cy = y + patchStart.y;
+            int fy = y + frameOffset.y;
+            for (int x = 0; x < size.width; x++) {
+                int cx = x + patchStart.x;
+                int fx = x + frameOffset.x;
+                float oldSample = rf[cy][cx];
+                float newSample = ff[fy][fx];
+                float oldAlpha = isAlpha ? oldSample : hasAlpha ? oaf[cy][cx] : 1.0f;
+                float newAlpha = isAlpha ? newSample : hasAlpha ? naf[fy][fx] : 1.0f;
+                if (clamp)
+                    newAlpha = MathHelper.clampAsc(newAlpha, 0.0f, 1.0f);
+                if (isAlpha) {
+                    cf[cy][cx] = oldAlpha + newAlpha * (1.0f - oldAlpha);
+                } else if (!hasAlpha || premult) {
+                    cf[cy][cx] = newSample + oldSample * (1.0f - newAlpha);
+                } else {
+                    cf[cy][cx] = (newSample * newAlpha + oldSample * oldAlpha * (1.0f - newAlpha))
+                        / (oldAlpha + newAlpha * (1.0f - oldAlpha));
+                }
+            }
+        }
+    }
+
+    private static void blendMulAdd(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
+            ImageBuffer refAlpha, Point frameOffset, Point patchStart, Dimension size,
+            boolean isAlpha, boolean hasAlpha, boolean clamp) {
+        if (isAlpha) {
+            /* For the alpha channel itself, the values of the source frame are preserved: alpha = old_alpha. */
+            copyToCanvas(canvas, patchStart, frameOffset, size, ref);
+            return;
+        }
+        if (!hasAlpha) {
+            blendAdd(canvas, frame, ref, frameOffset, patchStart, size);
+            return;
+        }
+        float[][] naf = refAlpha.getFloatBuffer();
+        float[][] rf = ref.getFloatBuffer();
+        float[][] ff = frame.getFloatBuffer();
+        float[][] cf = canvas.getFloatBuffer();
+        for (int y = 0; y < size.height; y++) {
+            int cy = y + patchStart.y;
+            int fy = y + frameOffset.y;
+            for (int x = 0; x < size.width; x++) {
+                int cx = x + patchStart.x;
+                int fx = x + frameOffset.x;
+                float oldSample = rf[cy][cx];
+                float newSample = ff[fy][fx];
+                float newAlpha = naf[fy][fx];
+                if (clamp)
+                    newAlpha = MathHelper.clampAsc(newAlpha, 0.0f, 1.0f);
+                cf[cy][cx] = oldSample + newAlpha * newSample;
+            }
+        }
+    }
+
     public void blendFrame(ImageBuffer[] canvas, Frame frame)
             throws InvalidBitstreamException {
         Dimension imageSize = imageHeader.getSize();
         FrameHeader header = frame.getFrameHeader();
         int frameStartY = header.bounds.origin.y < 0 ? 0 : header.bounds.origin.y;
         int frameStartX = header.bounds.origin.x < 0 ? 0 : header.bounds.origin.x;
+        /* patchStart is where to lay onto the canvas */
+        Point patchStart = new Point(frameStartY, frameStartX);
         int frameOffsetY = frameStartY - header.bounds.origin.y;
         int frameOffsetX = frameStartX - header.bounds.origin.x;
+        /* frameOffset is offset in-frame to start blending from */
+        Point frameOffset = new Point(frameOffsetY, frameOffsetX);
         Point lowerCorner = header.bounds.computeLowerCorner();
         int frameHeight = Math.min(lowerCorner.y, imageSize.height) - frameStartY;
         int frameWidth = Math.min(lowerCorner.x, imageSize.width) - frameStartX;
+        Dimension blendSize = new Dimension(frameHeight, frameWidth);
         int frameColors = frame.getColorChannelCount();
         int imageColors = imageHeader.getColorChannelCount();
         boolean hasAlpha = imageHeader.hasAlpha();
@@ -530,18 +654,15 @@ public class JXLCodestreamDecoder {
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
                 int depthFrame = (frameC >= frameColors ? imageHeader.getExtraChannelInfo(frameC - frameColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
-                frameBuffer.castToFloatWithMax(~(~0 << depthFrame));
-                canvas[c].castToFloatWithMax(~(~0 << depthCanvas));
+                frameBuffer.castToFloat(depthFrame);
+                canvas[c].castToFloat(depthCanvas);
             }
             if (info.mode == FrameFlags.BLEND_REPLACE || refBuffer == null && info.mode == FrameFlags.BLEND_ADD) {
-                int offY = frameStartY - header.bounds.origin.y;
-                int offX = frameStartX - header.bounds.origin.x;
-                copyToCanvas(canvas[c], new Point(frameStartY, frameStartX), new Point(offY, offX),
-                    new Dimension(frameHeight, frameWidth), frameBuffer);
+                copyToCanvas(canvas[c], patchStart, frameOffset, blendSize, frameBuffer);
                 continue;
             }
             if (refBuffer[c] == null)
-                refBuffer[c] = new ImageBuffer(frameBuffer.getType(), canvas[c].height, canvas[c].width);
+                refBuffer[c] = new ImageBuffer(canvas[c].getType(), canvas[c].height, canvas[c].width);
             ImageBuffer ref = refBuffer[c];
             if (hasAlpha && (info.mode == FrameFlags.BLEND_BLEND || info.mode == FrameFlags.BLEND_MULADD)) {
                 int depth = imageHeader.getExtraChannelInfo(info.alphaChannel).bitDepth.bitsPerSample;
@@ -550,113 +671,39 @@ public class JXLCodestreamDecoder {
                         canvas[c].height, canvas[c].width);
                 }
                 if (!refBuffer[imageColors + info.alphaChannel].isFloat())
-                    refBuffer[imageColors + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
+                    refBuffer[imageColors + info.alphaChannel].castToFloat(depth);
                 if (!frameBuffers[frameColors + info.alphaChannel].isFloat())
-                    frameBuffers[frameColors + info.alphaChannel].castToFloatWithMax(~(~0 << depth));
+                    frameBuffers[frameColors + info.alphaChannel].castToFloat(depth);
             }
             if (ref.getType() != frameBuffer.getType() || info.mode != FrameFlags.BLEND_ADD) {
                 int depthCanvas = (c >= imageColors ? imageHeader.getExtraChannelInfo(c - imageColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
                 int depthFrame = (frameC >= imageColors ? imageHeader.getExtraChannelInfo(frameC - imageColors)
                     .bitDepth : imageHeader.getBitDepthHeader()).bitsPerSample;
-                frameBuffer.castToFloatWithMax(~(~0 << depthFrame));
-                canvas[c].castToFloatWithMax(~(~0 << depthCanvas));
-                ref.castToFloatWithMax(~(~0 << depthCanvas));
-            }
-            float[][] cf, rf, ff, oaf, naf;
-            if (info.mode != FrameFlags.BLEND_ADD || frameBuffer.isFloat()) {
-                cf = canvas[c].getFloatBuffer();
-                rf = ref.getFloatBuffer();
-                ff = frameBuffer.getFloatBuffer();
-            } else {
-                cf = null;
-                rf = null;
-                ff = null;
+                frameBuffer.castToFloat(depthFrame);
+                canvas[c].castToFloat(depthCanvas);
+                ref.castToFloat(depthCanvas);
             }
             switch (info.mode) {
                 case FrameFlags.BLEND_ADD:
-                    if (frameBuffer.isInt()) {
-                        int[][] ci = canvas[c].getIntBuffer();
-                        int[][] ri = ref.getIntBuffer();
-                        int[][] fi = frameBuffer.getIntBuffer();
-                        for (int y = 0; y < frameHeight; y++) {
-                            int cy = y + frameStartY;
-                            int fy = y + frameOffsetY;
-                            for (int x = 0; x < frameWidth; x++) {
-                                int cx = x + frameStartX;
-                                int fx = x + frameOffsetX;
-                                ci[cy][cx] = ri[cy][cx] + fi[fy][fx];
-                            }
-                        }
-                    } else {
-                        for (int y = 0; y < frameHeight; y++) {
-                            int cy = y + frameStartY;
-                            int fy = y + frameOffsetY;
-                            for (int x = 0; x < frameWidth; x++) {
-                                int cx = x + frameStartX;
-                                int fx = x + frameOffsetX;
-                                cf[cy][cx] = rf[cy][cx] + ff[fy][fx];
-                            }
-                        }
-                    }
+                    blendAdd(canvas[c], frameBuffer, ref, frameOffset, patchStart, blendSize);
                     break;
                 case FrameFlags.BLEND_MULT:
-                    for (int y = 0; y < frameHeight; y++) {
-                        int cy = y + frameStartY;
-                        int fy = y + frameOffsetY;
-                        for (int x = 0; x < frameWidth; x++) {
-                            int cx = x + frameStartX;
-                            int fx = x + frameOffsetX;
-                            float newSample = ff[fy][fx];
-                            if (info.clamp)
-                                newSample = newSample < 0.0f ? 0.0f : newSample > 1.0f ? 1.0f : newSample;
-                            cf[cy][cx] = newSample * rf[cy][cx];
-                        }
-                    }
+                    blendMult(canvas[c], frameBuffer, ref, frameOffset, patchStart, blendSize, info.clamp);
                     break;
-                case FrameFlags.BLEND_BLEND:
-                    oaf = hasAlpha ? refBuffer[imageColors + info.alphaChannel].getFloatBuffer() : null;
-                    naf = hasAlpha ? frameBuffers[frameColors + info.alphaChannel].getFloatBuffer() : null;
-                    for (int y = 0; y < frameHeight; y++) {
-                        int cy = y + frameStartY;
-                        int fy = y + frameOffsetY;
-                        for (int x = 0; x < frameWidth; x++) {
-                            int cx = x + frameStartX;
-                            int fx = x + frameOffsetX;
-                            float oldAlpha = hasAlpha ? oaf[cy][cx] : 1.0f;
-                            float newAlpha = hasAlpha ? naf[fy][fx] : 1.0f;
-                            if (info.clamp)
-                                newAlpha = newAlpha < 0.0f ? 0.0f : newAlpha > 1.0f ? 1.0f : newAlpha;
-                            float alpha = 1.0f;
-                            float oldSample = rf[cy][cx];
-                            float newSample = ff[fy][fx];
-                            if (isAlpha || hasAlpha && !premult)
-                                alpha = oldAlpha + newAlpha * (1 - oldAlpha);
-                            cf[cy][cx] = isAlpha ? alpha : (!hasAlpha || premult) ?
-                                newSample + oldSample * (1.0f - newAlpha) :
-                                (newSample * newAlpha + oldSample * oldAlpha * (1.0f - newAlpha)) / alpha;
-                        }
-                    }
+                case FrameFlags.BLEND_BLEND: {
+                    ImageBuffer frameAlpha = hasAlpha ? frameBuffers[frameColors + info.alphaChannel] : null;
+                    ImageBuffer refAlpha = hasAlpha ? refBuffer[imageColors + info.alphaChannel] : null;
+                    blendBlend(canvas[c], frameBuffer, ref, frameAlpha, refAlpha, frameOffset, patchStart, blendSize,
+                        isAlpha, hasAlpha, info.clamp, premult);
                     break;
-                case FrameFlags.BLEND_MULADD:
-                    oaf = hasAlpha ? refBuffer[imageColors + info.alphaChannel].getFloatBuffer() : null;
-                    naf = hasAlpha ? frameBuffers[frameColors + info.alphaChannel].getFloatBuffer() : null;
-                    for (int y = 0; y < frameHeight; y++) {
-                        int cy = y + frameStartY;
-                        int fy = y + frameOffsetY;
-                        for (int x = 0; x < frameWidth; x++) {
-                            int cx = x + frameStartX;
-                            int fx = x + frameOffsetX;
-                            float oldAlpha = hasAlpha ? oaf[cy][cx] : 1.0f;
-                            float newAlpha = hasAlpha ? naf[fy][fx] : 1.0f;
-                            if (info.clamp)
-                                newAlpha = newAlpha < 0.0f ? 0.0f : newAlpha > 1.0f ? 1.0f : newAlpha;
-                            float oldSample = rf[cy][cx];
-                            float newSample = ff[fy][fx];
-                            cf[cy][cx] = isAlpha ? oldAlpha : oldSample + newAlpha * newSample;
-                        }
-                    }
+                }
+                case FrameFlags.BLEND_MULADD: {
+                    ImageBuffer refAlpha = hasAlpha ? refBuffer[imageColors + info.alphaChannel] : null;
+                    blendMulAdd(canvas[c], frameBuffer, ref, refAlpha, frameOffset, patchStart, blendSize,
+                        isAlpha, hasAlpha, info.clamp);
                     break;
+                }
                 default:
                     throw new InvalidBitstreamException("Illegal blend mode");
             }

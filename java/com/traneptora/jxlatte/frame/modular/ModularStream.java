@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +15,7 @@ import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
 
-public class ModularStream {
+public class ModularStream implements Iterable<ModularChannel> {
 
     private static final int[][] kDeltaPalette = {
         {0, 0, 0}, {4, 4, 4}, {11, 0, 0}, {0, 0, -13}, {0, -12, 0}, {-10, -10, -10},
@@ -213,6 +214,11 @@ public class ModularStream {
 
     public ModularChannel getChannel(int index) {
         return channels.get(index);
+    }
+
+    @Override
+    public Iterator<ModularChannel> iterator() {
+        return channels.iterator();
     }
 
     public void applyTransforms() throws InvalidBitstreamException {

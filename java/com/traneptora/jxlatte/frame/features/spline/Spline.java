@@ -179,7 +179,7 @@ public class Spline {
                 MathHelper.round(arc.locationY + maxDist));
             for (int c = 0; c < 3; c++) {
                 ImageBuffer buffer = frame.getBuffer()[c];
-                buffer.castToFloatWithMax(~(~0 << frame.globalMetadata.getBitDepthHeader().bitsPerSample));
+                buffer.castToFloat(frame.globalMetadata.getBitDepthHeader().bitsPerSample);
                 float[][] fb = buffer.getFloatBuffer();
                 for (int y = yBegin; y <= yEnd; y++) {
                     float[] fby = fb[y];

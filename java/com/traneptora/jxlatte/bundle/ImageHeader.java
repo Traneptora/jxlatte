@@ -3,7 +3,9 @@ package com.traneptora.jxlatte.bundle;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import com.traneptora.jxlatte.color.ColorEncodingBundle;
 import com.traneptora.jxlatte.color.ColorFlags;
@@ -206,7 +208,7 @@ public class ImageHeader {
         if (reader.readBits(16) != CODESTREAM_HEADER)
             throw new InvalidBitstreamException(String.format("Not a JXL Codestream: 0xFF0A magic mismatch"));
         header.setLevel(level);
-        header.size = readSizeHeader(reader, level);
+        header.encodedSize = readSizeHeader(reader, level);
 
         boolean allDefault = reader.readBool();
         boolean extraFields = allDefault ? false : reader.readBool();
@@ -227,9 +229,9 @@ public class ImageHeader {
         }
 
         if (header.orientation > 4)
-            header.orientedSize = header.size.asTransposed();
+            header.orientedSize = header.encodedSize.asTransposed();
         else
-            header.orientedSize = header.size;
+            header.orientedSize = header.encodedSize;
 
         if (allDefault) {
             header.bitDepth = new BitDepthHeader();
@@ -242,22 +244,19 @@ public class ImageHeader {
             header.modular16bitBuffers = reader.readBool();
             int extraChannelCount = reader.readU32(0, 0, 1, 0, 2, 4, 1, 12);
             header.extraChannelInfo = new ExtraChannelInfo[extraChannelCount];
-            int[] alphaIndices = new int[extraChannelCount];
-            int numAlphaChannels = 0;
+            List<Integer> alphaIndices = new ArrayList<>(extraChannelCount);
             for (int i = 0; i < extraChannelCount; i++) {
                 header.extraChannelInfo[i] = new ExtraChannelInfo(reader);
-                if (header.extraChannelInfo[i].type == ExtraChannelType.ALPHA) {
-                    alphaIndices[numAlphaChannels++] = i;
-                }
+                if (header.extraChannelInfo[i].type == ExtraChannelType.ALPHA)
+                    alphaIndices.add(i);
             }
-            header.alphaIndices = new int[numAlphaChannels];
-            System.arraycopy(alphaIndices, 0, header.alphaIndices, 0, numAlphaChannels);
+            header.alphaIndices = alphaIndices.stream().mapToInt(Integer::intValue).toArray();
             header.xybEncoded = reader.readBool();
             header.colorEncoding = new ColorEncodingBundle(reader);
         }
 
         header.toneMapping = extraFields ? new ToneMapping(reader) : new ToneMapping();
-        header.extensions = allDefault ? new Extensions() : new Extensions(reader);
+        header.extensions = allDefault ? new Extensions() : Extensions.readExtensions(reader);
 
         boolean defaultMatrix = reader.readBool();
 
@@ -312,7 +311,7 @@ public class ImageHeader {
         return header;
     }
 
-    private Dimension size;
+    private Dimension encodedSize;
     private Dimension orientedSize;
     private int level = 5;
     private int orientation;
@@ -344,7 +343,7 @@ public class ImageHeader {
     }
 
     public Dimension getSize() {
-        return size;
+        return encodedSize;
     }
 
     public Dimension getIntrinsticSize() {

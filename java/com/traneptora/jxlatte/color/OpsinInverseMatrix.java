@@ -94,7 +94,7 @@ public class OpsinInverseMatrix {
     public OpsinInverseMatrix getMatrix(CIEPrimaries primaries, CIEXY whitePoint) {
         float[][] conversion = ColorManagement.getConversionMatrix(primaries, whitePoint,
             this.primaries, this.whitePoint);
-        float[][] matrix = MathHelper.matrixMutliply(conversion, this.matrix);
+        float[][] matrix = MathHelper.matrixMultiply(conversion, this.matrix);
         return new OpsinInverseMatrix(primaries, whitePoint, matrix,
             this.opsinBias, this.quantBias, this.quantBiasNumerator);
     }
@@ -106,11 +106,17 @@ public class OpsinInverseMatrix {
         if (buffer.length < 3)
             throw new IllegalArgumentException("Can only XYB on 3 channels");
         final float itScale = 255f / intensityTarget;
-        final float[][] scaledMatrix = new float[3][3];
+        final float[] scaledMatrix = new float[9];
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 3; x++)
-                scaledMatrix[y][x] = matrix[y][x] * itScale;
+                scaledMatrix[y * 3 + x] = matrix[y][x] * itScale;
         }
+        final float ob0 = opsinBias[0];
+        final float ob1 = opsinBias[1];
+        final float ob2 = opsinBias[2];
+        final float cob0 = -cbrtOpsinBias[0];
+        final float cob1 = -cbrtOpsinBias[1];
+        final float cob2 = -cbrtOpsinBias[2];
         final float[][] xybXRBuffer = buffer[0];
         final float[][] xybYGBuffer = buffer[1];
         final float[][] xybBBBuffer = buffer[2];
@@ -122,15 +128,15 @@ public class OpsinInverseMatrix {
                 final float xybX = xybXRBufferRow[x];
                 final float xybY = xybYGBufferRow[x];
                 final float xybB = xybBBBufferRow[x];
-                final float gammaL = xybY + xybX - cbrtOpsinBias[0];
-                final float gammaM = xybY - xybX - cbrtOpsinBias[1];
-                final float gammaS = xybB - cbrtOpsinBias[2];
-                final float mixL = (gammaL * gammaL) * gammaL + opsinBias[0];
-                final float mixM = (gammaM * gammaM) * gammaM + opsinBias[1];
-                final float mixS = (gammaS * gammaS) * gammaS + opsinBias[2];
-                xybXRBufferRow[x] = scaledMatrix[0][0] * mixL + scaledMatrix[0][1] * mixM + scaledMatrix[0][2] * mixS;
-                xybYGBufferRow[x] = scaledMatrix[1][0] * mixL + scaledMatrix[1][1] * mixM + scaledMatrix[1][2] * mixS;
-                xybBBBufferRow[x] = scaledMatrix[2][0] * mixL + scaledMatrix[2][1] * mixM + scaledMatrix[2][2] * mixS;
+                final float gammaL = xybY + xybX + cob0;
+                final float gammaM = xybY - xybX + cob1;
+                final float gammaS = xybB + cob2;
+                final float mixL = (gammaL * gammaL) * gammaL + ob0;
+                final float mixM = (gammaM * gammaM) * gammaM + ob1;
+                final float mixS = (gammaS * gammaS) * gammaS + ob2;
+                xybXRBufferRow[x] = scaledMatrix[0] * mixL + scaledMatrix[1] * mixM + scaledMatrix[2] * mixS;
+                xybYGBufferRow[x] = scaledMatrix[3] * mixL + scaledMatrix[4] * mixM + scaledMatrix[5] * mixS;
+                xybBBBufferRow[x] = scaledMatrix[6] * mixL + scaledMatrix[7] * mixM + scaledMatrix[8] * mixS;
             }
         }
     }

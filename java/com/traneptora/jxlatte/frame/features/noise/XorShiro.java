@@ -1,5 +1,7 @@
 package com.traneptora.jxlatte.frame.features.noise;
 
+import java.util.OptionalInt;
+
 public class XorShiro {
 
     public static long splitMix64(long z) {
@@ -12,6 +14,7 @@ public class XorShiro {
     private long[] state1 = new long[8];
     private long[] batch = new long[8];
     private int batchPos = batch.length;
+    private OptionalInt trail = OptionalInt.empty();
 
     public XorShiro(int seed0, int seed1, int seed2, int seed3) {
         this(((long)seed0 << 32) | ((long)seed1 & 0xFF_FF_FF_FFL),
@@ -34,9 +37,17 @@ public class XorShiro {
 
     public void fill(int[] bits) {
         for (int i = 0; i < bits.length; i += 2) {
+            if (trail.isPresent()) {
+                bits[i++] = trail.getAsInt();
+                trail = OptionalInt.empty();
+            }
             long l = nextLong();
             bits[i] = (int)(l & 0xFF_FF_FF_FFL);
-            bits[i + 1] = (int)((l >>> 32) & 0xFF_FF_FF_FFL);
+            int next = (int)((l >>> 32) & 0xFF_FF_FF_FFL);;
+            if (i + 1 < bits.length)
+                bits[i + 1] = next;
+            else
+                trail = OptionalInt.of(next);
         }
     }
 

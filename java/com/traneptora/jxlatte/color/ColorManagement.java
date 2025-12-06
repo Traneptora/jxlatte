@@ -102,7 +102,7 @@ public final class ColorManagement {
         float[][] a = new float[3][3];
         for (int i = 0; i < 3; i++)
             a[i][i] = lmsTarget[i] / lmsCurrent[i];
-        return MathHelper.matrixMutliply(BRADFORD_INVERSE, a, BRADFORD);
+        return MathHelper.matrixMultiply(BRADFORD_INVERSE, a, BRADFORD);
     }
 
     private static float[][] primariesToXYZ(CIEPrimaries primaries, CIEXY wp) {
@@ -126,12 +126,12 @@ public final class ColorManagement {
             {0, xyz[1], 0},
             {0, 0, xyz[2]},
         };
-        return MathHelper.matrixMutliply(primariesMatrix, a);
+        return MathHelper.matrixMultiply(primariesMatrix, a);
     }
 
     public static float[][] primariesToXYZD50(CIEPrimaries primaries, CIEXY wp) {
         float[][] whitePointConv = adaptWhitePoint(null, wp);
-        return MathHelper.matrixMutliply(whitePointConv, primariesToXYZ(primaries, wp));
+        return MathHelper.matrixMultiply(whitePointConv, primariesToXYZ(primaries, wp));
     }
 
     public static float[][] getConversionMatrix(CIEPrimaries targetPrim, CIEXY targetWP,
@@ -143,7 +143,7 @@ public final class ColorManagement {
             whitePointConv = adaptWhitePoint(targetWP, currentWP);
         float[][] forward = primariesToXYZ(currentPrim, currentWP);
         float[][] reverse = MathHelper.invertMatrix3x3(primariesToXYZ(targetPrim, targetWP));
-        return MathHelper.matrixMutliply(reverse, whitePointConv, forward);
+        return MathHelper.matrixMultiply(reverse, whitePointConv, forward);
     }
 
     public static TransferFunction getTransferFunction(int transfer) {

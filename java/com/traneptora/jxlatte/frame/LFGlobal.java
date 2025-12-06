@@ -37,7 +37,7 @@ public class LFGlobal {
             int numPatches = stream.readSymbol(reader, 0);
             patches = new Patch[numPatches];
             for (int i = 0; i < numPatches; i++) {
-                patches[i] = new Patch(stream, reader, extra, parent.globalMetadata.getNumAlphaChannels());
+                patches[i] = Patch.readPatch(stream, reader, extra, parent.globalMetadata.getNumAlphaChannels());
             }
             if (!stream.validateFinalState())
                 throw new InvalidBitstreamException("Illegal ANS final state");

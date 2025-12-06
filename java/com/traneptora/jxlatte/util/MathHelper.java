@@ -1,6 +1,7 @@
 package com.traneptora.jxlatte.util;
 
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 public final class MathHelper {
 
@@ -161,7 +162,7 @@ public final class MathHelper {
     }
 
     public static int ceilDiv(int numerator, int denominator) {
-        return ((numerator - 1) / denominator) + 1;
+        return (numerator + denominator - 1) / denominator;
     }
 
     public static int floorLog1p(long x) {
@@ -211,10 +212,14 @@ public final class MathHelper {
         return v < lower ? lower : v > upper ? upper : v;
     }
 
+    public static float clampAsc(float v, float lower, float upper) {
+        return v < lower ? lower : v > upper ? upper : v;
+    }
+
     public static float clamp(float v, float a, float b) {
         float lower = a < b ? a : b;
         float upper = a < b ? b : a;
-        return v < lower ? lower : v > upper ? upper : v;
+        return clampAsc(v, lower, upper);
     }
 
     public static float[] matrixMutliply(final float[][] matrix, final float[] columnVector) {
@@ -260,7 +265,7 @@ public final class MathHelper {
         return total;
     }
 
-    public static float[][] matrixMutliply(final float[][] left, final float[][] right) {
+    public static float[][] matrixMultiply(final float[][] left, final float[][] right) {
         if (left == null)
             return right;
         if (right == null)
@@ -280,8 +285,8 @@ public final class MathHelper {
         return identity;
     }
 
-    public static float[][] matrixMutliply(float[][] a, float[][] b, float[][] c) {
-        return matrixMutliply(matrixMutliply(a, b), c);
+    public static float[][] matrixMultiply(float[][]... matricies) {
+        return Stream.of(matricies).reduce(MathHelper::matrixMultiply).get();
     }
 
     // expensive! try not to use on the fly

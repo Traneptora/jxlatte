@@ -73,7 +73,7 @@ public class RestorationFilter {
         epfBorderSadMul = epfSigmaCustom ? reader.readF16() : 2f/3f;
         epfSigmaForModular = !allDefault && epfIterations > 0 && encoding == FrameFlags.MODULAR
             ? reader.readF16() : 1.0f;
-        extensions = allDefault ? new Extensions() : new Extensions(reader);
+        extensions = allDefault ? new Extensions() : Extensions.readExtensions(reader);
         for (int i = 0; i < 8; i++)
             epfSharpLut[i] *= epfQuantMul;
     }

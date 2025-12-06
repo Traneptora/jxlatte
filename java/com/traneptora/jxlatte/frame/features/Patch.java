@@ -18,19 +18,19 @@ public class Patch {
     public final Point[] positions;
     public final BlendingInfo[][] blendingInfos;
 
-    public Patch(EntropyStream stream, Bitreader reader, int extraChannelCount,
+    public static Patch readPatch(EntropyStream stream, Bitreader reader, int extraChannelCount,
             int alphaChannelCount) throws IOException {
-        ref = stream.readSymbol(reader, 1);
+        int ref = stream.readSymbol(reader, 1);
         int x = stream.readSymbol(reader, 3);
         int y = stream.readSymbol(reader, 3);
         int width = 1 + stream.readSymbol(reader, 2);
         int height = 1 + stream.readSymbol(reader, 2);
-        bounds = new Rectangle(y, x, height, width);
+        Rectangle bounds = new Rectangle(y, x, height, width);
         int count = 1 + stream.readSymbol(reader, 7);
         if (count <= 0)
             throw new InvalidBitstreamException("That's a lot of patches!");
-        positions = new Point[count];
-        blendingInfos = new BlendingInfo[count][];
+        Point[] positions = new Point[count];
+        BlendingInfo[][] blendingInfos = new BlendingInfo[count][];
         for (int j = 0; j < count; j++) {
             if (j == 0) {
                 x = stream.readSymbol(reader, 4);
@@ -59,6 +59,15 @@ public class Patch {
                 blendingInfos[j][k] = new BlendingInfo(mode, alpha, clamp, 0);
             }
         }
+
+        return new Patch(ref, bounds, positions, blendingInfos);
+    }
+
+    public Patch(int ref, Rectangle bounds, Point[] positions, BlendingInfo[][] blendingInfos) {
+        this.ref = ref;
+        this.bounds = bounds;
+        this.positions = positions;
+        this.blendingInfos = blendingInfos;
     }
 
     @Override

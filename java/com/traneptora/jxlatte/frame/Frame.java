@@ -225,7 +225,7 @@ public class Frame {
             return ib;
         int depth = c < color ? globalMetadata.getBitDepthHeader().bitsPerSample :
             globalMetadata.getExtraChannelInfo(c - color).bitDepth.bitsPerSample;
-        ib.castToFloatWithMax(~(~0 << depth));
+        ib.castToFloat(depth);
         float[][] buffer = ib.getFloatBuffer();
         int l = MathHelper.ceilLog1p(k - 1) - 1;
         float[][][][] upWeights = globalMetadata.getUpWeights()[l];
@@ -361,7 +361,7 @@ public class Frame {
         if (header.encoding == FrameFlags.VARDCT) {
             float[][][] buffers = new float[3][][];
             for (int c = 0; c < 3; c++) {
-                buffer[c].castToFloatWithMax(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+                buffer[c].castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
                 buffers[c] = buffer[c].getFloatBuffer();
             }
             for (int pass = 0; pass < numPasses; pass++) {
@@ -516,7 +516,7 @@ public class Frame {
             normGabDiag[c] = gabW2 * mult;
         }
         for (int c = 0; c < colors; c++) {
-            buffer[c].castToFloatWithMax(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+            buffer[c].castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
             int height = buffer[c].height;
             int width = buffer[c].width;
             float[][] buffC = buffer[c].getFloatBuffer();
@@ -701,7 +701,7 @@ public class Frame {
             int yShift =  header.jpegUpsamplingY[c];
             while (yShift-- > 0) {
                 ImageBuffer oldBuffer = buffer[c];
-                oldBuffer.castToFloatWithMax(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+                oldBuffer.castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
                 float[][] oldChannel = oldBuffer.getFloatBuffer();
                 ImageBuffer newBuffer = new ImageBuffer(ImageBuffer.TYPE_FLOAT, oldBuffer.height * 2, oldBuffer.width);
                 float[][] newChannel = newBuffer.getFloatBuffer();
@@ -782,7 +782,7 @@ public class Frame {
         float[][][] buffers = new float[3][][];
         for (int c = 0; c < 3; c++) {
             int d = c < colors ? c : 0;
-            buffer[d].castToFloatWithMax(~(~0 << globalMetadata.getBitDepthHeader().bitsPerSample));
+            buffer[d].castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
             buffers[c] = buffer[d].getFloatBuffer();
         }
         for (int y = 0; y < bounds.size.height; y++) {

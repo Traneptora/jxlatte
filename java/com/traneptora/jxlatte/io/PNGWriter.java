@@ -88,7 +88,7 @@ public class PNGWriter {
         }
         if (coerce) {
             for (int c = 0; c < buffer.length; c++) {
-                buffer[c].castToFloatWithMax(~(~0 << image.getTaggedBitDepth(c)));
+                buffer[c].castToFloat(image.getTaggedBitDepth(c));
             }
         }
         if (image.isAlphaPremultiplied()) {

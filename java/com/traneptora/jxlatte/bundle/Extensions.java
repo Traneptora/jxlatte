@@ -8,14 +8,28 @@ import com.traneptora.jxlatte.io.Bitreader;
 
 public class Extensions {
     public final long extensionsKey;
-    private byte[][] payloads = new byte[64][];
+    private byte[][] payloads;
 
     public Extensions() {
         extensionsKey = 0;
+        payloads = new byte[64][];
     }
 
-    public Extensions(Bitreader reader) throws IOException {
-        extensionsKey = reader.readU64();
+    public Extensions(long extensionsKey, byte[][] payloads) {
+        if (payloads == null || payloads.length != 64)
+            throw new IllegalArgumentException();
+        for (int i = 0; i < 64; i++) {
+            boolean nze = ((1L << i) & extensionsKey) != 0;
+            if (nze != (payloads[i] != null))
+                throw new IllegalArgumentException();
+        }
+        this.extensionsKey = extensionsKey;
+        this.payloads = payloads;
+    }
+
+    public static Extensions readExtensions(Bitreader reader) throws IOException {
+        long extensionsKey = reader.readU64();
+        byte[][] payloads = new byte[64][];
         for (int i = 0; i < 64; i++) {
             if (((1L << i) & extensionsKey) != 0) {
                 long length = reader.readU64();
@@ -31,6 +45,8 @@ public class Extensions {
                 }
             }
         }
+    
+        return new Extensions(extensionsKey, payloads);
     }
 
     public byte[] getExtension(int extId) {

@@ -116,7 +116,7 @@ public class JXLImage {
             return this;
         float[][][] buffers = new float[3][][];
         for (int c = 0; c < 3; c++) {
-            buffer[c].castToFloatWithMax(bitDepths[c]);
+            buffer[c].castToFloat(bitDepths[c]);
             buffers[c] = buffer[c].getFloatBuffer();
         }
         float[][] conversionMatrix =
