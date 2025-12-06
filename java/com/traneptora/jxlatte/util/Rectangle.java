@@ -23,6 +23,10 @@ public class Rectangle {
         this(r.origin, r.size);
     }
 
+    public Rectangle(Dimension size) {
+        this(0, 0, size.height, size.width);
+    }
+
     public Point computeLowerCorner() {
         return new Point(origin.y + size.height, origin.x + size.width);
     }

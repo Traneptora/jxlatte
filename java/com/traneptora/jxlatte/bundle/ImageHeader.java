@@ -398,6 +398,10 @@ public class ImageHeader {
         return extraChannelInfo[index];
     }
 
+    public ExtraChannelInfo getAlphaChannel(int alphaIndex) {
+        return getExtraChannelInfo(getAlphaIndex(alphaIndex));
+    }
+
     public boolean isXYBEncoded() {
         return xybEncoded;
     }

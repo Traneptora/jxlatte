@@ -3,6 +3,21 @@ package com.traneptora.jxlatte.util;
 import java.util.Objects;
 
 public class Point {
+
+    /**
+     * Gives the closest point to this one within the bounds of the rectangle
+     */
+    public static Point inBounds(Rectangle bounds, Point point) {
+        Point corner = bounds.computeLowerCorner();
+        int y = MathHelper.clamp(point.y, bounds.origin.y, corner.y);
+        int x = MathHelper.clamp(point.x, bounds.origin.x, corner.x);
+        return new Point(y, x);
+    }
+
+    public static Point abs(Point point) {
+        return new Point(Math.abs(point.y), Math.abs(point.x));
+    }
+
     public int y;
     public int x;
 
