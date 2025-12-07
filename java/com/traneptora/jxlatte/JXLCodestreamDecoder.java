@@ -215,7 +215,6 @@ public class JXLCodestreamDecoder {
         int colorChannels = imageHeader.getColorChannelCount();
         int extraChannels = imageHeader.getExtraChannelCount();
         Patch[] patches = frame.getLFGlobal().patches;
-        boolean hasAlpha = imageHeader.hasAlpha();
         for (int i = 0; i < patches.length; i++) {
             Patch patch = patches[i];
             if (patch.ref > 3)
@@ -247,7 +246,8 @@ public class JXLCodestreamDecoder {
                         throw new InvalidBitstreamException("Alpha channel upsampling mismatch during patches");
                     }
                     blendBuffers(frameBuffer[d], frameBuffer, refBuffer, patch.positions[j],
-                        patch.bounds.origin, patch.bounds.size, d, frame, info, true);
+                        patch.positions[j], patch.bounds.origin, patch.bounds.size, d,
+                        frame, info, true);
                 }
             }
         }
@@ -283,7 +283,7 @@ public class JXLCodestreamDecoder {
     }
 
     private static void blendAdd(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
-            Point patchStart, Point frameOffset, Dimension size) {
+            Point patchStart, Point frameOffset, Point refOffset, Dimension size) {
         if (frame.isInt()) {
             int[][] cb = canvas.getIntBuffer();
             int[][] rb = ref.getIntBuffer();
@@ -291,10 +291,12 @@ public class JXLCodestreamDecoder {
             for (int y = 0; y < size.height; y++) {
                 int cy = y + patchStart.y;
                 int fy = y + frameOffset.y;
+                int ry = y + refOffset.y;
                 for (int x = 0; x < size.width; x++) {
                     int cx = x + patchStart.x;
                     int fx = x + frameOffset.x;
-                    cb[cy][cx] = rb[cy][cx] + fb[fy][fx];
+                    int rx = x + refOffset.x;
+                    cb[cy][cx] = rb[ry][rx] + fb[fy][fx];
                 }
             }
         } else {
@@ -304,41 +306,45 @@ public class JXLCodestreamDecoder {
             for (int y = 0; y < size.height; y++) {
                 int cy = y + patchStart.y;
                 int fy = y + frameOffset.y;
+                int ry = y + refOffset.y;
                 for (int x = 0; x < size.width; x++) {
                     int cx = x + patchStart.x;
                     int fx = x + frameOffset.x;
-                    cb[cy][cx] = rb[cy][cx] + fb[fy][fx];
+                    int rx = x + refOffset.x;
+                    cb[cy][cx] = rb[ry][rx] + fb[fy][fx];
                 }
             }
         }
     }
 
     private static void blendMult(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
-             Point patchStart, Point frameOffset, Dimension size, boolean clamp) {
+             Point patchStart, Point frameOffset, Point refOffset, Dimension size, boolean clamp) {
         float[][] cf = canvas.getFloatBuffer();
         float[][] rf = ref.getFloatBuffer();
         float[][] ff = frame.getFloatBuffer();
         for (int y = 0; y < size.height; y++) {
             int cy = y + patchStart.y;
             int fy = y + frameOffset.y;
+            int ry = y + refOffset.y;
             for (int x = 0; x < size.width; x++) {
                 int cx = x + patchStart.x;
                 int fx = x + frameOffset.x;
+                int rx = x + refOffset.x;
                 float newSample = ff[fy][fx];
                 if (clamp)
                     newSample = MathHelper.clampAsc(newSample, 0.0f, 1.0f);
-                cf[cy][cx] = newSample * rf[cy][cx];
+                cf[cy][cx] = newSample * rf[ry][rx];
             }
         }
     }
 
     private static void blendBlend(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
             ImageBuffer frameAlpha, ImageBuffer refAlpha,
-            Point patchStart, Point frameOffset, Dimension size,
+            Point patchStart, Point frameOffset, Point refOffset, Dimension size,
             boolean isAlpha, boolean hasExtra, boolean clamp, boolean premult) {
         /* if there's no extra channels, then alpha = 1.0 resolves this into blendAdd */
         if (!hasExtra) {
-            blendAdd(canvas, frame, ref, patchStart, frameOffset, size);
+            blendAdd(canvas, frame, ref, patchStart, frameOffset, refOffset, size);
             return;
         }
         float[][] oaf = isAlpha ? null : refAlpha.getFloatBuffer();
@@ -349,12 +355,14 @@ public class JXLCodestreamDecoder {
         for (int y = 0; y < size.height; y++) {
             int cy = y + patchStart.y;
             int fy = y + frameOffset.y;
+            int ry = y + refOffset.y;
             for (int x = 0; x < size.width; x++) {
                 int cx = x + patchStart.x;
                 int fx = x + frameOffset.x;
-                float oldSample = rf[cy][cx];
+                int rx = x + refOffset.x;
+                float oldSample = rf[ry][rx];
                 float newSample = ff[fy][fx];
-                float oldAlpha = isAlpha ? oldSample : oaf[cy][cx];
+                float oldAlpha = isAlpha ? oldSample : oaf[ry][rx];
                 float newAlpha = isAlpha ? newSample : naf[fy][fx];
                 if (clamp)
                     newAlpha = MathHelper.clampAsc(newAlpha, 0.0f, 1.0f);
@@ -371,10 +379,10 @@ public class JXLCodestreamDecoder {
     }
 
     private static void blendMulAdd(ImageBuffer canvas, ImageBuffer frame, ImageBuffer ref,
-            ImageBuffer frameAlpha, Point patchStart, Point frameOffset, Dimension size,
+            ImageBuffer frameAlpha, Point patchStart, Point frameOffset, Point refOffset, Dimension size,
             boolean isAlpha, boolean hasExtra, boolean clamp) {
         if (!hasExtra) {
-            blendAdd(canvas, frame, ref, patchStart, frameOffset, size);
+            blendAdd(canvas, frame, ref, patchStart, frameOffset, refOffset, size);
             return;
         }
         if (isAlpha) {
@@ -389,10 +397,12 @@ public class JXLCodestreamDecoder {
         for (int y = 0; y < size.height; y++) {
             int cy = y + patchStart.y;
             int fy = y + frameOffset.y;
+            int ry = y + refOffset.y;
             for (int x = 0; x < size.width; x++) {
                 int cx = x + patchStart.x;
                 int fx = x + frameOffset.x;
-                float oldSample = rf[cy][cx];
+                int rx = x + refOffset.x;
+                float oldSample = rf[ry][rx];
                 float newSample = ff[fy][fx];
                 float newAlpha = naf[fy][fx];
                 if (clamp)
@@ -403,8 +413,8 @@ public class JXLCodestreamDecoder {
     }
 
     private void blendBuffers(ImageBuffer canvas, ImageBuffer[] frameBuffers, ImageBuffer[] refBuffers,
-            Point patchStart, Point frameOffset, Dimension blendSize, int idx, Frame src, BlendingInfo info,
-            boolean patch) throws InvalidBitstreamException {
+            Point patchStart, Point frameOffset, Point refOffset, Dimension blendSize, int idx,
+            Frame src, BlendingInfo info, boolean patch) throws InvalidBitstreamException {
         int colors = imageHeader.getColorChannelCount();
         int frameColors = src.getColorChannelCount();
         ImageBuffer frameBuffer = frameBuffers[colors != frameColors ? (idx == 0 ? 1 : idx + 2) : idx];
@@ -483,19 +493,19 @@ public class JXLCodestreamDecoder {
         switch (mode) {
             case FrameFlags.BLEND_ADD:
                 blendAdd(canvas, oldBuffer, newBuffer,
-                    patchStart, frameOffset, blendSize);
+                    patchStart, frameOffset, refOffset, blendSize);
                 break;
             case FrameFlags.BLEND_MULT:
                 blendMult(canvas, oldBuffer, newBuffer,
-                    patchStart, frameOffset, blendSize, info.clamp);
+                    patchStart, frameOffset, refOffset, blendSize, info.clamp);
                 break;
             case FrameFlags.BLEND_BLEND:
                 blendBlend(canvas, oldBuffer, newBuffer, frameAlpha, refAlpha,
-                    patchStart, frameOffset, blendSize, isAlpha, hasExtra, info.clamp, premult);
+                    patchStart, frameOffset, refOffset, blendSize, isAlpha, hasExtra, info.clamp, premult);
                 break;
             case FrameFlags.BLEND_MULADD:
                 blendMulAdd(canvas, oldBuffer, newBuffer, frameAlpha,
-                    patchStart, frameOffset, blendSize, isAlpha, hasExtra, info.clamp);
+                    patchStart, frameOffset, refOffset, blendSize, isAlpha, hasExtra, info.clamp);
                 break;
             default:
                 throw new InvalidBitstreamException("Illegal blend mode");
@@ -521,7 +531,7 @@ public class JXLCodestreamDecoder {
             ImageBuffer canvasBuffer = canvas[c];
             BlendingInfo info = c >= colors ? header.ecBlendingInfo[c - colors] : header.blendingInfo;
             ImageBuffer[] refBuffers = reference[info.source];
-            blendBuffers(canvasBuffer, frameBuffers, refBuffers, patchStart, frameOffset, blendSize,
+            blendBuffers(canvasBuffer, frameBuffers, refBuffers, patchStart, frameOffset, patchStart, blendSize,
                 c, frame, info, false);
         }
     }
