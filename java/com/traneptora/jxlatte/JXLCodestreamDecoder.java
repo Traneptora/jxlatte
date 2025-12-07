@@ -643,8 +643,8 @@ public class JXLCodestreamDecoder {
         ImageBuffer[] frameBuffers = frame.getBuffer();
         boolean hasExtra = imageHeader.getExtraChannelCount() > 0;
         for (int c = 0; c < canvas.length; c++) {
-            int frameC = frameColors != imageColors ? (c == 0 ? 1 : c + 2) : c;
-            ImageBuffer frameBuffer = frameBuffers[frameC];
+            ImageBuffer canvasBuffer = canvas[c];
+            ImageBuffer frameBuffer = frameBuffers[frameColors != imageColors ? (c == 0 ? 1 : c + 2) : c];
             int exIdx = c - imageColors;
             boolean isExtra = exIdx >= 0;
             ExtraChannelInfo extraInfo = isExtra ? imageHeader.getExtraChannelInfo(exIdx) : null;
@@ -658,17 +658,17 @@ public class JXLCodestreamDecoder {
             BitDepthHeader bitDepth = isExtra ? extraInfo.bitDepth : imageHeader.getBitDepthHeader();
             boolean premult = hasExtra && alphaInfo.alphaAssociated;
             /* If one of these is already float cast the other one to float too */
-            if (canvas[c].getType() != frameBuffer.getType()) {
+            if (canvasBuffer.getType() != frameBuffer.getType()) {
                 frameBuffer.castToFloat(bitDepth.bitsPerSample);
-                canvas[c].castToFloat(bitDepth.bitsPerSample);
+                canvasBuffer.castToFloat(bitDepth.bitsPerSample);
             }
             if (info.mode == FrameFlags.BLEND_REPLACE || refBuffers == null && info.mode == FrameFlags.BLEND_ADD) {
                 copyToCanvas(canvas[c], patchStart, frameOffset, blendSize, frameBuffer);
                 continue;
             }
             if (refBuffers[c] == null)
-                refBuffers[c] = new ImageBuffer(canvas[c].getType(), canvas[c].height, canvas[c].width);
-            ImageBuffer ref = refBuffers[c];
+                refBuffers[c] = new ImageBuffer(canvasBuffer.getType(), imageSize.height, imageSize.width);
+            ImageBuffer refBuffer = refBuffers[c];
             ImageBuffer refAlpha = hasExtra ? refBuffers[imageColors + info.alphaChannel] : null;
             ImageBuffer frameAlpha = hasExtra ? frameBuffers[frameColors + info.alphaChannel] : null;
             if (hasExtra && (info.mode == FrameFlags.BLEND_BLEND || info.mode == FrameFlags.BLEND_MULADD)) {
@@ -682,29 +682,32 @@ public class JXLCodestreamDecoder {
                 }
                 frameBuffers[frameColors + info.alphaChannel].castToFloat(alphaDepth);
             }
+            boolean shouldCast = info.mode == FrameFlags.BLEND_MULT
+                || info.mode == FrameFlags.BLEND_BLEND && hasExtra
+                || info.mode == FrameFlags.BLEND_MULADD && hasExtra && !isAlpha;
             /* if one of these is already float then cast the others too */
-            if (ref.getType() != frameBuffer.getType() || info.mode != FrameFlags.BLEND_ADD) {
+            if (shouldCast || refBuffer.getType() != frameBuffer.getType()) {
                 frameBuffer.castToFloat(bitDepth.bitsPerSample);
-                canvas[c].castToFloat(bitDepth.bitsPerSample);
-                ref.castToFloat(bitDepth.bitsPerSample);
+                canvasBuffer.castToFloat(bitDepth.bitsPerSample);
+                refBuffer.castToFloat(bitDepth.bitsPerSample);
             }
             switch (info.mode) {
                 case FrameFlags.BLEND_ADD:
-                    blendAdd(canvas[c], frameBuffer, ref, patchStart, frameOffset, blendSize);
+                    blendAdd(canvasBuffer, frameBuffer, refBuffer,
+                        patchStart, frameOffset, blendSize);
                     break;
                 case FrameFlags.BLEND_MULT:
-                    blendMult(canvas[c], frameBuffer, ref, patchStart, frameOffset, blendSize, info.clamp);
+                    blendMult(canvasBuffer, frameBuffer, refBuffer,
+                        patchStart, frameOffset, blendSize, info.clamp);
                     break;
-                case FrameFlags.BLEND_BLEND: {
-                    blendBlend(canvas[c], frameBuffer, ref, frameAlpha, refAlpha, patchStart, frameOffset, blendSize,
-                        isAlpha, hasExtra, info.clamp, premult);
+                case FrameFlags.BLEND_BLEND:
+                    blendBlend(canvasBuffer, frameBuffer, refBuffer, frameAlpha, refAlpha,
+                        patchStart, frameOffset, blendSize, isAlpha, hasExtra, info.clamp, premult);
                     break;
-                }
-                case FrameFlags.BLEND_MULADD: {
-                    blendMulAdd(canvas[c], frameBuffer, ref, frameAlpha, patchStart, frameOffset, blendSize,
-                        isAlpha, hasExtra, info.clamp);
+                case FrameFlags.BLEND_MULADD:
+                    blendMulAdd(canvasBuffer, frameBuffer, refBuffer, frameAlpha,
+                        patchStart, frameOffset, blendSize, isAlpha, hasExtra, info.clamp);
                     break;
-                }
                 default:
                     throw new InvalidBitstreamException("Illegal blend mode");
             }
