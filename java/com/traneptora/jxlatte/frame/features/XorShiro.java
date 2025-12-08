@@ -1,8 +1,10 @@
-package com.traneptora.jxlatte.frame.features.noise;
+package com.traneptora.jxlatte.frame.features;
 
-import java.util.OptionalInt;
+import java.util.Random;
 
-public class XorShiro {
+public class XorShiro extends Random {
+
+    private static final long serialVersionUID = 0xe9f7cb31bea47c85L;
 
     public static long splitMix64(long z) {
         z = (z ^ (z >>> 30)) * 0xbf58476d1ce4e5b9L;
@@ -12,9 +14,8 @@ public class XorShiro {
 
     private long[] state0 = new long[8];
     private long[] state1 = new long[8];
-    private long[] batch = new long[8];
+    private int[] batch = new int[16];
     private int batchPos = batch.length;
-    private OptionalInt trail = OptionalInt.empty();
 
     public XorShiro(int seed0, int seed1, int seed2, int seed3) {
         this(((long)seed0 << 32) | ((long)seed1 & 0xFF_FF_FF_FFL),
@@ -30,37 +31,31 @@ public class XorShiro {
         }
     }
 
-    public long nextLong() {
-        fillBatch();
-        return batch[batchPos++];
-    }
-
     public void fill(int[] bits) {
-        for (int i = 0; i < bits.length; i += 2) {
-            if (trail.isPresent()) {
-                bits[i++] = trail.getAsInt();
-                trail = OptionalInt.empty();
-            }
-            long l = nextLong();
-            bits[i] = (int)(l & 0xFF_FF_FF_FFL);
-            int next = (int)((l >>> 32) & 0xFF_FF_FF_FFL);;
-            if (i + 1 < bits.length)
-                bits[i + 1] = next;
-            else
-                trail = OptionalInt.of(next);
+        for (int i = 0; i < bits.length; i++) {
+            if (batchPos >= batch.length)
+                fillBatch();
+            bits[i] = batch[batchPos++];
         }
     }
 
+    @Override
+    public int next(int bits) {
+        if (batchPos >= batch.length)
+            fillBatch();
+        return batch[batchPos++] >>> (32 - bits);
+    }
+
     private void fillBatch() {
-        if (batchPos < batch.length)
-            return;
-        for (int i = 0; i < batch.length; i++) {
+        for (int i = 0; i < 8; i++) {
             final long a = state1[i];
             long b = state0[i];
-            batch[i] = a + b;
+            final long c = a + b;
             state0[i] = a;
             b ^= b << 23;
             state1[i] = b ^ a ^ (b >>> 18) ^ (a >>> 5);
+            batch[2 * i] = (int)(c & 0xFF_FF_FF_FFL);
+            batch[2 * i + 1] = (int)(c >>> 32);
         }
         batchPos = 0;
     }

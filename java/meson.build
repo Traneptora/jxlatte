@@ -46,11 +46,7 @@ src = files(
     # com.traneptora.jxlatte.frame.features
     'com/traneptora/jxlatte/frame/features/Patch.java',
     'com/traneptora/jxlatte/frame/features/RestorationFilter.java',
-
-    # com.traneptora.jxlatte.frame.features.noise
-    'com/traneptora/jxlatte/frame/features/noise/NoiseGroup.java',
-    'com/traneptora/jxlatte/frame/features/noise/NoiseParameters.java',
-    'com/traneptora/jxlatte/frame/features/noise/XorShiro.java',
+    'com/traneptora/jxlatte/frame/features/XorShiro.java',
 
     # com.traneptora.jxlatte.frame.features.spline
     'com/traneptora/jxlatte/frame/features/spline/Spline.java',

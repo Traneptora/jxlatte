@@ -5,7 +5,6 @@ import java.io.IOException;
 import com.traneptora.jxlatte.color.ColorFlags;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.features.Patch;
-import com.traneptora.jxlatte.frame.features.noise.NoiseParameters;
 import com.traneptora.jxlatte.frame.features.spline.SplinesBundle;
 import com.traneptora.jxlatte.frame.modular.MATree;
 import com.traneptora.jxlatte.frame.modular.ModularStream;
@@ -19,7 +18,7 @@ public class LFGlobal {
     public final Frame frame;
     public final Patch[] patches;
     public final SplinesBundle splines;
-    public final NoiseParameters noiseParameters;
+    public final float[] noiseParameters;
     public final float[] lfDequant = new float[]{1f / 4096f, 1f / 512f, 1f / 256f};
     public final int globalScale;
     public final int quantLF;
@@ -54,7 +53,9 @@ public class LFGlobal {
         if ((header.flags & FrameFlags.NOISE) != 0) {
             if (frame.globalMetadata.getColorChannelCount() < 3)
                 throw new InvalidBitstreamException("Cannot do noise in grayscale");
-            noiseParameters = new NoiseParameters(reader);
+            noiseParameters = new float[8];
+            for (int i = 0; i < noiseParameters.length; i++)
+                noiseParameters[i] = reader.readBits(10) / 1024.0f;
         } else {
             noiseParameters = null;
         }

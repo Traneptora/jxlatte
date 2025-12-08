@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 import com.traneptora.jxlatte.JXLOptions;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.entropy.EntropyStream;
-import com.traneptora.jxlatte.frame.features.noise.NoiseGroup;
+import com.traneptora.jxlatte.frame.features.XorShiro;
 import com.traneptora.jxlatte.frame.features.spline.Spline;
 import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.frame.group.Pass;
@@ -750,15 +750,28 @@ public class Frame {
             return;
         int colors = getColorChannelCount();
         float[][][] localNoiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
-        NoiseGroup[] noiseGroups = new NoiseGroup[numGroups];
-        for (int group = 0; group < noiseGroups.length; group++) {
+        for (int group = 0; group < numGroups; group++) {
             Point groupLocation = getGroupLocation(group);
-            noiseGroups[group] = new NoiseGroup(header, seed0, localNoiseBuffer,
-                groupLocation.y << header.logGroupDim, groupLocation.x << header.logGroupDim);
+            int y0 = groupLocation.y << header.logGroupDim;
+            int x0 = groupLocation.x << header.logGroupDim;
+            long seed1 = (((long)x0 & 0xFF_FF_FF_FFL) << 32) | ((long)y0 & 0xFF_FF_FF_FFL);
+            int ySize = Math.min(header.groupDim, header.bounds.size.height - y0);
+            int xSize = Math.min(header.groupDim, header.bounds.size.width - x0);
+            XorShiro rng = new XorShiro(seed0, seed1);
+            int[] bits = new int[16];
+            for (int c = 0; c < localNoiseBuffer.length; c++) {
+                for (int y = 0; y < ySize; y++) {
+                    for (int x = 0; x < xSize; x += 16) {
+                        rng.fill(bits);
+                        for (int i = 0; i < 16 && x + i < xSize; i++) {
+                            int f = (bits[i] >>> 9) | 0x3f_80_00_00;
+                            localNoiseBuffer[c][y0 + y][x0 + x + i] = Float.intBitsToFloat(f);
+                        }
+                    }
+                }
+            }
         }
-
         noiseBuffer = new float[colors][bounds.size.height][bounds.size.width];
-
         for (int c = 0; c < colors; c++) {
             for (int y = 0; y < bounds.size.height; y++) {
                 for (int x = 0; x < bounds.size.width; x++) {
@@ -777,13 +790,11 @@ public class Frame {
     public void synthesizeNoise() {
         if (lfGlobal.noiseParameters == null)
             return;
-        float[] lut = lfGlobal.noiseParameters.lut;
-        int colors = getColorChannelCount();
+        final float[] lut = lfGlobal.noiseParameters;
         float[][][] buffers = new float[3][][];
         for (int c = 0; c < 3; c++) {
-            int d = c < colors ? c : 0;
-            buffer[d].castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
-            buffers[c] = buffer[d].getFloatBuffer();
+            buffer[c].castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
+            buffers[c] = buffer[c].getFloatBuffer();
         }
         for (int y = 0; y < bounds.size.height; y++) {
             for (int x = 0; x < bounds.size.width; x++) {
@@ -811,16 +822,14 @@ public class Frame {
                 }
                 float sr = (lut[intInR + 1] - lut[intInR]) * fracInR + lut[intInR];
                 float sg = (lut[intInG + 1] - lut[intInG]) * fracInG + lut[intInG];
-                sr = sr < 0.0f ? 0.0f : sr > 1.0f ? 1.0f : sr;
-                sg = sg < 0.0f ? 0.0f : sg > 1.0f ? 1.0f : sg;
+                sr = MathHelper.clampAsc(sr, 0.0f, 1.0f);
+                sg = MathHelper.clampAsc(sg, 0.0f, 1.0f);
                 float nr = sr * (0.00171875f * noiseBuffer[0][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float ng = sg * (0.00171875f * noiseBuffer[1][y][x] + 0.21828125f * noiseBuffer[2][y][x]);
                 float nrg = nr + ng;
                 buffers[1][y][x] += nrg;
-                if (buffers[0] != buffers[1])
-                    buffers[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
-                if (buffers[2] != buffers[1])
-                    buffers[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
+                buffers[0][y][x] += lfGlobal.lfChanCorr.baseCorrelationX * nrg + nr - ng;
+                buffers[2][y][x] += lfGlobal.lfChanCorr.baseCorrelationB * nrg;
             }
         }
     }
