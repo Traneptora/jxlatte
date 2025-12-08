@@ -70,7 +70,7 @@ public class LFGlobal {
             for (int i = 0; i < 3; i++)
                 scaledDequant[i] =  (1 << 16) * lfDequant[i] / (globalScale * quantLF);
             hfBlockCtx = new HFBlockContext(reader, parent.getLoggers());
-            lfChanCorr = new LFChannelCorrelation(reader);
+            lfChanCorr = LFChannelCorrelation.read(reader);
         } else {
             globalScale = 0;
             quantLF = 0;

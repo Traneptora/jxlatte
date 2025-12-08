@@ -3,7 +3,6 @@ package com.traneptora.jxlatte.frame.vardct;
 import java.io.IOException;
 
 import com.traneptora.jxlatte.io.Bitreader;
-import com.traneptora.jxlatte.util.functional.FunctionalHelper;
 
 public class LFChannelCorrelation {
     public final int colorFactor;
@@ -12,33 +11,31 @@ public class LFChannelCorrelation {
     public final int xFactorLF;
     public final int bFactorLF;
 
-    private LFChannelCorrelation(Bitreader reader, boolean allDefault) {
-        if (allDefault) {
-            colorFactor = 84;
-            baseCorrelationX = 0.0f;
-            baseCorrelationB = 1.0f;
-            xFactorLF = 128;
-            bFactorLF = 128;
-        } else {
-            try {
-                colorFactor = reader.readU32(84, 0, 256, 0, 2, 8, 258, 16);
-                baseCorrelationX = reader.readF16();
-                baseCorrelationB = reader.readF16();
-                xFactorLF = reader.readBits(8);
-                bFactorLF = reader.readBits(8);
-            } catch (IOException ex) {
-                FunctionalHelper.sneakyThrow(ex);
-                // prevent the compiler from whining about final fields
-                throw null;
-            }
-        }
+    public LFChannelCorrelation(int colorFactor, float baseCorrelationX,
+        float baseCorrelationB, int xFactorLF, int bFactorLF) {
+        this.colorFactor = colorFactor;
+        this.baseCorrelationX = baseCorrelationX;
+        this.baseCorrelationB = baseCorrelationB;
+        this.xFactorLF = xFactorLF;
+        this.bFactorLF = bFactorLF;
     }
 
     public LFChannelCorrelation() {
-        this(null, true);
+        this.colorFactor = 84;
+        this.baseCorrelationX = 0.0f;
+        this.baseCorrelationB = 1.0f;
+        this.xFactorLF = 128;
+        this.bFactorLF = 128;
     }
 
-    public LFChannelCorrelation(Bitreader reader) throws IOException {
-        this(reader, reader.readBool());
-    }   
+    public static LFChannelCorrelation read(Bitreader reader) throws IOException {
+        if (reader.readBool())
+            return new LFChannelCorrelation();
+        int colorFactor = reader.readU32(84, 0, 256, 0, 2, 8, 258, 16);
+        float baseCorrelationX = reader.readF16();
+        float baseCorrelationB = reader.readF16();
+        int xFactorLF = reader.readBits(8);
+        int bFactorLF = reader.readBits(8);
+        return new LFChannelCorrelation(colorFactor, baseCorrelationX, baseCorrelationB, xFactorLF, bFactorLF);
+    }
 }
