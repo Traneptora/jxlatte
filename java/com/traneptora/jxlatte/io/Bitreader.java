@@ -215,7 +215,7 @@ public class Bitreader extends InputStream {
     }
 
     public byte[] drainCache() throws IOException {
-        if (cacheBits % 8 != 0)
+        if (!isAligned())
             throw new IllegalStateException("You must align before drainCache");
         int cacheBytes = cacheBits / 8;
         if (cacheBytes == 0)
@@ -225,13 +225,25 @@ public class Bitreader extends InputStream {
         return buffer;
     }
 
+    public boolean isAligned() {
+        return (cacheBits & 0b111) == 0;
+    }
+
     @Override
     public int read(byte[] buffer, int offset, int length) throws IOException {
-        if (length == 0)
+        if (length <= 0)
             return 0;
-        if (cacheBits % 8 != 0)
-            throw new IllegalStateException("You must align before readBytes");
-        int cacheBytes = cacheBits / 8;
+        if (!isAligned()) {
+            int i;
+            for (i = 0; i < length; i++) {
+                int b = read();
+                if (b == -1)
+                    break;
+                buffer[i + offset] = (byte)b;
+            }
+            return i;
+        }
+        int cacheBytes = cacheBits >> 3;
         for (int i = 0; i < cacheBytes; i++) {
             if (length-- < 1)
                 return i;

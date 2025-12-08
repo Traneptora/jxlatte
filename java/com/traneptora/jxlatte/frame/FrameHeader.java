@@ -22,6 +22,7 @@ public class FrameHeader {
     public final int encoding;
     public final long flags;
     public final boolean doYCbCr;
+    public final boolean isSubsampled;
     public final int[] jpegUpsamplingY;
     public final int[] jpegUpsamplingX;
     public final int upsampling;
@@ -78,6 +79,7 @@ public class FrameHeader {
         this.name = header.name;
         this.restorationFilter = header.restorationFilter;
         this.extensions = header.extensions;
+        this.isSubsampled = header.isSubsampled;
     }
 
     public FrameHeader(Bitreader reader, ImageHeader parent) throws IOException {
@@ -195,6 +197,7 @@ public class FrameHeader {
         extensions = allDefault ? new Extensions() : Extensions.readExtensions(reader);
         int maxJPY = IntStream.of(jpegUpsamplingY).reduce(Math::max).getAsInt();
         int maxJPX = IntStream.of(jpegUpsamplingX).reduce(Math::max).getAsInt();
+        isSubsampled = maxJPX > 0 || maxJPY > 0;
         bounds.size.height = MathHelper.ceilDiv(bounds.size.height, 1 << maxJPY) << maxJPY;
         bounds.size.width = MathHelper.ceilDiv(bounds.size.width, 1 << maxJPX) << maxJPX;
         for (int i = 0; i < 3; i++) {

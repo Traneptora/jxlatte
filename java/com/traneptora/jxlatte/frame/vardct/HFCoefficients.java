@@ -1,7 +1,6 @@
 package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.IOException;
-import java.util.stream.IntStream;
 
 import com.traneptora.jxlatte.color.OpsinInverseMatrix;
 import com.traneptora.jxlatte.entropy.EntropyStream;
@@ -144,10 +143,7 @@ public class HFCoefficients {
     }
 
     private void chromaFromLuma() {
-        FrameHeader header = frame.getFrameHeader();
-        // chroma from luma
-        if (IntStream.of(header.jpegUpsamplingY).anyMatch(i -> i != 0)
-                || IntStream.of(header.jpegUpsamplingX).anyMatch(i -> i != 0))
+        if (frame.getFrameHeader().isSubsampled)
             return;
         LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
         int[][] xFactorHF = lfg.hfMetadata.hfStreamBuffer[0];
