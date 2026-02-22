@@ -16,4 +16,4 @@ endif
 
 add_project_arguments(flags, language: 'java')
 
-subdir('java')
+subdir('src')
