@@ -208,7 +208,7 @@ public class PNGWriter {
                 defout.write(iccProfile, 0, iccLen);
                 defout.flush();
             } finally {
-                deflater.close();
+                deflater.end();
                 defout.close();
             }
         }
@@ -263,7 +263,7 @@ public class PNGWriter {
         try {
             writeIDAT(deflater);
         } finally {
-            deflater.close();
+            deflater.end();
         }
         out.writeInt(0);
         out.writeInt(TAG_IEND); // IEND
