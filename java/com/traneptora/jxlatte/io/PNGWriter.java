@@ -202,10 +202,15 @@ public class PNGWriter {
             dout.flush();
             dout.close();
         } else {
-            DeflaterOutputStream defout = new DeflaterOutputStream(dout, new Deflater(deflateLevel));
-            defout.write(iccProfile, 0, iccLen);
-            defout.flush();
-            defout.close();
+            Deflater deflater = new Deflater(deflateLevel);
+            DeflaterOutputStream defout = new DeflaterOutputStream(dout, deflater);
+            try {
+                defout.write(iccProfile, 0, iccLen);
+                defout.flush();
+            } finally {
+                deflater.close();
+                defout.close();
+            }
         }
         byte[] buf = bout.toByteArray();
         out.writeInt(buf.length - 4);
@@ -215,10 +220,10 @@ public class PNGWriter {
         out.writeInt((int)crc32.getValue());
     }
 
-    private void writeIDAT() throws IOException {
+    private void writeIDAT(Deflater deflater) throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         writeBeTag(TAG_IDAT, bout);
-        DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout, new Deflater(deflateLevel)));
+        DataOutputStream dout = new DataOutputStream(new DeflaterOutputStream(bout, deflater));
         int[][][] buffers = Stream.of(buffer).map(ImageBuffer::getIntBuffer).toArray(int[][][]::new);
         if (bitDepth == 8) {
             for (int y = 0; y < height; y++) {
@@ -254,7 +259,12 @@ public class PNGWriter {
             writeICCP();
         else
             writeSRGB();
-        writeIDAT();
+        Deflater deflater = new Deflater(deflateLevel);
+        try {
+            writeIDAT(deflater);
+        } finally {
+            deflater.close();
+        }
         out.writeInt(0);
         out.writeInt(TAG_IEND); // IEND
         out.writeInt(0xAE_42_60_82); // crc32 for IEND
