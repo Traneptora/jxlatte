@@ -518,7 +518,7 @@ public class JXLCodestreamDecoder {
         Rectangle canvasBounds = new Rectangle(imageSize);
         FrameHeader header = frame.getFrameHeader();
         /* patchStart is where to lay onto the canvas */
-        Point patchStart = Point.inBounds(canvasBounds, header.bounds.origin);
+        Point patchStart = header.bounds.origin.withinBounds(canvasBounds);
         /* frameOffset is offset in-frame to start blending from */
         Point frameOffset = new Point(patchStart.y - header.bounds.origin.y, patchStart.x - header.bounds.origin.x);
         Point lowerCorner = header.bounds.computeLowerCorner();
