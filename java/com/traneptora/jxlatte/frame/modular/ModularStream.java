@@ -153,13 +153,13 @@ public class ModularStream implements Iterable<ModularChannel> {
                             int w = chan.size.width;
                             chan.size.width = (w + 1) / 2;
                             chan.hshift++;
-                            residu = new ModularChannel(chan);
+                            residu = ModularChannel.copyOf(chan);
                             residu.size.width = w / 2;
                         } else {
                             int h = chan.size.height;
                             chan.size.height = (h + 1) / 2;
                             chan.vshift++;
-                            residu = new ModularChannel(chan);
+                            residu = ModularChannel.copyOf(chan);
                             residu.size.height = h / 2;
                         }
                         channels.add(r, residu);
@@ -332,7 +332,7 @@ public class ModularStream implements Iterable<ModularChannel> {
                 ModularChannel firstChannel = getChannel(first);
                 ModularChannel c0 = getChannel(0);
                 for (int j = first + 1; j <= last; j++) {
-                    channels.add(j, new ModularChannel(firstChannel));
+                    channels.add(j, ModularChannel.copyOf(firstChannel));
                 }
                 for (int c = 0; c < transforms[i].numC; c++) {
                     ModularChannel chan = getChannel(first + c);

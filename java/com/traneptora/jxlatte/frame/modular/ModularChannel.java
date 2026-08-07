@@ -46,6 +46,20 @@ public class ModularChannel {
         return 0;
     }
 
+    public static ModularChannel copyOf(ModularChannel channel) {
+        ModularChannel ret = new ModularChannel(channel.size.height, channel.size.width, channel.vshift, channel.hshift, channel.forceWP);
+        ret.origin = new Point(channel.origin);
+
+        ret.decoded = channel.decoded;
+        if (channel.buffer != null) {
+            ret.allocate();
+            for (int y = 0; y < ret.size.height; y++)
+                System.arraycopy(channel.buffer[y], 0, ret.buffer[y], 0, ret.size.width);
+        }
+
+        return ret;
+    }
+
     public int[][] buffer;
     protected int[][][] error;
     protected int[][] pred;
@@ -68,18 +82,6 @@ public class ModularChannel {
         this.vshift = vshift;
         this.hshift = hshift;
         this.forceWP = forceWP;
-    }
-
-    public ModularChannel(ModularChannel channel) {
-        this(channel.size.height, channel.size.width, channel.vshift, channel.hshift, channel.forceWP);
-        this.origin = new Point(channel.origin);
-
-        decoded = channel.decoded;
-        if (channel.buffer != null) {
-            allocate();
-            for (int y = 0; y < size.height; y++)
-                System.arraycopy(channel.buffer[y], 0, buffer[y], 0, size.width);
-        }
     }
 
     public void allocate() {

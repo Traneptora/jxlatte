@@ -36,7 +36,7 @@ public class Pass {
             if (!chan.isDecoded()) {
                 int m = Math.min(chan.vshift, chan.hshift);
                 if (minShift <= m && m < maxShift)
-                    replacedChannels[i] = new ModularChannel(chan);
+                    replacedChannels[i] = ModularChannel.copyOf(chan);
             }
         }
 

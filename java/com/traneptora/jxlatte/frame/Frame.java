@@ -268,7 +268,7 @@ public class Frame {
             if (!chan.isDecoded()) {
                 if (chan.vshift >= 3 && chan.hshift >= 3) {
                     lfReplacementChannelIndicies.add(i);
-                    lfReplacementChannels.add(new ModularChannel(chan));
+                    lfReplacementChannels.add(ModularChannel.copyOf(chan));
                 }
             }
         }
@@ -277,7 +277,7 @@ public class Frame {
 
         for (int lfGroupID = 0; lfGroupID < numLFGroups; lfGroupID++) {
             Bitreader reader = getBitreader(1 + lfGroupID);
-            ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::new)
+            ModularChannel[] replaced = lfReplacementChannels.stream().map(ModularChannel::copyOf)
                 .toArray(ModularChannel[]::new);
             for (ModularChannel info : replaced) {
                 int lfGroupHeight = header.lfGroupDim >> info.vshift;
@@ -325,7 +325,7 @@ public class Frame {
                 final int group = group0;
                 Bitreader reader = getBitreader(2 + numLFGroups + pass * numGroups + group);
                 ModularChannel[] replaced = Stream.of(passes[pass].replacedChannels).filter(Objects::nonNull)
-                    .map(ModularChannel::new).toArray(ModularChannel[]::new);
+                    .map(ModularChannel::copyOf).toArray(ModularChannel[]::new);
                 for (ModularChannel info : replaced) {
                     int groupHeight = header.groupDim >> info.vshift;
                     int groupWidth = header.groupDim >> info.hshift;
