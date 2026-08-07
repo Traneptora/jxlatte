@@ -12,26 +12,9 @@ import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.MathHelper;
 
 public class MATree {
-    private EntropyStream stream;
 
-    private MATree leftChildNode;
-    private MATree rightChildNode;
-
-    private int property = -1;
-    private int value;
-    private int leftChildIndex;
-    private int rightChildIndex;
-
-    private int context;
-    private int predictor = -1;
-    private int offset;
-    private int multiplier;
-
-    private MATree() {
-
-    }
-
-    public MATree(Loggers loggers, Bitreader reader) throws IOException {
+    public static MATree readTree(Loggers loggers, Bitreader reader) throws IOException {
+        MATree ret = new MATree();
         List<MATree> nodes = new ArrayList<>();
         EntropyStream stream = new EntropyStream(loggers, reader, 6);
         int contextId = 0;
@@ -40,7 +23,7 @@ public class MATree {
             if (nodes.size() > (1 << 20))
                 throw new InvalidBitstreamException("Tree too large");
             int property = stream.readSymbol(reader, 1) - 1;
-            MATree node = nodes.size() == 0 ? this : new MATree();
+            MATree node = nodes.size() == 0 ? ret : new MATree();
             if (property >= 0) {
                 int value = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
                 int leftChild = nodes.size() + nodesRemaining + 1;
@@ -72,19 +55,41 @@ public class MATree {
                 nodes.add(node);
             }
         }
+
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal MA Tree Entropy Stream");
 
-        this.stream = new EntropyStream(loggers, reader, (nodes.size() + 1) / 2);
+        ret.stream = new EntropyStream(loggers, reader, (nodes.size() + 1) / 2);
 
         for (int n = 0; n < nodes.size(); n++) {
             MATree node = nodes.get(n);
-            node.stream = this.stream;
+            node.stream = ret.stream;
             if (!node.isLeafNode()) {
                 node.leftChildNode = nodes.get(node.leftChildIndex);
                 node.rightChildNode = nodes.get(node.rightChildIndex);
             }
         }
+
+        return ret;
+    }
+
+    private EntropyStream stream;
+
+    private MATree leftChildNode;
+    private MATree rightChildNode;
+
+    private int property = -1;
+    private int value;
+    private int leftChildIndex;
+    private int rightChildIndex;
+
+    private int context;
+    private int predictor = -1;
+    private int offset;
+    private int multiplier;
+
+    private MATree() {
+
     }
 
     public boolean isLeafNode() {

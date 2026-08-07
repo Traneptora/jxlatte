@@ -80,7 +80,7 @@ public class LFGlobal {
         }
 
         boolean hasGlobalTree = reader.readBool();
-        MATree globalTree = hasGlobalTree ? new MATree(parent.getLoggers(), reader) : null;
+        MATree globalTree = hasGlobalTree ? MATree.readTree(parent.getLoggers(), reader) : null;
         frame.setGlobalTree(globalTree);
         frame.getLoggers().log(Loggers.LOG_TRACE, "global tree: %s", globalTree);
         int subModularChannelCount = extra;

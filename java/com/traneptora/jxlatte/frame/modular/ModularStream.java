@@ -173,7 +173,7 @@ public class ModularStream implements Iterable<ModularChannel> {
             }
         }
         if (!useGlobalTree) {
-            tree = new MATree(loggers, reader);
+            tree = MATree.readTree(loggers, reader);
             loggers.log(Loggers.LOG_TRACE, "tree: %s", tree);
         } else {
             tree = frame.getGlobalTree();
