@@ -61,7 +61,7 @@ public class JXLImage {
         this.taggedTransfer = bundle.tf;
         this.alphaIsPremultiplied = header.hasAlpha() && imageHeader.getExtraChannelInfo(alphaIndex).alphaAssociated;
         this.bitDepths = new int[buffer.length];
-        int colors = getColorChannelCount();
+        int colors = header.getColorChannelCount();
         for (int c = 0; c < bitDepths.length; c++) {
             if (c < colors)
                 bitDepths[c] = imageHeader.getBitDepthHeader().bitsPerSample;
