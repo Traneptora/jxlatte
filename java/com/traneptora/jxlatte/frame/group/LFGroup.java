@@ -29,7 +29,7 @@ public class LFGroup {
         Dimension pixelSize = frame.getLFGroupSize(lfGroupID);
         size = new Dimension(pixelSize.height >> 3, pixelSize.width >> 3);
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
-            this.lfCoeff = new LFCoefficients(reader, this, parent, lfBuffer);
+            this.lfCoeff = new LFCoefficients(reader, lfGroupID, size, parent, lfBuffer);
         else
             this.lfCoeff = null;
 

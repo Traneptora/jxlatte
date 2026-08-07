@@ -6,11 +6,11 @@ import java.util.Arrays;
 import com.traneptora.jxlatte.frame.Frame;
 import com.traneptora.jxlatte.frame.FrameFlags;
 import com.traneptora.jxlatte.frame.FrameHeader;
-import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;
 import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.ImageBuffer;
 import com.traneptora.jxlatte.util.Point;
 
@@ -19,9 +19,9 @@ public class LFCoefficients {
     public final int[][] lfIndex;
     public final Frame frame;
 
-    public LFCoefficients(Bitreader reader, LFGroup parent, Frame frame, ImageBuffer[] lfBuffer) throws IOException {
+    public LFCoefficients(Bitreader reader, int parentID, Dimension parentSize, Frame frame, ImageBuffer[] lfBuffer) throws IOException {
         this.frame = frame;
-        this.lfIndex = new int[parent.size.height][parent.size.width];
+        this.lfIndex = new int[parentSize.height][parentSize.width];
         FrameHeader header = frame.getFrameHeader();
         boolean adaptiveSmoothing = (header.flags &
             (FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING | FrameFlags.USE_LF_FRAME)) == 0;
@@ -34,15 +34,15 @@ public class LFCoefficients {
             throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
 
         for (int i = 0; i < 3; i++) {
-            int sizeY = parent.size.height >> header.jpegUpsamplingY[i];
-            int sizeX = parent.size.width >> header.jpegUpsamplingX[i];
+            int sizeY = parentSize.height >> header.jpegUpsamplingY[i];
+            int sizeX = parentSize.width >> header.jpegUpsamplingX[i];
             info[Frame.cMap[i]] = new ModularChannel(sizeY, sizeX, header.jpegUpsamplingY[i],
                 header.jpegUpsamplingX[i]);
             dequantLFCoeff[i] = new float[sizeY][sizeX];
         }
 
         if ((header.flags & FrameFlags.USE_LF_FRAME) != 0) {
-            Point pos = frame.getLFGroupLocation(parent.lfGroupID);
+            Point pos = frame.getLFGroupLocation(parentID);
             int pY = pos.y << 8;
             int pX = pos.x << 8;
             this.dequantLFCoeff = dequantLFCoeff;
@@ -57,7 +57,7 @@ public class LFCoefficients {
         }
 
         int extraPrecision = reader.readBits(2);
-        ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parent.lfGroupID, info);
+        ModularStream lfQuantStream = new ModularStream(reader, frame, 1 + parentID, info);
         lfQuantStream.decodeChannels(reader);
         int[][][] lfQuant = lfQuantStream.getDecodedBuffer();
         lfQuantStream = null;
@@ -99,13 +99,13 @@ public class LFCoefficients {
         else
             this.dequantLFCoeff = dequantLFCoeff;
 
-        populateLFIndex(parent, lfQuant);
+        populateLFIndex(parentSize, lfQuant);
     }
 
-    private void populateLFIndex(LFGroup parent, int[][][] lfQuant) {
+    private void populateLFIndex(Dimension parentSize, int[][][] lfQuant) {
         HFBlockContext hfctx = frame.getLFGlobal().hfBlockCtx;
-        for (int y = 0; y < parent.size.height; y++) {
-            for (int x = 0; x < parent.size.width; x++)
+        for (int y = 0; y < parentSize.height; y++) {
+            for (int x = 0; x < parentSize.width; x++)
                 lfIndex[y][x] = getLFIndex(lfQuant, hfctx, y, x);
         }
     }
