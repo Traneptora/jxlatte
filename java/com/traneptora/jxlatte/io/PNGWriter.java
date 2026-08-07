@@ -208,8 +208,8 @@ public class PNGWriter {
                 defout.write(iccProfile, 0, iccLen);
                 defout.flush();
             } finally {
-                deflater.end();
                 defout.close();
+                deflater.end();
             }
         }
         byte[] buf = bout.toByteArray();
