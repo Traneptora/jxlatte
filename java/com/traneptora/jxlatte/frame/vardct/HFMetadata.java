@@ -4,11 +4,11 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.traneptora.jxlatte.frame.Frame;
-import com.traneptora.jxlatte.frame.group.LFGroup;
 import com.traneptora.jxlatte.frame.modular.ModularChannel;
 import com.traneptora.jxlatte.frame.modular.ModularStream;
 import com.traneptora.jxlatte.io.Bitreader;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
+import com.traneptora.jxlatte.util.Dimension;
 import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 
@@ -17,26 +17,24 @@ public class HFMetadata {
     public final TransformType[][] dctSelect;
     public final int[][] hfMultiplier;
     public final int[][][] hfStreamBuffer;
-    public final LFGroup parent;
     public final Point[] blockList;
 
-    public HFMetadata(Bitreader reader, LFGroup parent, Frame frame) throws IOException {
-        this.parent = parent;
-        int n = MathHelper.ceilLog2(parent.size.height * parent.size.width);
+    public HFMetadata(Bitreader reader, int parentID, Dimension parentSize, Frame frame) throws IOException {
+        int n = MathHelper.ceilLog2(parentSize.height * parentSize.width);
         nbBlocks = 1 + reader.readBits(n);
-        int correlationHeight = (parent.size.height + 7) / 8;
-        int correlationWidth = (parent.size.width + 7) / 8;
+        int correlationHeight = (parentSize.height + 7) / 8;
+        int correlationWidth = (parentSize.width + 7) / 8;
         ModularChannel xFromY = new ModularChannel(correlationHeight, correlationWidth, 0, 0);
         ModularChannel bFromY = new ModularChannel(correlationHeight, correlationWidth, 0, 0);
         ModularChannel blockInfo = new ModularChannel(2, nbBlocks, 0, 0);
-        ModularChannel sharpness = new ModularChannel(parent.size.height, parent.size.width, 0, 0);
-        ModularStream hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parent.lfGroupID,
+        ModularChannel sharpness = new ModularChannel(parentSize.height, parentSize.width, 0, 0);
+        ModularStream hfStream = new ModularStream(reader, frame, 1 + 2*frame.getNumLFGroups() + parentID,
             new ModularChannel[]{xFromY, bFromY, blockInfo, sharpness});
         hfStream.decodeChannels(reader);
         hfStreamBuffer = hfStream.getDecodedBuffer();
         hfStream = null;
-        dctSelect = new TransformType[parent.size.height][parent.size.width];
-        hfMultiplier = new int[parent.size.height][parent.size.width];
+        dctSelect = new TransformType[parentSize.height][parentSize.width];
+        hfMultiplier = new int[parentSize.height][parentSize.width];
         int[][] blockInfoBuffer = hfStreamBuffer[2];
         Point lastBlock = new Point();
         TransformType[] tta = TransformType.values();

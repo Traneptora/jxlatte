@@ -43,7 +43,7 @@ public class LFGroup {
         }
 
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
-            this.hfMetadata = new HFMetadata(reader, this, parent);
+            this.hfMetadata = new HFMetadata(reader, lfGroupID, size, parent);
         else
             this.hfMetadata = null;       
     }
