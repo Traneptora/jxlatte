@@ -22,13 +22,13 @@ public class ImageHeader {
 
     public static final int CODESTREAM_HEADER = 0x0AFF;
 
-    public static final float[] DEFAULT_UP2 = {
+    private static final float[] DEFAULT_UP2 = {
         -0.01716200f, -0.03452303f, -0.04022174f, -0.02921014f, -0.00624645f,
         0.14111091f, 0.28896755f, 0.00278718f, -0.01610267f, 0.56661550f,
         0.03777607f, -0.01986694f, -0.03144731f, -0.01185068f, -0.00213539f,
     };
     
-    public static final float[] DEFAULT_UP4 = {
+    private static final float[] DEFAULT_UP4 = {
         -0.02419067f, -0.03491987f, -0.03693351f, -0.03094285f, -0.00529785f,
         -0.01663432f, -0.03556863f, -0.03888905f, -0.03516850f, -0.00989469f,
         0.23651958f, 0.33392945f, -0.01073543f, -0.01313181f, -0.03556694f,
@@ -42,7 +42,7 @@ public class ImageHeader {
         0.08483369f, -0.02534994f, -0.02205197f, -0.01667999f, -0.00384443f,
     };
 
-    public static final float[] DEFAULT_UP8 = {
+    private static final float[] DEFAULT_UP8 = {
         -0.02928613f, -0.03706353f, -0.03783812f, -0.03324558f, -0.00447632f,
         -0.02519406f, -0.03752601f, -0.03901508f, -0.03663285f, -0.00646649f,
         -0.02066407f, -0.03838633f, -0.04002101f, -0.03900035f, -0.00901973f,
@@ -271,7 +271,7 @@ public class ImageHeader {
                 header.up2weights[i] = reader.readF16();
             }
         } else {
-            header.up2weights = DEFAULT_UP2;
+            header.up2weights = Arrays.copyOf(DEFAULT_UP2, DEFAULT_UP2.length);
         }
 
         if ((cwMask & 2) != 0) {
@@ -280,7 +280,7 @@ public class ImageHeader {
                 header.up4weights[i] = reader.readF16();
             }
         } else {
-            header.up4weights = DEFAULT_UP4;
+            header.up4weights = Arrays.copyOf(DEFAULT_UP4, DEFAULT_UP4.length);
         }
 
         if ((cwMask & 4) != 0) {
@@ -289,7 +289,7 @@ public class ImageHeader {
                 header.up8weights[i] = reader.readF16();
             }
         } else {
-            header.up8weights = DEFAULT_UP8;
+            header.up8weights = Arrays.copyOf(DEFAULT_UP8, DEFAULT_UP8.length);
         }
 
         if (header.colorEncoding.useIccProfile) {
