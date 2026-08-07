@@ -110,14 +110,14 @@ public class LFCoefficients {
         }
     }
 
-    private float[][][] adaptiveSmooth(final float[][][] coeff, final float[] scaledDequant) {
+    private static float[][][] adaptiveSmooth(final float[][][] coeff, final float[] scaledDequant) {
         final float[][][] weighted = new float[3][][];
         final float[][] gap = new float[coeff[0].length][];
         final float[][][] dequantLFCoeff = new float[3][][];
         for (int i = 0; i < 3; i++) {
             final float[][] co = coeff[i];
             weighted[i] = new float[co.length][];
-            final float sd = scaledDequant[i];
+            final float sd = 1.0f / scaledDequant[i];
             for (int y = 1; y < co.length - 1; y++) {
                 final float[] coy = co[y];
                 final float[] coym = co[y - 1];
@@ -171,7 +171,7 @@ public class LFCoefficients {
                         dqy[x] = coy[x];
                         continue;
                     }
-                    dqy[x] = (coy[x] - wiy[x]) * gy[x] + wiy[x];
+                    dqy[x] = (wiy[x] - coy[x]) * gy[x] + coy[x];
                 }
             }
         }
