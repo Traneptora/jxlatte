@@ -110,7 +110,7 @@ res = structured_sources(
     ),
 )
 
-jxlatte_jar = jar('jxlatte',
+jar('jxlatte',
     sources: src,
     java_resources: res,
     main_class: 'com.traneptora.jxlatte.JXLatte',
