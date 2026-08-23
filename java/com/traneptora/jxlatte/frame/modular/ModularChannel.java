@@ -122,6 +122,26 @@ public class ModularChannel {
         return x > 1 ? buffer[y][x - 2] : west(buffer, y, x);
     }
 
+    private static int errorNorth(int[][] buffer, int y, int x) {
+        return y > 0 ? buffer[y - 1][x] : 0;
+    }
+
+    private static int errorWest(int[][] buffer, int y, int x) {
+        return x > 0 ? buffer[y][x - 1] : 0;
+    }
+
+    private static int errorWestWest(int[][] buffer, int y, int x) {
+        return x > 1 ? buffer[y][x - 2] : 0;
+    }
+
+    private static int errorNorthWest(int[][] buffer, int y, int x) {
+        return x > 0 && y > 0 ? buffer[y - 1][x - 1] : errorNorth(buffer, y, x);
+    }
+
+    private static int errorNorthEast(int[][] buffer, int y, int x) {
+        return y > 0 && x + 1 < buffer[y - 1].length ? buffer[y - 1][x + 1] : errorNorth(buffer, y, x);
+    }
+
     protected int prediction(int y, int x, int k) {
         int n, v, nw, w;
         switch (k) {
@@ -176,10 +196,10 @@ public class ModularChannel {
         int ne3 = northEast(buffer, y, x) << 3;
         int w3 = west(buffer, y, x) << 3;
         int nn3 = northNorth(buffer, y, x) << 3;
-        int tN = north(error[4], y, x);
-        int tW = west(error[4], y, x);
-        int tNE = northEast(error[4], y, x);
-        int tNW = northWest(error[4], y, x);
+        int tN = errorNorth(error[4], y, x);
+        int tW = errorWest(error[4], y, x);
+        int tNE = errorNorthEast(error[4], y, x);
+        int tNW = errorNorthWest(error[4], y, x);
         subpred[0] = w3 + ne3 - n3;
         subpred[1] = n3 - (((tW + tN + tNE) * wpParams.param1) >> 5);
         subpred[2] = w3 - (((tW + tN + tNW) * wpParams.param2) >> 5);
@@ -190,10 +210,10 @@ public class ModularChannel {
             + (nw3 - w3) * wpParams.param3e) >> 5);
         int wSum = 0;
         for (int e = 0; e < 4; e++) {
-            long eSum = north(error[e], y, x) + west(error[e], y, x) + northWest(error[e], y, x)
-                + westWest(error[e], y, x) + northEast(error[e], y, x);
+            long eSum = errorNorth(error[e], y, x) + errorWest(error[e], y, x) + errorNorthWest(error[e], y, x)
+                + errorWestWest(error[e], y, x) + errorNorthEast(error[e], y, x);
             if (x + 1 == size.width)
-                eSum += west(error[e], y, x);
+                eSum += errorWest(error[e], y, x);
             eSum &= 0xffffffffL;
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
