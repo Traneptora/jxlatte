@@ -135,7 +135,7 @@ public class LFCoefficients {
                         + coyp[x - 1] + coyp[x + 1];
                     wy[x] = 0.05226273532324128f * sample + 0.20345139757231578f * adjacent
                         + 0.0334829185968739f * diag;
-                    final float g = Math.abs(sample - wy[x]);
+                    final float g = Math.abs(sample - wy[x]) * sd;
                     if (g > gy[x])
                         gy[x] = g;
                 }
