@@ -27,10 +27,7 @@ public class LFCoefficients {
             (FrameFlags.SKIP_ADAPTIVE_LF_SMOOTHING | FrameFlags.USE_LF_FRAME)) == 0;
         ModularChannel[] info = new ModularChannel[3];
         float[][][] dequantLFCoeff = new float[3][][];
-        boolean subsampled = header.jpegUpsamplingY[0] != 0 || header.jpegUpsamplingY[1] != 0
-            || header.jpegUpsamplingY[2] != 0 || header.jpegUpsamplingX[0] != 0
-            || header.jpegUpsamplingX[1] != 0 || header.jpegUpsamplingX[2] != 0;
-        if (adaptiveSmoothing && subsampled)
+        if (adaptiveSmoothing && header.isSubsampled)
             throw new InvalidBitstreamException("Adaptive Smoothing is incompatible with subsampling");
 
         for (int i = 0; i < 3; i++) {
@@ -75,7 +72,7 @@ public class LFCoefficients {
         }
 
         // chroma from luma
-        if (!subsampled) {
+        if (!header.isSubsampled) {
             final LFChannelCorrelation lfc = frame.getLFGlobal().lfChanCorr;
             // SPEC: -128, not -127
             final float kX = lfc.baseCorrelationX + (lfc.xFactorLF - 128f) / (float)lfc.colorFactor;
@@ -95,7 +92,7 @@ public class LFCoefficients {
         }
 
         if (adaptiveSmoothing)
-            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant);
+            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff);
         else
             this.dequantLFCoeff = dequantLFCoeff;
 
@@ -138,7 +135,7 @@ public class LFCoefficients {
                         + coyp[x - 1] + coyp[x + 1];
                     wy[x] = 0.05226273532324128f * sample + 0.20345139757231578f * adjacent
                         + 0.0334829185968739f * diag;
-                    final float g = Math.abs(sample - wy[x]) * sd;
+                    final float g = Math.abs(sample - wy[x]);
                     if (g > gy[x])
                         gy[x] = g;
                 }

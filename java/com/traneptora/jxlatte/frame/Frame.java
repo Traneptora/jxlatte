@@ -464,7 +464,7 @@ public class Frame {
     // do this in RGB
     public void drawVarblocks() {
         float[][][] buff = Stream.of(buffer[0], buffer[1], buffer[2]).map(b -> {
-            b.castToFloatWithMax(globalMetadata.getBitDepthHeader().getMaxValue());
+            b.castToFloat(globalMetadata.getBitDepthHeader().bitsPerSample);
             return b.getFloatBuffer();
         }).toArray(float[][][]::new);
         for (LFGroup lfg : lfGroups) {

@@ -45,32 +45,44 @@ public class HFCoefficients {
     public final Point[] blocks;
     public final Point groupPos;
 
-    public HFCoefficients(Bitreader reader, Frame frame, int pass, int group) throws IOException {
-        int bits = MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1);
-        hfPreset = reader.readBits(bits);
-        this.groupID = group;
+    public HFCoefficients(int hfPreset, LFGroup lfg, int groupID,
+        EntropyStream stream, Frame frame, Point[] blocks, Point groupPos) {
+        this.hfPreset = hfPreset;
+        this.lfg = lfg;
+        this.groupID = groupID;
+        this.stream = stream;
         this.frame = frame;
+        this.blocks = blocks;
+        this.groupPos = groupPos;
         this.hfctx = frame.getLFGlobal().hfBlockCtx;
-        this.lfg = frame.getLFGroupForGroup(group);
-        int offset = 495 * hfctx.numClusters * hfPreset;
+        quantizedCoeffs = new int[3][][];
+        dequantHFCoeff = new float[3][][];
+    }
+
+    public static HFCoefficients readHfCoefficients(Bitreader reader, Frame frame, int pass, int group)
+            throws IOException {
+        int bits = MathHelper.ceilLog1p(frame.getHFGlobal().numHfPresets - 1);
+        int hfPreset = reader.readBits(bits);
         FrameHeader header = frame.getFrameHeader();
         int shift = header.passes.shift[pass];
         HFPass hfPass = frame.getHFPass(pass);
-        Dimension size = frame.getGroupSize(groupID);
+        Dimension size = frame.getGroupSize(group);
         int[][][] nonZeroes = new int[3][32][32];
-        stream = new EntropyStream(hfPass.contextStream);
-        quantizedCoeffs = new int[3][][];
-        dequantHFCoeff = new float[3][][];
+        EntropyStream stream = new EntropyStream(hfPass.contextStream);
+        LFGroup lfg = frame.getLFGroupForGroup(group);
+        Point groupPos = frame.groupPosInLFGroup(lfg.lfGroupID, group);
+        Point[] blocks = new Point[lfg.hfMetadata.blockList.length];
+        groupPos.y <<= 5;
+        groupPos.x <<= 5;
+        HFCoefficients hfcoeff = new HFCoefficients(hfPreset, lfg, group, stream, frame, blocks, groupPos);
+        HFBlockContext hfctx = hfcoeff.hfctx;
+        int offset = 495 * hfctx.numClusters * hfPreset;
         for (int c = 0; c < 3; c++) {
             int sY = size.height >> header.jpegUpsamplingY[c];
             int sX = size.width >> header.jpegUpsamplingX[c];
-            quantizedCoeffs[c] = new int[sY][sX];
-            dequantHFCoeff[c] = new float[sY][sX];
+            hfcoeff.quantizedCoeffs[c] = new int[sY][sX];
+            hfcoeff.dequantHFCoeff[c] = new float[sY][sX];
         }
-        groupPos = frame.groupPosInLFGroup(lfg.lfGroupID, groupID);
-        groupPos.y <<= 5;
-        groupPos.x <<= 5;
-        blocks = new Point[lfg.hfMetadata.blockList.length];
         for (int i = 0; i < lfg.hfMetadata.blockList.length; i++) {
             Point posInLfg = lfg.hfMetadata.blockList[i];
             int groupY = posInLfg.y - groupPos.y;
@@ -95,8 +107,8 @@ public class HFCoefficients {
                 int pixelGroupY = sGroupY << 3;
                 int pixelGroupX = sGroupX << 3;
                 int predicted = getPredictedNonZeroes(nonZeroes, c, sGroupY, sGroupX);
-                int blockCtx = getBlockContext(c, tt.orderID, hfMult, lfIndex);
-                int nonZeroCtx = offset + getNonZeroContext(predicted, blockCtx);
+                int blockCtx = hfcoeff.getBlockContext(c, tt.orderID, hfMult, lfIndex);
+                int nonZeroCtx = offset + hfcoeff.getNonZeroContext(predicted, blockCtx);
                 int nonZero = stream.readSymbol(reader, nonZeroCtx);
                 int[][] nz = nonZeroes[c];
                 for (int iy = 0; iy < tt.dctSelectHeight; iy++) {
@@ -108,18 +120,18 @@ public class HFCoefficients {
                 if (nonZero <= 0)
                     continue;
                 int orderSize = hfPass.order[tt.orderID][c].length;
-                int[] ucoeff = new int[orderSize - numBlocks];
+                int ucoeff = 0;
                 int histCtx = offset + 458 * blockCtx + 37 * hfctx.numClusters;
-                for (int k = 0; k < ucoeff.length; k++) {
+                for (int k = 0; k < orderSize - numBlocks; k++) {
                     // SPEC: spec has this condition flipped
-                    int prev = k == 0 ? (nonZero > orderSize/16 ? 0 : 1) : (ucoeff[k - 1] != 0 ? 1 : 0);
-                    int ctx = histCtx + getCoefficientContext(k + numBlocks, nonZero, numBlocks, prev);
-                    ucoeff[k] = stream.readSymbol(reader, ctx);
+                    int prev = k == 0 ? (nonZero > (orderSize >> 4) ? 0 : 1) : (ucoeff != 0 ? 1 : 0);
+                    int ctx = histCtx + hfcoeff.getCoefficientContext(k + numBlocks, nonZero, numBlocks, prev);
+                    ucoeff = stream.readSymbol(reader, ctx);
                     Point order = hfPass.order[tt.orderID][c][k + numBlocks];
                     int posY = (flip ? order.x : order.y) + pixelGroupY;
                     int posX = (flip ? order.y : order.x) + pixelGroupX;
-                    quantizedCoeffs[c][posY][posX] = MathHelper.unpackSigned(ucoeff[k]) << shift;
-                    if (ucoeff[k] != 0) {
+                    hfcoeff.quantizedCoeffs[c][posY][posX] = MathHelper.unpackSigned(ucoeff) << shift;
+                    if (ucoeff != 0) {
                         if (--nonZero == 0)
                             break;
                     }                    
@@ -128,12 +140,13 @@ public class HFCoefficients {
                 if (nonZero != 0)
                     throw new InvalidBitstreamException(String.format(
                         "Illegal final nonzero count: %s, in group %d, at varblock (%d, %d, c=%d)" ,
-                        nonZero, groupID, sGroupY, sGroupX, c));
+                        nonZero, group, sGroupY, sGroupX, c));
             }
         }
         if (!stream.validateFinalState())
             throw new InvalidBitstreamException("Illegal final state in PassGroup: " + pass + ", " + group);
 
+        return hfcoeff;
     }
 
     public void bakeDequantizedCoeffs() {
@@ -160,7 +173,7 @@ public class HFCoefficients {
             for (int iy = 0; iy < tt.pixelHeight; iy++) {
                 int y = pPosY + iy;
                 int fy = y >> 6;
-                boolean by = fy << 6 == y;
+                boolean by = (fy << 6) == y;
                 float[] xF = xFactors[fy];
                 float[] bF = bFactors[fy];
                 int[] hfX = xFactorHF[fy];
@@ -170,7 +183,7 @@ public class HFCoefficients {
                     int fx = x >> 6;
                     float kX;
                     float kB;
-                    if (by && fx << 6 == x) {
+                    if (by && (fx << 6) == x) {
                         kX = lfc.baseCorrelationX + hfX[fx] / (float)lfc.colorFactor;
                         kB = lfc.baseCorrelationB + hfB[fx] / (float)lfc.colorFactor;
                         xF[fx] = kX;
@@ -179,9 +192,11 @@ public class HFCoefficients {
                         kX = xF[fx];
                         kB = bF[fx];
                     }
-                    float dequantY = dequantHFCoeff[1][y & 0xFF][x & 0xFF];
-                    dequantHFCoeff[0][y & 0xFF][x & 0xFF] += kX * dequantY;
-                    dequantHFCoeff[2][y & 0xFF][x & 0xFF] += kB * dequantY;
+                    int pY = y & 0xFF;
+                    int pX = x & 0xFF;
+                    float dequantY = dequantHFCoeff[1][pY][pX];
+                    dequantHFCoeff[0][pY][pX] += kX * dequantY;
+                    dequantHFCoeff[2][pY][pX] += kB * dequantY;
                 }
             }
         }
@@ -211,6 +226,10 @@ public class HFCoefficients {
                 int sLfgX = posInLfg.x >> header.jpegUpsamplingX[c];
                 float[][] dqlf = lfg.lfCoeff.dequantLFCoeff[c];
                 float[][] dq = dequantHFCoeff[c];
+                if (tt.transformMethod != TransformType.METHOD_DCT) {
+                    dq[pixelGroupY][pixelGroupX] = dqlf[sLfgY][sLfgX];
+                    continue;
+                }
                 MathHelper.forwardDCT2D(dqlf, dq, new Point(sLfgY, sLfgX),
                     new Point(pixelGroupY, pixelGroupX), tt.getDctSelectSize(),
                     scratchBlock[0], scratchBlock[1]);

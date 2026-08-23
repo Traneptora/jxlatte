@@ -19,7 +19,7 @@ public class LFGroup {
     public final HFMetadata hfMetadata;
     public final int lfGroupID;
     public final Frame frame;
-    public final Dimension size;
+    public final Dimension blockSize;
     public final ModularStream modularLFGroup;
 
     public LFGroup(Bitreader reader, Frame parent, int index, ModularChannel[] replaced,
@@ -27,7 +27,7 @@ public class LFGroup {
         this.lfGroupID = index;
         this.frame = parent;
         Dimension pixelSize = frame.getLFGroupSize(lfGroupID);
-        size = new Dimension(pixelSize.height >> 3, pixelSize.width >> 3);
+        blockSize = new Dimension(pixelSize.height >> 3, pixelSize.width >> 3);
         if (parent.getFrameHeader().encoding == FrameFlags.VARDCT)
             this.lfCoeff = new LFCoefficients(reader, lfGroupID, size, parent, lfBuffer);
         else

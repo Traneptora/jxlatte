@@ -70,7 +70,7 @@ public class PassGroup {
         this.groupID = group;
         this.passID = pass;
         if (frame.getFrameHeader().encoding == FrameFlags.VARDCT) {
-            hfCoefficients = new HFCoefficients(reader, frame, pass, group);
+            hfCoefficients = HFCoefficients.readHfCoefficients(reader, frame, pass, group);
         } else {
             hfCoefficients = null;
         }

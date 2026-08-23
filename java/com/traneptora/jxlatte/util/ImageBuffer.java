@@ -184,6 +184,7 @@ public class ImageBuffer {
         return System.identityHashCode(this);
     }
 
+    @Override
     public boolean equals(Object another) {
         return this == another;
     }

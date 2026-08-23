@@ -29,6 +29,7 @@ public class LFGlobal {
 
     public LFGlobal(Bitreader reader, Frame parent) throws IOException {
         this.frame = parent;
+        Loggers loggers = frame.getLoggers();
         int extra = frame.globalMetadata.getExtraChannelCount();
         FrameHeader header = frame.getFrameHeader();
         if ((header.flags & FrameFlags.PATCHES) != 0) {
@@ -69,7 +70,7 @@ public class LFGlobal {
             quantLF = reader.readU32(16, 0, 1, 5, 1, 8, 1, 16);
             for (int i = 0; i < 3; i++)
                 scaledDequant[i] =  (1 << 16) * lfDequant[i] / (globalScale * quantLF);
-            hfBlockCtx = new HFBlockContext(reader, parent.getLoggers());
+            hfBlockCtx = new HFBlockContext(reader, loggers);
             lfChanCorr = LFChannelCorrelation.read(reader);
         } else {
             globalScale = 0;
@@ -79,10 +80,15 @@ public class LFGlobal {
             lfChanCorr = new LFChannelCorrelation();
         }
 
+        loggers.log(Loggers.LOG_TRACE, "globalScale: %d", globalScale);
+        loggers.log(Loggers.LOG_TRACE, "quantLF: %d", quantLF);
+        loggers.log(Loggers.LOG_TRACE, "lfChannelCorrelation: %s", lfChanCorr);
+        loggers.log(Loggers.LOG_TRACE, "scaledDequant: %s", scaledDequant);
+
         boolean hasGlobalTree = reader.readBool();
         MATree globalTree = hasGlobalTree ? MATree.readTree(parent.getLoggers(), reader) : null;
         frame.setGlobalTree(globalTree);
-        frame.getLoggers().log(Loggers.LOG_TRACE, "global tree: %s", globalTree);
+        loggers.log(Loggers.LOG_TRACE, "global tree: %s", globalTree);
         int subModularChannelCount = extra;
         int ecStart = 0;
         if (header.encoding == FrameFlags.MODULAR) {

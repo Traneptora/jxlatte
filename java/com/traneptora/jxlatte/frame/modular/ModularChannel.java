@@ -94,52 +94,32 @@ public class ModularChannel {
         }
     }
 
-    private int west(int x, int y) {
+    private static int west(int[][] buffer, int y, int x) {
         return x > 0 ? buffer[y][x - 1] : y > 0 ? buffer[y - 1][x] : 0;
     }
 
-    private int north(int x, int y) {
+    private static int north(int[][] buffer, int y, int x) {
         return y > 0 ? buffer[y - 1][x] : x > 0 ? buffer[y][x - 1] : 0;
     }
 
-    private int northWest(int x, int y) {
+    private static int northWest(int[][] buffer, int y, int x) {
         return x > 0 ? (y > 0 ? buffer[y - 1][x - 1] : buffer[y][x - 1]) : (y > 0 ? buffer[y - 1][x] : 0);
     }
 
-    private int northEast(int x, int y) {
-        return x + 1 < size.width && y > 0 ? buffer[y - 1][x + 1] : north(x, y);
+    private static int northEast(int[][] buffer, int y, int x) {
+        return x + 1 < buffer[y].length && y > 0 ? buffer[y - 1][x + 1] : north(buffer, y, x);
     }
 
-    private int northNorth(int x, int y) {
-        return y > 1 ? buffer[y - 2][x] : north(x, y);
+    private static int northNorth(int[][] buffer, int y, int x) {
+        return y > 1 ? buffer[y - 2][x] : north(buffer, y, x);
     }
 
-    private int northEastEast(int x, int y) {
-        return x + 2 < size.width && y > 0 ? buffer[y - 1][x + 2] : northEast(x, y);
+    private static int northEastEast(int[][] buffer, int y, int x) {
+        return x + 2 < buffer[y].length && y > 0 ? buffer[y - 1][x + 2] : northEast(buffer, y, x);
     }
 
-    private int westWest(int x, int y) {
-        return x > 1 ? buffer[y][x - 2] : west(x, y);
-    }
-
-    private int errorWest(int x, int y, int e) {
-        return x > 0 ? error[e][y][x - 1]: 0;
-    }
-
-    private int errorNorth(int x, int y, int e) {
-        return y > 0 ? error[e][y - 1][x]: 0;
-    }
-
-    private int errorWestWest(int x, int y, int e) {
-        return x > 1 ? error[e][y][x - 2] : 0;
-    }
-
-    private int errorNorthWest(int x, int y, int e) {
-        return x > 0 && y > 0 ? error[e][y - 1][x - 1] : errorNorth(x, y, e);
-    }
-
-    private int errorNorthEast(int x, int y, int e) {
-        return x + 1 < size.width && y > 0 ? error[e][y - 1][x + 1] : errorNorth(x, y, e);
+    private static int westWest(int[][] buffer, int y, int x) {
+        return x > 1 ? buffer[y][x - 2] : west(buffer, y, x);
     }
 
     protected int prediction(int y, int x, int k) {
@@ -148,52 +128,58 @@ public class ModularChannel {
             case 0:
                 return 0;
             case 1:
-                return x > 0 ? buffer[y][x - 1] : y > 0 ? buffer[y - 1][x] : 0;
+                return west(buffer, y, x);
             case 2:
-                return y > 0 ? buffer[y - 1][x] : x > 0 ? buffer[y][x - 1] : 0;
+                return north(buffer, y, x);
             case 3:
-                return (west(x, y) + north(x, y)) / 2;
+                return (west(buffer, y, x) + north(buffer, y, x)) / 2;
             case 4:
-                w = west(x, y);
-                n = north(x, y);
-                nw = northWest(x, y);
+                w = west(buffer, y, x);
+                n = north(buffer, y, x);
+                nw = northWest(buffer, y, x);
                 return Math.abs(n - nw) < Math.abs(w - nw) ? w : n;
             case 5:
-                w = west(x, y);
-                n = north(x, y);
-                v = w + n - northWest(x, y);
+                w = west(buffer, y, x);
+                n = north(buffer, y, x);
+                v = w + n - northWest(buffer, y, x);
                 return MathHelper.clamp(v, n, w);
             case 6:
                 return (pred[y][x] + 3) >> 3;
             case 7:
-                return northEast(x, y);
+                return northEast(buffer, y, x);
             case 8:
-                return northWest(x, y);
+                return northWest(buffer, y, x);
             case 9:
-                return westWest(x, y);
+                return westWest(buffer, y, x);
             case 10:
-                return (west(x, y) + northWest(x, y)) / 2;
+                return (west(buffer, y, x) + northWest(buffer, y, x)) / 2;
             case 11:
-                return (north(x, y) + northWest(x, y)) / 2;
+                return (north(buffer, y, x) + northWest(buffer, y, x)) / 2;
             case 12:
-                return (north(x, y) + northEast(x, y)) / 2;
+                return (north(buffer, y, x) + northEast(buffer, y, x)) / 2;
             case 13:
-                return (6*north(x, y) - 2*northNorth(x, y) + 7*west(x, y) + westWest(x, y) + northEastEast(x, y) + 3*northEast(x, y)+8) / 16;
+                return (  6 * north(buffer, y, x)
+                        - 2 * northNorth(buffer, y, x)
+                        + 7 * west(buffer, y, x)
+                        + westWest(buffer, y, x)
+                        + northEastEast(buffer, y, x)
+                        + 3 * northEast(buffer, y, x)
+                        + 8) / 16;
             default:
                 throw new IllegalStateException();
         }
     }
 
     private int prePredictWP(WPParams wpParams, int x, int y) {
-        int n3 = north(x, y) << 3;
-        int nw3 = northWest(x, y) << 3;
-        int ne3 = northEast(x, y) << 3;
-        int w3 = west(x, y) << 3;
-        int nn3 = northNorth(x, y) << 3;
-        int tN = errorNorth(x, y, 4);
-        int tW = errorWest(x, y, 4);
-        int tNE = errorNorthEast(x, y, 4);
-        int tNW = errorNorthWest(x, y, 4);
+        int n3 = north(buffer, y, x) << 3;
+        int nw3 = northWest(buffer, y, x) << 3;
+        int ne3 = northEast(buffer, y, x) << 3;
+        int w3 = west(buffer, y, x) << 3;
+        int nn3 = northNorth(buffer, y, x) << 3;
+        int tN = north(error[4], y, x);
+        int tW = west(error[4], y, x);
+        int tNE = northEast(error[4], y, x);
+        int tNW = northWest(error[4], y, x);
         subpred[0] = w3 + ne3 - n3;
         subpred[1] = n3 - (((tW + tN + tNE) * wpParams.param1) >> 5);
         subpred[2] = w3 - (((tW + tN + tNW) * wpParams.param2) >> 5);
@@ -204,10 +190,10 @@ public class ModularChannel {
             + (nw3 - w3) * wpParams.param3e) >> 5);
         int wSum = 0;
         for (int e = 0; e < 4; e++) {
-            long eSum = errorNorth(x, y, e) + errorWest(x, y, e) + errorNorthWest(x, y, e)
-                + errorWestWest(x, y, e) + errorNorthEast(x, y, e);
+            long eSum = north(error[e], y, x) + west(error[e], y, x) + northWest(error[e], y, x)
+                + westWest(error[e], y, x) + northEast(error[e], y, x);
             if (x + 1 == size.width)
-                eSum += errorWest(x, y, e);
+                eSum += west(error[e], y, x);
             eSum &= 0xffffffffL;
             int shift = MathHelper.floorLog1p(eSum) - 5;
             if (shift < 0)
@@ -249,29 +235,29 @@ public class ModularChannel {
             case 3:
                 return x;
             case 4:
-                return Math.abs(north(x, y));
+                return Math.abs(north(buffer, y, x));
             case 5:
-                return Math.abs(west(x, y));
+                return Math.abs(west(buffer, y, x));
             case 6:
-                return north(x, y);
+                return north(buffer, y, x);
             case 7:
-                return west(x, y);
+                return west(buffer, y, x);
             case 8:
                 return x > 0
-                    ? west(x, y) - (west(x - 1, y) + north(x - 1, y) - northWest(x - 1, y))
-                    : west(x, y);
+                    ? west(buffer, y, x) - (west(buffer, y, x - 1) + north(buffer, y, x - 1) - northWest(buffer, y, x - 1))
+                    : west(buffer, y, x);
             case 9:
-                return west(x, y) + north(x, y) - northWest(x, y);
+                return west(buffer, y, x) + north(buffer, y, x) - northWest(buffer, y, x);
             case 10:
-                return west(x, y) - northWest(x, y);
+                return west(buffer, y, x) - northWest(buffer, y, x);
             case 11:
-                return northWest(x, y) - north(x, y);
+                return northWest(buffer, y, x) - north(buffer, y, x);
             case 12:
-                return north(x, y) - northEast(x, y);
+                return north(buffer, y, x) - northEast(buffer, y, x);
             case 13:
-                return north(x, y) - northNorth(x, y);
+                return north(buffer, y, x) - northNorth(buffer, y, x);
             case 14:
-                return west(x, y) - westWest(x, y);
+                return west(buffer, y, x) - westWest(buffer, y, x);
             case 15:
                 return maxError;
             default:

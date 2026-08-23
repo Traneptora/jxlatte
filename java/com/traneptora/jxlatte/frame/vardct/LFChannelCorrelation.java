@@ -1,6 +1,7 @@
 package com.traneptora.jxlatte.frame.vardct;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import com.traneptora.jxlatte.io.Bitreader;
 
@@ -38,4 +39,32 @@ public class LFChannelCorrelation {
         int bFactorLF = reader.readBits(8);
         return new LFChannelCorrelation(colorFactor, baseCorrelationX, baseCorrelationB, xFactorLF, bFactorLF);
     }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "LFChannelCorrelation [colorFactor=%s, baseCorrelationX=%s, baseCorrelationB=%s, xFactorLF=%s, bFactorLF=%s]",
+                colorFactor, baseCorrelationX, baseCorrelationB, xFactorLF, bFactorLF);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(colorFactor, baseCorrelationX, baseCorrelationB, xFactorLF, bFactorLF);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        LFChannelCorrelation other = (LFChannelCorrelation) obj;
+        return colorFactor == other.colorFactor
+                && Float.floatToIntBits(baseCorrelationX) == Float.floatToIntBits(other.baseCorrelationX)
+                && Float.floatToIntBits(baseCorrelationB) == Float.floatToIntBits(other.baseCorrelationB)
+                && xFactorLF == other.xFactorLF && bFactorLF == other.bFactorLF;
+    }
+
 }
