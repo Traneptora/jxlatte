@@ -92,7 +92,7 @@ public class LFCoefficients {
         }
 
         if (adaptiveSmoothing)
-            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff);
+            this.dequantLFCoeff = adaptiveSmooth(dequantLFCoeff, scaledDequant);
         else
             this.dequantLFCoeff = dequantLFCoeff;
 
