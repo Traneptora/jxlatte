@@ -1,16 +1,16 @@
 # AGENTS.md
 
-Pure-Java JPEG XL decoder (WIP). Artifact `com.traneptora:jxlatte:0.1.0`. Zero runtime dependencies. MIT.
+Pure-Java JPEG XL decoder (WIP). Parent `com.traneptora:jxlatte:0.1.0-SNAPSHOT` (pom). Modules: `jxlatte-lib` (decoder), `jxlatte-cli` (CLI + PNG/PFM). Zero runtime dependencies. MIT.
 
 ## Toolchain
 
-- **Java 21** required (`pom.xml` `java-release.version`, Meson `--release=21`).
-- Builds: **Maven** (standard layout) and **Meson** (explicit source list). Prefer Maven for this fork unless touching Meson packaging.
+- **Java 21** required (`pom.xml` `java-release.version`, Meson `--release=21`, `jitpack.yml` openjdk21).
+- Builds: **Maven** multimodule and **Meson** (explicit source list in `src/meson.build`). Prefer Maven for this fork unless touching Meson packaging.
 - Maven ≥ 3.3 (enforcer). Compiler uses `-Xlint`.
 
 ```sh
-mvn clean package          # JAR in target/; mainClass com.traneptora.jxlatte.JXLatte
-mvn clean install          # also install to local repo
+mvn clean package   # lib + shaded CLI JAR
+mvn clean install   # also install both modules to local repo
 ```
 
 Meson:
@@ -19,33 +19,30 @@ Meson:
 mkdir build && cd build && meson setup ../ && ninja
 ```
 
-`jitpack.yml` still pins OpenJDK 11 while the project requires 21 — treat as stale for local/Java work; do not “fix” builds down to 11.
-
 ## Layout / entrypoints
 
-- Sources: `src/main/java/com/traneptora/jxlatte/`
-  - CLI: `JXLatte`
-  - Library: `JXLDecoder` → `JXLImage`; writers `io.PNGWriter`, `io.PFMWriter`
-- Packages mirror decode pipeline: `bundle`, `color`, `entropy`, `frame` (modular / vardct / features), `io`, `util`
-- ICC profiles (must stay on classpath root): `src/main/resources/{bt2020-d65-pq,bt709-d65-srgb}.icc.zz` — loaded via `JXLatte.class.getResourceAsStream("/….icc.zz")`. `pom.xml` lists them explicitly under `<resources>`.
+- `jxlatte-lib/src/main/java/com/traneptora/jxlatte/` — decoder (`JXLDecoder` → `JXLImage`), packages `bundle`, `color`, `entropy`, `frame`, bitstream `io`, `util`
+- `jxlatte-cli/` — `JXLatte` (main), `io.PNGWriter`, `io.PFMWriter`
+- ICC profiles (classpath root, CLI module): `jxlatte-cli/src/main/resources/{bt2020-d65-pq,bt709-d65-srgb}.icc.zz` — loaded via `PNGWriter.class.getResourceAsStream("/….icc.zz")`
+- CLI packages an uber-jar via `maven-shade-plugin` (includes `jxlatte-lib`)
 
 ## Meson gotcha
 
-`src/meson.build` lists **every** `.java` and resource by path. New/renamed sources must be added there or Meson omits them. Maven picks up `src/main/java` automatically.
+`src/meson.build` lists **every** `.java` and resource by path under `jxlatte-lib` / `jxlatte-cli`. New/renamed sources must be added there or Meson omits them. Maven picks up each module’s `src/main/java` automatically.
 
-Currently `util/ChebyschevApproximation.java` is in the tree but **not** in the Meson list (Maven-only).
+`util/ChebyschevApproximation.java` is in `jxlatte-lib` but **not** in the Meson list (Maven-only).
 
 ## Verify (no automated tests)
 
 No `src/test` / Surefire suite. Smoke-check with samples:
 
 ```sh
-java -jar target/jxlatte-0.1.0.jar samples/art.jxl /tmp/out.png
-# or after Meson: java -jar build/src/jxlatte.jar samples/art.jxl /tmp/out.png
+java -jar jxlatte-cli/target/jxlatte-cli-0.1.0-SNAPSHOT.jar samples/art.jxl /tmp/out.png
+# or after Meson: java -jar build/src/jxlatte-cli.jar samples/art.jxl /tmp/out.png
 ```
 
 `samples/*.jxl` covers modular/VarDCT/HDR/etc. Root `/*.png` and `/*.jxl` are gitignored (local outputs).
 
 ## Versioning
 
-Bump together when releasing: `pom.xml` / root `meson.build` version, and `JXLatte.JXLATTE_VERSION`.
+Bump together when releasing: root `pom.xml` / module versions / root `meson.build` version, and `JXLatte.JXLATTE_VERSION`.

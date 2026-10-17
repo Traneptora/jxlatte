@@ -1,6 +1,11 @@
 # jxlatte
 Work-in-progress pure java JPEG XL decoder
 
+Maven multimodule layout:
+
+- **`jxlatte-lib`** — decoder library (`JXLDecoder`, `JXLImage`, …)
+- **`jxlatte-cli`** — CLI (`JXLatte`) plus PNG/PFM writers and ICC resources
+
 ## Compiling
 ### [Meson]
 
@@ -14,33 +19,35 @@ Then run `meson setup ../` to set up the build directory, and `ninja` to compile
 
 You can also build JXLatte using Maven. Just run `mvn clean install`.
 
-The artifact will be installed to the local repository, and then you can reference it in your project like this
+The library artifact will be installed to the local repository, and then you can reference it in your project like this
 
 Maven
 ```xml
 <dependency>
   <groupId>com.traneptora</groupId>
-  <artifactId>jxlatte</artifactId>
-  <version>0.1.0</version>
+  <artifactId>jxlatte-lib</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 Gradle
 ```groovy
-implementation 'com.traneptora:jxlatte:0.1.0'
+implementation 'com.traneptora:jxlatte-lib:0.1.0-SNAPSHOT'
 ```
 Gradle(Kotlin)
 ```kotlin
-implementation("com.traneptora:jxlatte:0.1.0")
+implementation("com.traneptora:jxlatte-lib:0.1.0-SNAPSHOT")
 ```
+
+For PNG/PFM writers (`PNGWriter`, `PFMWriter`), depend on `jxlatte-cli` as well (or instead, if you only need the CLI JAR).
 
 ## Running
 JXLatte can be executed just like any normal jar file:
 
 ```sh
-java -jar jxlatte.jar samples/art.jxl output.png
+java -jar jxlatte-cli/target/jxlatte-cli-0.1.0-SNAPSHOT.jar samples/art.jxl output.png
 ```
 
-The JAR can also be used as a library. To use it, add it to your application's classpath.
+The library can also be used from application code:
 
 ```java
 InputStream input = someInputStream;

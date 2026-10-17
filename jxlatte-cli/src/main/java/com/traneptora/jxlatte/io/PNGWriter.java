@@ -13,7 +13,6 @@ import java.util.zip.DeflaterOutputStream;
 
 import com.traneptora.jxlatte.JXLImage;
 import com.traneptora.jxlatte.JXLOptions;
-import com.traneptora.jxlatte.JXLatte;
 import com.traneptora.jxlatte.color.CIEPrimaries;
 import com.traneptora.jxlatte.color.CIEXY;
 import com.traneptora.jxlatte.color.ColorFlags;
@@ -184,7 +183,7 @@ public class PNGWriter {
         if (iccProfile == null) {
             this.iccProfile = new byte[8192];
             String streamName = hdr ? "/bt2020-d65-pq.icc.zz" : "/bt709-d65-srgb.icc.zz";
-            try (InputStream in = JXLatte.class.getResourceAsStream(streamName)) {
+            try (InputStream in = PNGWriter.class.getResourceAsStream(streamName)) {
                 int remaining = IOHelper.readFully(in, this.iccProfile);
                 iccLen = iccProfile.length - remaining;
             }
