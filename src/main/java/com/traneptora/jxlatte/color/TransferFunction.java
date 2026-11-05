@@ -78,17 +78,26 @@ public interface TransferFunction {
         }
     };
 
+    /*
+     * as defined in SMPTE ST 2084 and Rec. ITU-R BT.2100
+     */
     public static TransferFunction TF_PQ = new TransferFunction() {
+        private static final double M1 = 2610D / 16384D;
+        private static final double M2 = 2523D / 4096D * 128D;
+        private static final double C1 = 3424D / 4096D;
+        private static final double C2 = 2413D / 4096D * 32D;
+        private static final double C3 = 2392D / 4096D * 32D;
+
         @Override
         public double fromLinear(double f) {
-            double d = Math.pow(f, 0.159423828125D);
-            return Math.pow((0.8359375D + 18.8515625D * d) / (1D + 18.6875D * d), 78.84375D);
+            double d = Math.pow(f, M1);
+            return Math.pow((C1 + C2 * d) / (1D + C3 * d), M2);
         }
 
         @Override
         public double toLinear(double f) {
-            double d = Math.pow(f, 0.012683313515655965121D);
-            return Math.pow((d - 0.8359375D) / (18.8515625D + 18.6875D * d), 6.2725880551301684533D);
+            double d = Math.pow(f, 1D / M2);
+            return Math.pow(Math.max(d - C1, 0D) / (C2 - C3 * d), 1D / M1);
         }
     };
 
