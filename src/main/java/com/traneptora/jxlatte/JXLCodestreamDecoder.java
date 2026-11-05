@@ -544,39 +544,55 @@ public class JXLCodestreamDecoder {
         return decode(new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
     }
 
+    public ImageHeader readHeader() throws IOException {
+        return readHeader(new PrintWriter(new OutputStreamWriter(System.err, StandardCharsets.UTF_8)));
+    }
+
+    /**
+     * Reads the image header (including the ICC profile, if any), without decoding any frames.
+     * Does nothing if the header has already been read, either by a previous call to this method or by
+     * {@link #decode(PrintWriter)}.
+     *
+     * @return the image header
+     */
+    public ImageHeader readHeader(PrintWriter err) throws IOException {
+        if (this.imageHeader != null)
+            return this.imageHeader;
+        Loggers loggers = new Loggers(options, err);
+        bitreader.showBits(16); // force the level to be populated
+        int level = demuxer.getLevel();
+        this.imageHeader = ImageHeader.read(loggers, bitreader, level);
+        loggers.log(Loggers.LOG_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
+        loggers.log(Loggers.LOG_INFO, "    Level: %d", level);
+        Dimension size = imageHeader.getSize();
+        loggers.log(Loggers.LOG_INFO, "    Size: %dx%d", size.width, size.height);
+        boolean gray = imageHeader.getColorChannelCount() < 3;
+        boolean alpha = imageHeader.hasAlpha();
+        loggers.log(Loggers.LOG_INFO, "    Pixel Format: %s",
+            gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
+        loggers.log(Loggers.LOG_INFO, "    Bit Depth: %d", imageHeader.getBitDepthHeader().bitsPerSample);
+        loggers.log(Loggers.LOG_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
+        loggers.log(Loggers.LOG_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
+        ColorEncodingBundle ce = imageHeader.getColorEncoding();
+        if (!gray) {
+            loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s",
+                ColorFlags.primariesToString(ce.primaries));
+        }
+        loggers.log(Loggers.LOG_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
+        loggers.log(Loggers.LOG_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
+        if (imageHeader.getAnimationHeader() != null)
+            loggers.log(Loggers.LOG_INFO, "    Animated: true");
+        canvas = new ImageBuffer[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()];
+        return this.imageHeader;
+    }
+
     public JXLImage decode(PrintWriter err) throws IOException {
         if (atEnd())
             return null;
         Loggers loggers = new Loggers(options, err);
         bitreader.showBits(16); // force the level to be populated
-        int level = demuxer.getLevel();
-        Dimension size;
-        if (this.imageHeader == null) {
-            this.imageHeader = ImageHeader.read(loggers, bitreader, level);
-            loggers.log(Loggers.LOG_INFO, "Image: %s", options.input != null ? options.input : "<stdin>");
-            loggers.log(Loggers.LOG_INFO, "    Level: %d", level);
-            size = imageHeader.getSize();
-            loggers.log(Loggers.LOG_INFO, "    Size: %dx%d", size.width, size.height);
-            boolean gray = imageHeader.getColorChannelCount() < 3;
-            boolean alpha = imageHeader.hasAlpha();
-            loggers.log(Loggers.LOG_INFO, "    Pixel Format: %s",
-                gray ? (alpha ? "Gray + Alpha" : "Grayscale") : (alpha ? "RGBA" : "RGB"));
-            loggers.log(Loggers.LOG_INFO, "    Bit Depth: %d", imageHeader.getBitDepthHeader().bitsPerSample);
-            loggers.log(Loggers.LOG_VERBOSE, "    Extra Channels: %d", imageHeader.getExtraChannelCount());
-            loggers.log(Loggers.LOG_VERBOSE, "    XYB Encoded: %b", imageHeader.isXYBEncoded());
-            ColorEncodingBundle ce = imageHeader.getColorEncoding();
-            if (!gray) {
-                loggers.log(Loggers.LOG_VERBOSE, "    Primaries: %s",
-                    ColorFlags.primariesToString(ce.primaries));
-            }
-            loggers.log(Loggers.LOG_VERBOSE, "    White Point: %s", ColorFlags.whitePointToString(ce.whitePoint));
-            loggers.log(Loggers.LOG_VERBOSE, "    Transfer Function: %s", ColorFlags.transferToString(ce.tf));
-            if (imageHeader.getAnimationHeader() != null)
-                loggers.log(Loggers.LOG_INFO, "    Animated: true");
-            canvas = new ImageBuffer[imageHeader.getColorChannelCount() + imageHeader.getExtraChannelCount()];
-        } else {
-            size = imageHeader.getSize();
-        }
+        readHeader(err);
+        Dimension size = imageHeader.getSize();
 
         if (imageHeader.getPreviewSize() != null && !skippedPreview) {
             JXLOptions previewOptions = new JXLOptions(options);
