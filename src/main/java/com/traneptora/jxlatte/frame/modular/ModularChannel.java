@@ -62,8 +62,9 @@ public class ModularChannel {
 
     public int[][] buffer;
     protected int[][][] error;
-    protected int[][] pred;
-    private int[] subpred;
+    // Predictions are computed with 64 bits, like libjxl, as they overflow 32 bits for 32-bit samples
+    protected long[][] pred;
+    private long[] subpred;
     private int[] weight;
     private boolean decoded;
 
@@ -142,8 +143,8 @@ public class ModularChannel {
         return y > 0 && x + 1 < buffer[y - 1].length ? buffer[y - 1][x + 1] : errorNorth(buffer, y, x);
     }
 
-    protected int prediction(int y, int x, int k) {
-        int n, v, nw, w;
+    protected long prediction(int y, int x, int k) {
+        long n, v, nw, w;
         switch (k) {
             case 0:
                 return 0;
@@ -152,7 +153,7 @@ public class ModularChannel {
             case 2:
                 return north(buffer, y, x);
             case 3:
-                return (west(buffer, y, x) + north(buffer, y, x)) / 2;
+                return ((long) west(buffer, y, x) + north(buffer, y, x)) / 2;
             case 4:
                 w = west(buffer, y, x);
                 n = north(buffer, y, x);
@@ -172,13 +173,13 @@ public class ModularChannel {
             case 9:
                 return westWest(buffer, y, x);
             case 10:
-                return (west(buffer, y, x) + northWest(buffer, y, x)) / 2;
+                return ((long) west(buffer, y, x) + northWest(buffer, y, x)) / 2;
             case 11:
-                return (north(buffer, y, x) + northWest(buffer, y, x)) / 2;
+                return ((long) north(buffer, y, x) + northWest(buffer, y, x)) / 2;
             case 12:
-                return (north(buffer, y, x) + northEast(buffer, y, x)) / 2;
+                return ((long) north(buffer, y, x) + northEast(buffer, y, x)) / 2;
             case 13:
-                return (  6 * north(buffer, y, x)
+                return (  6L * north(buffer, y, x)
                         - 2 * northNorth(buffer, y, x)
                         + 7 * west(buffer, y, x)
                         + westWest(buffer, y, x)
@@ -191,15 +192,15 @@ public class ModularChannel {
     }
 
     private int prePredictWP(WPParams wpParams, int x, int y) {
-        int n3 = north(buffer, y, x) << 3;
-        int nw3 = northWest(buffer, y, x) << 3;
-        int ne3 = northEast(buffer, y, x) << 3;
-        int w3 = west(buffer, y, x) << 3;
-        int nn3 = northNorth(buffer, y, x) << 3;
-        int tN = errorNorth(error[4], y, x);
-        int tW = errorWest(error[4], y, x);
-        int tNE = errorNorthEast(error[4], y, x);
-        int tNW = errorNorthWest(error[4], y, x);
+        long n3 = (long) north(buffer, y, x) << 3;
+        long nw3 = (long) northWest(buffer, y, x) << 3;
+        long ne3 = (long) northEast(buffer, y, x) << 3;
+        long w3 = (long) west(buffer, y, x) << 3;
+        long nn3 = (long) northNorth(buffer, y, x) << 3;
+        long tN = errorNorth(error[4], y, x);
+        long tW = errorWest(error[4], y, x);
+        long tNE = errorNorthEast(error[4], y, x);
+        long tNW = errorNorthWest(error[4], y, x);
         subpred[0] = w3 + ne3 - n3;
         subpred[1] = n3 - (((tW + tN + tNE) * wpParams.param1) >> 5);
         subpred[2] = w3 - (((tW + tN + tNW) * wpParams.param2) >> 5);
@@ -230,17 +231,17 @@ public class ModularChannel {
         long s = (wSum >>> 1) - 1L;
         for (int e = 0; e < 4; e++)
             s += subpred[e] * weight[e];
-        pred[y][x] = (int)((s * oneL24OverKP1[wSum - 1]) >> 24);
+        pred[y][x] = (s * oneL24OverKP1[wSum - 1]) >> 24;
         if (((tN ^ tW) | (tN ^ tNW)) <= 0)
             pred[y][x] = MathHelper.clamp(pred[y][x], w3, n3, ne3);
-        int maxError = tW;
+        long maxError = tW;
         if (Math.abs(tN) > Math.abs(maxError))
             maxError = tN;
         if (Math.abs(tNW) > Math.abs(maxError))
             maxError = tNW;
         if (Math.abs(tNE) > Math.abs(maxError))
             maxError = tNE;
-        return maxError;
+        return (int) maxError;
     }
 
     private int propertyExpand(ModularStream parent, int channelIndex, int streamIndex,
@@ -300,7 +301,7 @@ public class ModularChannel {
                     int rW = x > 0 ? channel.buffer[y][x - 1] : 0;
                     int rN = y > 0 ? channel.buffer[y - 1][x] : rW;
                     int rNW = x > 0 && y > 0 ? channel.buffer[y - 1][x - 1] : rW;
-                    int rG = rC - MathHelper.clamp(rW + rN - rNW, rN, rW);
+                    int rG = (int) (rC - MathHelper.clamp((long) rW + rN - rNW, rN, rW));
                     if (k2++ == k)
                         return Math.abs(rG);
                     if (k2++ == k)
@@ -330,8 +331,8 @@ public class ModularChannel {
         boolean useWP = forceWP || tree.usesWeightedPredictor();
         if (useWP) {
             error = new int[5][size.height][size.width];
-            pred = new int[size.height][size.width];
-            subpred = new int[4];
+            pred = new long[size.height][size.width];
+            subpred = new long[4];
             weight = new int[4];
         }
         if (!useWP)
@@ -350,12 +351,13 @@ public class ModularChannel {
                     throw ioe;
                 }
                 int diff2 = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
-                int trueValue = diff2 + prediction(y, x, leafNode.getPredictor());
+                int trueValue = (int) (diff2 + prediction(y, x, leafNode.getPredictor()));
                 buffer[y][x] = trueValue;
                 if (useWP) {
+                    long trueValue3 = (long) trueValue << 3;
                     for (int e = 0; e < 4; e++)
-                        error[e][y][x] = (Math.abs(subpred[e] - (trueValue << 3)) + 3) >> 3;
-                    error[4][y][x] = pred[y][x] - (trueValue << 3);
+                        error[e][y][x] = (int) ((Math.abs(subpred[e] - trueValue3) + 3) >> 3);
+                    error[4][y][x] = (int) (pred[y][x] - trueValue3);
                 }
             }
         }

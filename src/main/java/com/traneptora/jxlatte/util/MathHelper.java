@@ -206,6 +206,18 @@ public final class MathHelper {
         return v < lower ? lower : v > upper ? upper : v;
     }
 
+    public static long clamp(long v, long a, long b, long c) {
+        long lower = Math.min(Math.min(a, b), c);
+        long upper = Math.max(Math.max(a, b), c);
+        return v < lower ? lower : v > upper ? upper : v;
+    }
+
+    public static long clamp(long v, long a, long b) {
+        long lower = Math.min(a, b);
+        long upper = Math.max(a, b);
+        return v < lower ? lower : v > upper ? upper : v;
+    }
+
     public static int clamp(int v, int a, int b) {
         int lower = a < b ? a : b;
         int upper = lower ^ a ^ b;
@@ -341,6 +353,33 @@ public final class MathHelper {
         sign <<= 31;
         int total = sign | (biased_exp << 23) | mantissa;
         return Float.intBitsToFloat(total);
+    }
+
+    /**
+     * Reinterprets the bits of a modular sample as a float with the given bit depth and exponent bits,
+     * like libjxl does (exponents and subnormals are rebased to 32-bit floats, no infinities or NaN).
+     */
+    public static float floatFromBits(int value, int bits, int expBits) {
+        if (bits == 32 && expBits == 8)
+            return Float.intBitsToFloat(value);
+        int mantBits = bits - expBits - 1;
+        int signBit = (value >>> (bits - 1)) & 1;
+        int f = value & ((1 << (bits - 1)) - 1);
+        if (f == 0)
+            return signBit != 0 ? -0f : 0f;
+        int exp = f >>> mantBits;
+        int mantissa = (f & ((1 << mantBits) - 1)) << (23 - mantBits);
+        if (exp == 0 && expBits < 8) {
+            // subnormal, normalize
+            while ((mantissa & 0x800000) == 0) {
+                mantissa <<= 1;
+                exp--;
+            }
+            exp++;
+            mantissa &= 0x7FFFFF;
+        }
+        exp += 127 - ((1 << (expBits - 1)) - 1);
+        return Float.intBitsToFloat((signBit << 31) | (exp << 23) | mantissa);
     }
 
     public static float[][][] deepCopyOf(float[][][] array) {

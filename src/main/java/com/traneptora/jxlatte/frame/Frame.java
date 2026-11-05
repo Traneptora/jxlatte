@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.JXLOptions;
+import com.traneptora.jxlatte.bundle.BitDepthHeader;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.features.XorShiro;
@@ -442,9 +443,20 @@ public class Frame {
                 }
             } else if (buffer[cOut].isFloat()) {
                 float[][] outBuffer = buffer[cOut].getFloatBuffer();
-                for (int y = 0; y < bounds.size.height; y++) {
-                    for (int x = 0; x < bounds.size.width; x++)
-                        outBuffer[y][x] = scaleFactor * modularBuffer[cIn][y][x];
+                BitDepthHeader bitDepth = cOut < getColorChannelCount() ? globalMetadata.getBitDepthHeader()
+                    : globalMetadata.getExtraChannelInfo(cOut - getColorChannelCount()).bitDepth;
+                if (!isModularXYB && bitDepth.expBits != 0) {
+                    // float samples are stored as their bits
+                    for (int y = 0; y < bounds.size.height; y++) {
+                        for (int x = 0; x < bounds.size.width; x++)
+                            outBuffer[y][x] = MathHelper.floatFromBits(modularBuffer[cIn][y][x],
+                                bitDepth.bitsPerSample, bitDepth.expBits);
+                    }
+                } else {
+                    for (int y = 0; y < bounds.size.height; y++) {
+                        for (int x = 0; x < bounds.size.width; x++)
+                            outBuffer[y][x] = scaleFactor * modularBuffer[cIn][y][x];
+                    }
                 }
             } else {
                 int[][] outBuffer = buffer[cOut].getIntBuffer();
