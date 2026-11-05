@@ -190,7 +190,7 @@ public final class MathHelper {
     public static float max(float... a) {
         float result = a[0];
         for (int i = 1; i < a.length; i++)
-            result = a[i] < result ? a[i] : result;
+            result = a[i] > result ? a[i] : result;
         return result;
     }
 
