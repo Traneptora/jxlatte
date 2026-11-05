@@ -159,7 +159,7 @@ public final class ColorManagement {
             case ColorFlags.TF_DCI:
                 return TransferFunction.TF_DCI;
             case ColorFlags.TF_HLG:
-                throw new UnsupportedOperationException("Not yet implemented");
+                return TransferFunction.TF_HLG;
         }
 
         if (transfer < (1 << 24)) {

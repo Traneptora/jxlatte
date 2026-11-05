@@ -94,6 +94,30 @@ public interface TransferFunction {
 
     public static TransferFunction TF_DCI = new GammaTransferFunction(3846154);
 
+    /*
+     * Hybrid Log-Gamma OETF and inverse OETF, as defined in Rec. ITU-R BT.2100 table 5 (scene light, without the OOTF),
+     * mirrored for negative values
+     */
+    public static TransferFunction TF_HLG = new TransferFunction() {
+        private static final double A = 0.17883277D;
+        private static final double B = 1D - 4D * A;
+        private static final double C = 0.5D - A * Math.log(4D * A);
+
+        @Override
+        public double fromLinear(double f) {
+            double e = Math.abs(f);
+            double v = e <= 1D / 12D ? Math.sqrt(3D * e) : A * Math.log(12D * e - B) + C;
+            return Math.copySign(v, f);
+        }
+
+        @Override
+        public double toLinear(double f) {
+            double e = Math.abs(f);
+            double v = e <= 0.5D ? e * e / 3D : (Math.exp((e - C) / A) + B) / 12D;
+            return Math.copySign(v, f);
+        }
+    };
+
     public double toLinear(double input);
     public double fromLinear(double linear);
 
