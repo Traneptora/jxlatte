@@ -27,6 +27,7 @@ import com.traneptora.jxlatte.frame.vardct.HFGlobal;
 import com.traneptora.jxlatte.frame.vardct.HFPass;
 import com.traneptora.jxlatte.frame.vardct.TransformType;
 import com.traneptora.jxlatte.io.Bitreader;
+import com.traneptora.jxlatte.io.IOHelper;
 import com.traneptora.jxlatte.io.InvalidBitstreamException;
 import com.traneptora.jxlatte.io.Loggers;
 import com.traneptora.jxlatte.util.Dimension;
@@ -178,12 +179,12 @@ public class Frame {
     }
 
     private byte[] readBuffer(int index) throws IOException {
-        int length = tocLengths[index];
-        byte[] buffer = new byte[length];
-        int read = globalReader.read(buffer, 0, length);
-        if (read < length)
-            throw new EOFException("Unable to read full TOC entry");
-        return buffer;
+        // Don't allocate the buffer from the (untrusted) TOC length up front
+        try {
+            return IOHelper.readBytes(globalReader, tocLengths[index]);
+        } catch (EOFException ex) {
+            throw new EOFException("Unable to read full TOC entry: " + ex.getMessage());
+        }
     }
 
     private Bitreader getBitreader(int index) {

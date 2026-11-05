@@ -299,10 +299,15 @@ public class ImageHeader {
             } catch (ArithmeticException ex) {
                 throw new InvalidBitstreamException(ex);
             }
-            header.encodedICC = new byte[encodedSize];
+            // Don't allocate the buffer from the (untrusted) size up front, grow it as symbols are decoded
+            byte[] encodedICC = new byte[Math.min(encodedSize, 4096)];
             EntropyStream iccDistribution = new EntropyStream(loggers, reader, 41);
-            for (int i = 0; i < encodedSize; i++)
-                header.encodedICC[i] = (byte)iccDistribution.readSymbol(reader, getICCContext(header.encodedICC, i));
+            for (int i = 0; i < encodedSize; i++) {
+                if (i == encodedICC.length)
+                    encodedICC = Arrays.copyOf(encodedICC, (int)Math.min(encodedSize, 2L * encodedICC.length));
+                encodedICC[i] = (byte)iccDistribution.readSymbol(reader, getICCContext(encodedICC, i));
+            }
+            header.encodedICC = encodedICC;
             if (!iccDistribution.validateFinalState())
                 throw new InvalidBitstreamException("ICC Stream");
         }

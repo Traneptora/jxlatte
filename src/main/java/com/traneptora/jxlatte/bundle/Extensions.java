@@ -1,6 +1,5 @@
 package com.traneptora.jxlatte.bundle;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -31,21 +30,19 @@ public class Extensions {
 
     public static Extensions readExtensions(Bitreader reader) throws IOException {
         long extensionsKey = reader.readU64();
-        byte[][] payloads = new byte[64][];
+        long[] lengths = new long[64];
         for (int i = 0; i < 64; i++) {
             if (((1L << i) & extensionsKey) != 0) {
-                long length = reader.readU64();
-                if (length > Integer.MAX_VALUE)
+                lengths[i] = reader.readU64();
+                if (lengths[i] > Integer.MAX_VALUE)
                     throw new UnsupportedOperationException("Large extensions unsupported");
-                payloads[i] = new byte[(int)length];
             }
         }
+        // Don't allocate the payloads from the (untrusted) lengths up front
+        byte[][] payloads = new byte[64][];
         for (int i = 0; i < 64; i++) {
-            if (payloads[i] != null) {
-                int remaining = IOHelper.readFully(reader, payloads[i]);
-                if (remaining != 0)
-                    throw new EOFException();
-            }
+            if (((1L << i) & extensionsKey) != 0)
+                payloads[i] = IOHelper.readBytes(reader, (int)lengths[i]);
         }
         return new Extensions(extensionsKey, payloads);
     }
