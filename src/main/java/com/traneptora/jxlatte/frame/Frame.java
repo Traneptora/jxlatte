@@ -388,7 +388,14 @@ public class Frame {
             } else {
                  bitreaders.get(0).complete(globalReader);
             }
-        }));
+        })).whenComplete((v, ex) -> {
+            // If reading a TOC entry failed (i.e. truncated input), the remaining readers are never completed, and
+            // getBitreader would block forever
+            if (ex != null) {
+                for (CompletableFuture<Bitreader> reader : bitreaders)
+                    reader.completeExceptionally(ex);
+            }
+        });
 
         lfGlobal = new LFGlobal(getBitreader(0), this);
         Dimension paddedSize = getPaddedFrameSize();
