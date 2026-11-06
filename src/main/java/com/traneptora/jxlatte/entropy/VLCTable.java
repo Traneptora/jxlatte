@@ -50,7 +50,7 @@ public class VLCTable {
                 int number = 1 << (bits - nLengths[i]);
                 int offset = 1 << nLengths[i];
                 for (int j = 0; j < number; j++) {
-                    VLCTableEntry oldEntry = Objects.requireNonNullElse(table[index], ZERO);
+                    VLCTableEntry oldEntry = table[index] != null ? table[index] : ZERO;
                     int oldSymbol = oldEntry.symbol;
                     int oldLen = oldEntry.length;
                     if ((oldLen > 0 || oldSymbol > 0) && (oldLen != nLengths[i] || oldSymbol != nSymbols[i]))
