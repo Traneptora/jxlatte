@@ -257,11 +257,30 @@ public class JXLImage {
         }
     }
 
+    /*
+     * Linear light is relative to the intensity target, i.e. 1.0 is intensityTarget nits, like in libjxl
+     * (this is what XYB decoding produces). PQ is absolute, its 1.0 is 10000 nits, so it needs to be scaled.
+     */
+    private FloatUnaryOperator toLinearOp(int transfer) {
+        FloatUnaryOperator toLinear = ColorManagement.getTransferFunction(transfer).toLinearFloatOp();
+        if (transfer != ColorFlags.TF_PQ)
+            return toLinear;
+        final float scale = 10000f / imageHeader.getToneMapping().intensityTarget;
+        return f -> toLinear.applyAsFloat(f) * scale;
+    }
+
+    private FloatUnaryOperator fromLinearOp(int transfer) {
+        FloatUnaryOperator fromLinear = ColorManagement.getTransferFunction(transfer).fromLinearFloatOp();
+        if (transfer != ColorFlags.TF_PQ)
+            return fromLinear;
+        final float scale = imageHeader.getToneMapping().intensityTarget / 10000f;
+        return f -> fromLinear.applyAsFloat(f * scale);
+    }
+
     private JXLImage linearize() {
         if (this.transfer == ColorFlags.TF_LINEAR)
             return this;
-        FloatUnaryOperator toLinear = ColorManagement.getTransferFunction(this.transfer).toLinearFloatOp();
-        JXLImage image = this.transfer(toLinear);
+        JXLImage image = this.transfer(toLinearOp(this.transfer));
         image.transfer = ColorFlags.TF_LINEAR;
         return image;
     }
@@ -280,7 +299,7 @@ public class JXLImage {
                     image = image.transfer(f -> f * scale);
             }
         }
-        image.transferInPlace(ColorManagement.getTransferFunction(transfer).fromLinearFloatOp());
+        image.transferInPlace(fromLinearOp(transfer));
         image.transfer = transfer;
         return image;
     }
