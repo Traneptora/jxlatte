@@ -99,9 +99,9 @@ public interface TransferFunction {
      * mirrored for negative values
      */
     public static TransferFunction TF_HLG = new TransferFunction() {
-        private static final double A = 0.17883277D;
-        private static final double B = 1D - 4D * A;
-        private static final double C = 0.5D - A * Math.log(4D * A);
+        private final double A = 0.17883277D;
+        private final double B = 1D - 4D * A;
+        private final double C = 0.5D - A * Math.log(4D * A);
 
         @Override
         public double fromLinear(double f) {
