@@ -205,8 +205,12 @@ public final class MathHelper {
         return result;
     }
 
+    public static double signedPow(double base, double exponent) {
+        return base < 0 ? -Math.pow(-base, exponent) : Math.pow(base, exponent);
+    }
+
     public static float signedPow(float base, float exponent) {
-        return (float)(base < 0 ? -Math.pow(-base, exponent) : Math.pow(base, exponent));
+        return (float) signedPow((double) base, (double) exponent);
     }
 
     /**
