@@ -175,22 +175,33 @@ public final class MathHelper {
 
     public static int min(int... a) {
         int result = a[0];
-        for (int i = 1; i < a.length; i++)
-            result = a[i] < result ? a[i] : result; // jit compiles to cmov on x86
+        for (int i = 1; i < a.length; i++) {
+            /* avoid double array lookup */
+            final int b = a[i];
+            /* jit compiles to cmov on x86 */
+            result = b < result ? b : result;
+        }
         return result;
     }
 
     public static int max(int... a) {
         int result = a[0];
-        for (int i = 1; i < a.length; i++)
-            result = a[i] > result ? a[i] : result; // jit compiles to cmov on x86
+        for (int i = 1; i < a.length; i++) {
+            /* avoid double array lookup */
+            final int b = a[i];
+            /* jit compiles to cmov on x86 */
+            result = b > result ? b : result;
+        }
         return result;
     }
 
     public static float max(float... a) {
         float result = a[0];
-        for (int i = 1; i < a.length; i++)
-            result = a[i] < result ? a[i] : result;
+        for (int i = 1; i < a.length; i++) {
+            /* avoid double array look up */
+            final float b = a[i];
+            result = b > result ? b : result;
+        }
         return result;
     }
 
