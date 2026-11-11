@@ -303,7 +303,7 @@ public final class MathHelper {
             int c2 = (c + 2) % 3;
             det += matrix[c][0] * matrix[c1][1] * matrix[c2][2] - matrix[c][0] * matrix[c1][2] * matrix[c2][1];
         }
-        if (det == 0f)
+        if (Math.abs(det) < 1e-7f)
             return null;
         float invDet = 1f / det;
         float[][] inverse = new float[3][3];
