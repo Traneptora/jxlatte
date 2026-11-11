@@ -355,6 +355,7 @@ public final class MathHelper {
 
     public static int mirrorCoordinate(int coordinate, int size) {
         while (coordinate < 0 || coordinate >= size) {
+            /* ~x is equal to -x - 1 */
             int tc = ~coordinate;
             coordinate = tc >= 0 ? tc : (size << 1) + tc;
         }
