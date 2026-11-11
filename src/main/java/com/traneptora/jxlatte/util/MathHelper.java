@@ -198,6 +198,10 @@ public final class MathHelper {
         return (float)(base < 0 ? -Math.pow(-base, exponent) : Math.pow(base, exponent));
     }
 
+    /**
+     * Clamps v between a, b, and c. a, b, and c be in any order
+     * @return v if between the minimum of a, b, c and the max, otherwise the min/max
+     */
     public static int clamp(int v, int a, int b, int c) {
         int lower = a < b ? a : b;
         int upper = lower ^ a ^ b;
@@ -206,22 +210,40 @@ public final class MathHelper {
         return v < lower ? lower : v > upper ? upper : v;
     }
 
+    /**
+     * Clamps v between a and b. a and b can be in any order
+     * @return v if between the minimum of a, b and the max, otherwise the min/max
+     */
     public static int clamp(int v, int a, int b) {
         int lower = a < b ? a : b;
         int upper = lower ^ a ^ b;
         return v < lower ? lower : v > upper ? upper : v;
     }
 
+    /**
+     * Like {@link #clamp(float, float, float)}, but doesn't compute the lower of the bounds
+     * Useful if you know that lower < upper already
+     */
     public static float clampAsc(float v, float lower, float upper) {
         return v < lower ? lower : v > upper ? upper : v;
     }
 
+    /**
+     * Clamps v between a and b. a and b can be in any order
+     * @return v if between the minimum of a, b and the max, otherwise the min/max
+     */
     public static float clamp(float v, float a, float b) {
         float lower = a < b ? a : b;
         float upper = a < b ? b : a;
         return clampAsc(v, lower, upper);
     }
 
+    /**
+     * Multiplies a matrix by a column vector, and returns a column vector.
+     *
+     * Unlike in math, the vector length can be larger than the length of the matrix.
+     * If it is, the extra entries are copied over to the end of the result vector.
+     */
     public static float[] matrixMutliply(final float[][] matrix, final float[] columnVector) {
         if (matrix == null)
             return columnVector;
@@ -239,6 +261,13 @@ public final class MathHelper {
         return total;
     }
 
+    /**
+     * Multiplies a 3x3 matrix by a 3-or-more element column vector and
+     * assigns the result to the column vector.
+     *
+     * There is no bounds checking on the matrix, so if you pass
+     * something smaller than 3x3 the JVM will throw an exception.
+     */
     public static void matrixMutliply3InPlace(final float[][] matrix, final float[] columnVector) {
         final float a = matrix[0][0] * columnVector[0]
             + matrix[0][1] * columnVector[1] + matrix[0][2] * columnVector[2];
@@ -289,7 +318,11 @@ public final class MathHelper {
         return Stream.of(matricies).reduce(MathHelper::matrixMultiply).get();
     }
 
-    // expensive! try not to use on the fly
+    /**
+     * Invert a 3x3 matrix. returns null if the matrix is singular.
+     *
+     * This is a computationally expensive function. Try to avoid using it many times in one operation.
+     */
     public static float[][] invertMatrix3x3(float[][] matrix) {
         if (matrix == null)
             return null;
