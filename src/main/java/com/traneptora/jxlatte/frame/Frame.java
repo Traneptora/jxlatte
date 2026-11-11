@@ -380,14 +380,24 @@ public class Frame {
         this.decoded = true;
 
         CompletableFuture.runAsync(ExceptionalRunnable.of(() -> {
+            Throwable readerException = null;
             if (tocLengths.length != 1) {
                 for (int i = 0; i < tocLengths.length; i++) {
-                    byte[] buffer = readBuffer(i);
-                    bitreaders.get(i).complete(new Bitreader(new ByteArrayInputStream(buffer)));
+                    try {
+                        byte[] buffer = readBuffer(i);
+                        bitreaders.get(i).complete(new Bitreader(new ByteArrayInputStream(buffer)));
+                    } catch (Throwable ex) {
+                        readerException = ex;
+                        for (int j = i; j < tocLengths.length; j++)
+                            bitreaders.get(j).completeExceptionally(ex);
+                        break;
+                    }
                 }
             } else {
                  bitreaders.get(0).complete(globalReader);
             }
+            if (readerException != null)
+                throw readerException;
         }));
 
         lfGlobal = new LFGlobal(getBitreader(0), this);
