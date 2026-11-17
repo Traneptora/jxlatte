@@ -165,6 +165,9 @@ public final class MathHelper {
         return (numerator + denominator - 1) / denominator;
     }
 
+    /**
+     * floor(log2(x + 1))
+     */
     public static int floorLog1p(long x) {
         int c = ceilLog1p(x);
         // if x + 1 is not a power of 2
@@ -232,6 +235,28 @@ public final class MathHelper {
     public static int clamp(int v, int a, int b) {
         int lower = a < b ? a : b;
         int upper = lower ^ a ^ b;
+        return v < lower ? lower : v > upper ? upper : v;
+    }
+
+    /**
+     * Clamps v between a, b, and c. a, b, and c be in any order
+     * @return v if between the minimum of a, b, c and the max, otherwise the min/max
+     */
+    public static long clamp(long v, long a, long b, long c) {
+        long lower = a < b ? a : b;
+        long upper = lower ^ a ^ b;
+        lower = lower < c ? lower : c;
+        upper = upper > c ? upper : c;
+        return v < lower ? lower : v > upper ? upper : v;
+    }
+
+    /**
+     * Clamps v between a and b. a and b can be in any order
+     * @return v if between the minimum of a, b and the max, otherwise the min/max
+     */
+    public static long clamp(long v, long a, long b) {
+        long lower = a < b ? a : b;
+        long upper = lower ^ a ^ b;
         return v < lower ? lower : v > upper ? upper : v;
     }
 
