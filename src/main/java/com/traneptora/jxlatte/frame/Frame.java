@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.traneptora.jxlatte.JXLOptions;
+import com.traneptora.jxlatte.bundle.BitDepthHeader;
 import com.traneptora.jxlatte.bundle.ImageHeader;
 import com.traneptora.jxlatte.entropy.EntropyStream;
 import com.traneptora.jxlatte.frame.features.XorShiro;
@@ -223,8 +224,7 @@ public class Frame {
             k = header.ecUpsampling[c - color];
         if (k == 1)
             return ib;
-        int depth = c < color ? globalMetadata.getBitDepthHeader().bitsPerSample :
-            globalMetadata.getExtraChannelInfo(c - color).bitDepth.bitsPerSample;
+        int depth = globalMetadata.getBitDepthHeader(c).bitsPerSample;
         ib.castToFloat(depth);
         float[][] buffer = ib.getFloatBuffer();
         int l = MathHelper.ceilLog1p(k - 1) - 1;
@@ -260,7 +260,6 @@ public class Frame {
     }
 
     private void decodeLFGroups(ImageBuffer[] lfBuffer) throws IOException {
-
         List<ModularChannel> lfReplacementChannels = new ArrayList<>();
         List<Integer> lfReplacementChannelIndicies = new ArrayList<>();
         for (int i = 0; i < lfGlobal.globalModular.getEncodedChannelCount(); i++) {
@@ -315,7 +314,6 @@ public class Frame {
     }
 
     private void decodePassGroups() throws IOException {
-
         int numPasses = passes.length;
         PassGroup[][] passGroups = new PassGroup[numPasses][numGroups];
 
@@ -443,6 +441,7 @@ public class Frame {
             boolean isModularXYB = globalMetadata.isXYBEncoded() && isModularColor;
             // X, Y, B is encoded as Y, X, (B - Y)
             int cOut = (isModularXYB ? cMap[c] : c) + buffer.length - modularBuffer.length;
+            BitDepthHeader bitDepth = globalMetadata.getBitDepthHeader(c);
             float scaleFactor = isModularXYB ? lfGlobal.lfDequant[cOut] : 1.0f;
             if (isModularXYB && cIn == 2) {
                 float[][] outBuffer = buffer[cOut].getFloatBuffer();
@@ -450,17 +449,41 @@ public class Frame {
                     for (int x = 0; x < bounds.size.width; x++)
                         outBuffer[y][x] = scaleFactor * (modularBuffer[0][y][x] + modularBuffer[2][y][x]);
                 }
-            } else if (buffer[cOut].isFloat()) {
+            } else if (isModularXYB) {
                 float[][] outBuffer = buffer[cOut].getFloatBuffer();
                 for (int y = 0; y < bounds.size.height; y++) {
                     for (int x = 0; x < bounds.size.width; x++)
                         outBuffer[y][x] = scaleFactor * modularBuffer[cIn][y][x];
                 }
+            } else if (buffer[cOut].isFloat()) {
+                float[][] outBuffer = buffer[cOut].getFloatBuffer();
+                int mask = 0, manLen = 0, manMask = 0, manShift = 0, expMask = 0 , expShift = 0, signShiftR = 0;
+                if (bitDepth.bitsPerSample != 32 || bitDepth.expBits != 8) {
+                    mask = (int)(~(~0L << bitDepth.bitsPerSample) & 0xffffffffL);
+                    manLen = MathHelper.clamp(bitDepth.bitsPerSample - bitDepth.expBits - 1, 0, 31);
+                    manMask = (int)(~(~0L << manLen) & 0xffffffffL);
+                    manShift = MathHelper.clamp(23 - manLen, 0, 31);
+                    expMask = (int)(~(~0L << bitDepth.expBits) & 0xffffffffL);
+                    expShift = MathHelper.clamp(31 - bitDepth.expBits, 0, 31);
+                    signShiftR = MathHelper.clamp(bitDepth.bitsPerSample - 1, 0, 31);
+                }
+                for (int y = 0; y < bounds.size.height; y++) {
+                    for (int x = 0; x < bounds.size.height; x++) {
+                        int bits = modularBuffer[cIn][y][x];
+                        if (bitDepth.bitsPerSample != 32 || bitDepth.expBits != 8) {
+                            bits &= mask;
+                            int sign = (bits >>> signShiftR) & 1;
+                            int mant = bits & manMask;
+                            int exp = (bits >>> manLen) & expMask;
+                            bits = (sign << 31) | (exp << expShift) | (mant << manShift);
+                        }
+                        outBuffer[y][x] = Float.intBitsToFloat(bits);
+                    }
+                }
             } else {
                 int[][] outBuffer = buffer[cOut].getIntBuffer();
-                for (int y = 0; y < bounds.size.height; y++) {
+                for (int y = 0; y < bounds.size.height; y++)
                     System.arraycopy(modularBuffer[cIn][y], 0, outBuffer[y], 0, bounds.size.width);
-                }
             }
         }
 

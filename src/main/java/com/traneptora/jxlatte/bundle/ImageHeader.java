@@ -366,6 +366,13 @@ public class ImageHeader {
         return bitDepth;
     }
 
+    public BitDepthHeader getBitDepthHeader(int channel) {
+        int color = getColorChannelCount();
+        if (channel < color)
+            return getBitDepthHeader();
+        return getExtraChannelInfo(channel - color).bitDepth;
+    }
+
     public boolean modularUses16BitBuffers() {
         return modular16bitBuffers;
     }
