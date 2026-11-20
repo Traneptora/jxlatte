@@ -203,7 +203,8 @@ public class ModularStream implements Iterable<ModularChannel> {
             }
         }
         if (stream != null && !stream.validateFinalState())
-            throw new InvalidBitstreamException("Illegal final modular state");
+            throw new InvalidBitstreamException(String.format(
+                "Illegal final modular state at stream index: %d", streamIndex));
         if (!partial)
             applyTransforms();
     }
@@ -366,7 +367,7 @@ public class ModularStream implements Iterable<ModularChannel> {
                             }
                             chan.buffer[y][x] = value;
                             if (isDelta)
-                                chan.buffer[y][x] += chan.prediction(y, x, transforms[i].dPred);
+                                chan.buffer[y][x] += (int) chan.prediction(y, x, transforms[i].dPred);
                         }
                     }
                 }

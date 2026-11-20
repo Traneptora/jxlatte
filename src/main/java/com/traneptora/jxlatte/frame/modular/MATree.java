@@ -14,7 +14,7 @@ import com.traneptora.jxlatte.util.MathHelper;
 public class MATree {
 
     public static MATree readTree(Loggers loggers, Bitreader reader) throws IOException {
-        MATree ret = new MATree();
+        MATree ret = new MATree(loggers);
         List<MATree> nodes = new ArrayList<>();
         EntropyStream stream = new EntropyStream(loggers, reader, 6);
         int contextId = 0;
@@ -23,7 +23,7 @@ public class MATree {
             if (nodes.size() > (1 << 20))
                 throw new InvalidBitstreamException("Tree too large");
             int property = stream.readSymbol(reader, 1) - 1;
-            MATree node = nodes.size() == 0 ? ret : new MATree();
+            MATree node = nodes.size() == 0 ? ret : new MATree(loggers);
             if (property >= 0) {
                 int value = MathHelper.unpackSigned(stream.readSymbol(reader, 0));
                 int leftChild = nodes.size() + nodesRemaining + 1;
@@ -74,6 +74,7 @@ public class MATree {
     }
 
     private EntropyStream stream;
+    private Loggers loggers;
 
     private MATree leftChildNode;
     private MATree rightChildNode;
@@ -88,8 +89,8 @@ public class MATree {
     private int offset;
     private int multiplier;
 
-    private MATree() {
-
+    private MATree(Loggers loggers) {
+        this.loggers = loggers;
     }
 
     public boolean isLeafNode() {
@@ -131,7 +132,7 @@ public class MATree {
             MATree branch = prop > value ? leftChildNode : rightChildNode;
             return branch.compactify(channelIndex, streamIndex, y);
         } else {
-            MATree tree = new MATree();
+            MATree tree = new MATree(loggers);
             tree.property = this.property;
             tree.value = this.value;
             tree.leftChildNode = this.leftChildNode.compactify(channelIndex, streamIndex, y);
@@ -141,10 +142,22 @@ public class MATree {
     }
 
     public MATree walk(IntUnaryOperator property) {
-        if (isLeafNode())
+        return walk(property, false);
+    }
+
+    public MATree walk(IntUnaryOperator property, boolean debug) {
+        if (isLeafNode()) {
+            if (debug)
+                loggers.log(Loggers.LOG_TRACE, "leaf node: returning self, predictor %d", this.predictor);
             return this;
-        MATree branch = property.applyAsInt(this.property) > value ? leftChildNode : rightChildNode;
-        return branch.walk(property);
+        }
+        int propertyValue = property.applyAsInt(this.property);
+        if (debug) {
+            loggers.log(Loggers.LOG_TRACE, "property, value, evaluated: %d, %d, %d",
+                this.property, this.value, propertyValue);
+        }
+        MATree branch = propertyValue > this.value ? leftChildNode : rightChildNode;
+        return branch.walk(property, debug);
     }
 
     public int getSize() {

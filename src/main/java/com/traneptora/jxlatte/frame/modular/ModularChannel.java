@@ -11,7 +11,6 @@ import com.traneptora.jxlatte.util.MathHelper;
 import com.traneptora.jxlatte.util.Point;
 
 public class ModularChannel {
-
     private static final int[] oneL24OverKP1 = new int[64];
 
     static {
@@ -47,7 +46,8 @@ public class ModularChannel {
     }
 
     public static ModularChannel copyOf(ModularChannel channel) {
-        ModularChannel ret = new ModularChannel(channel.size.height, channel.size.width, channel.vshift, channel.hshift, channel.forceWP);
+        ModularChannel ret = new ModularChannel(channel.size.height, channel.size.width,
+                channel.vshift, channel.hshift, channel.forceWP);
         ret.origin = new Point(channel.origin);
 
         ret.decoded = channel.decoded;
@@ -95,31 +95,31 @@ public class ModularChannel {
         }
     }
 
-    private static int west(int[][] buffer, int y, int x) {
+    private static long west(int[][] buffer, int y, int x) {
         return x > 0 ? buffer[y][x - 1] : y > 0 ? buffer[y - 1][x] : 0;
     }
 
-    private static int north(int[][] buffer, int y, int x) {
+    private static long north(int[][] buffer, int y, int x) {
         return y > 0 ? buffer[y - 1][x] : x > 0 ? buffer[y][x - 1] : 0;
     }
 
-    private static int northWest(int[][] buffer, int y, int x) {
+    private static long northWest(int[][] buffer, int y, int x) {
         return x > 0 ? (y > 0 ? buffer[y - 1][x - 1] : buffer[y][x - 1]) : (y > 0 ? buffer[y - 1][x] : 0);
     }
 
-    private static int northEast(int[][] buffer, int y, int x) {
+    private static long northEast(int[][] buffer, int y, int x) {
         return x + 1 < buffer[y].length && y > 0 ? buffer[y - 1][x + 1] : north(buffer, y, x);
     }
 
-    private static int northNorth(int[][] buffer, int y, int x) {
+    private static long northNorth(int[][] buffer, int y, int x) {
         return y > 1 ? buffer[y - 2][x] : north(buffer, y, x);
     }
 
-    private static int northEastEast(int[][] buffer, int y, int x) {
+    private static long northEastEast(int[][] buffer, int y, int x) {
         return x + 2 < buffer[y].length && y > 0 ? buffer[y - 1][x + 2] : northEast(buffer, y, x);
     }
 
-    private static int westWest(int[][] buffer, int y, int x) {
+    private static long westWest(int[][] buffer, int y, int x) {
         return x > 1 ? buffer[y][x - 2] : west(buffer, y, x);
     }
 
@@ -161,8 +161,8 @@ public class ModularChannel {
         return row[x + 1 != row.length ? x + 1 : x];
     }
 
-    protected int prediction(int y, int x, int k) {
-        int n, v, nw, w;
+    protected long prediction(int y, int x, int k) {
+        long n, v, nw, w;
         switch (k) {
             case 0:
                 return 0;
@@ -171,7 +171,7 @@ public class ModularChannel {
             case 2:
                 return north(buffer, y, x);
             case 3:
-                return (west(buffer, y, x) + north(buffer, y, x)) / 2;
+                return (west(buffer, y, x) + north(buffer, y, x)) / 2L;
             case 4:
                 w = west(buffer, y, x);
                 n = north(buffer, y, x);
@@ -183,7 +183,7 @@ public class ModularChannel {
                 v = w + n - northWest(buffer, y, x);
                 return MathHelper.clamp(v, n, w);
             case 6:
-                return (int)((pred[y][x] + 3L) >> 3);
+                return (pred[y][x] + 3L) >> 3;
             case 7:
                 return northEast(buffer, y, x);
             case 8:
@@ -191,38 +191,34 @@ public class ModularChannel {
             case 9:
                 return westWest(buffer, y, x);
             case 10:
-                return (west(buffer, y, x) + northWest(buffer, y, x)) / 2;
+                return (west(buffer, y, x) + northWest(buffer, y, x)) / 2L;
             case 11:
-                return (north(buffer, y, x) + northWest(buffer, y, x)) / 2;
+                return (north(buffer, y, x) + northWest(buffer, y, x)) / 2L;
             case 12:
-                return (north(buffer, y, x) + northEast(buffer, y, x)) / 2;
+                return (north(buffer, y, x) + northEast(buffer, y, x)) / 2L;
             case 13:
-                return (  6 * north(buffer, y, x)
-                        - 2 * northNorth(buffer, y, x)
-                        + 7 * west(buffer, y, x)
+                return (  6L * north(buffer, y, x)
+                        - 2L * northNorth(buffer, y, x)
+                        + 7L * west(buffer, y, x)
                         + westWest(buffer, y, x)
                         + northEastEast(buffer, y, x)
-                        + 3 * northEast(buffer, y, x)
-                        + 8) / 16;
+                        + 3L * northEast(buffer, y, x)
+                        + 8L) / 16L;
             default:
                 throw new IllegalStateException();
         }
     }
 
-    private static long addBits(final long k) {
-        return k << 3;
-    }
-
-    private int prePredictWP(WPParams wpParams, int x, int y) {
-        long n3 = addBits(north(buffer, y, x));
-        long nw3 = addBits(northWest(buffer, y, x));
-        long ne3 = addBits(northEast(buffer, y, x));
-        long w3 = addBits(west(buffer, y, x));
-        long nn3 = addBits(northNorth(buffer, y, x));
-        int tN = errorNorth(trueError, y, x);
-        int tW = errorWest(trueError, y, x);
-        int tNE = errorNorthEast(trueError, y, x);
-        int tNW = errorNorthWest(trueError, y, x);
+    private int prePredictWP(WPParams wpParams, int y, int x) {
+        long n3 = north(buffer, y, x) << 3;
+        long nw3 = northWest(buffer, y, x) << 3;
+        long ne3 = northEast(buffer, y, x) << 3;
+        long w3 = west(buffer, y, x) << 3;
+        long nn3 = northNorth(buffer, y, x) << 3;
+        long tN = errorNorth(trueError, y, x);
+        long tW = errorWest(trueError, y, x);
+        long tNE = errorNorthEast(trueError, y, x);
+        long tNW = errorNorthWest(trueError, y, x);
         subpred[0] = w3 + ne3 - n3;
         subpred[1] = n3 - (((tW + tN + tNE) * wpParams.param1) >> 5);
         subpred[2] = w3 - (((tW + tN + tNW) * wpParams.param2) >> 5);
@@ -256,14 +252,14 @@ public class ModularChannel {
         pred[y][x] = (s * oneL24OverKP1[wSum - 1]) >> 24;
         if (((tN ^ tW) | (tN ^ tNW)) <= 0)
             pred[y][x] = MathHelper.clamp(pred[y][x], w3, n3, ne3);
-        int maxError = tW;
+        long maxError = tW;
         if (Math.abs(tN) > Math.abs(maxError))
             maxError = tN;
         if (Math.abs(tNW) > Math.abs(maxError))
             maxError = tNW;
         if (Math.abs(tNE) > Math.abs(maxError))
             maxError = tNE;
-        return maxError;
+        return (int) maxError;
     }
 
     private int propertyExpand(ModularStream parent, int channelIndex, int streamIndex,
@@ -278,29 +274,29 @@ public class ModularChannel {
             case 3:
                 return x;
             case 4:
-                return Math.abs(north(buffer, y, x));
+                return (int) Math.abs(north(buffer, y, x));
             case 5:
-                return Math.abs(west(buffer, y, x));
+                return (int) Math.abs(west(buffer, y, x));
             case 6:
-                return north(buffer, y, x);
+                return (int) north(buffer, y, x);
             case 7:
-                return west(buffer, y, x);
+                return (int) west(buffer, y, x);
             case 8:
-                return x > 0
+                return (int) (x > 0
                     ? west(buffer, y, x) - (west(buffer, y, x - 1) + north(buffer, y, x - 1) - northWest(buffer, y, x - 1))
-                    : west(buffer, y, x);
+                    : west(buffer, y, x));
             case 9:
-                return west(buffer, y, x) + north(buffer, y, x) - northWest(buffer, y, x);
+                return (int) (west(buffer, y, x) + north(buffer, y, x) - northWest(buffer, y, x));
             case 10:
-                return west(buffer, y, x) - northWest(buffer, y, x);
+                return (int) (west(buffer, y, x) - northWest(buffer, y, x));
             case 11:
-                return northWest(buffer, y, x) - north(buffer, y, x);
+                return (int) (northWest(buffer, y, x) - north(buffer, y, x));
             case 12:
-                return north(buffer, y, x) - northEast(buffer, y, x);
+                return (int) (north(buffer, y, x) - northEast(buffer, y, x));
             case 13:
-                return north(buffer, y, x) - northNorth(buffer, y, x);
+                return (int) (north(buffer, y, x) - northNorth(buffer, y, x));
             case 14:
-                return west(buffer, y, x) - westWest(buffer, y, x);
+                return (int) (west(buffer, y, x) - westWest(buffer, y, x));
             case 15:
                 return maxError;
             default:
@@ -315,20 +311,21 @@ public class ModularChannel {
                         k2 += 4;
                         continue;
                     }
-                    int rC = channel.buffer[y][x];
+                    long rC = channel.buffer[y][x];
                     if (k2++ == k)
-                        return Math.abs(rC);
+                        return (int) Math.abs(rC);
                     if (k2++ == k)
-                        return rC;
-                    int rW = x > 0 ? channel.buffer[y][x - 1] : 0;
-                    int rN = y > 0 ? channel.buffer[y - 1][x] : rW;
-                    int rNW = x > 0 && y > 0 ? channel.buffer[y - 1][x - 1] : rW;
-                    int rG = rC - MathHelper.clamp(rW + rN - rNW, rN, rW);
+                        return (int) rC;
+                    long rW = x > 0 ? channel.buffer[y][x - 1] : 0;
+                    long rN = y > 0 ? channel.buffer[y - 1][x] : rW;
+                    long rNW = x > 0 && y > 0 ? channel.buffer[y - 1][x - 1] : rW;
+                    long rG = rC - MathHelper.clamp(rW + rN - rNW, rN, rW);
                     if (k2++ == k)
-                        return Math.abs(rG);
+                        return (int) Math.abs(rG);
                     if (k2++ == k)
-                        return rG;
+                        return (int) rG;
                 }
+
                 return 0;
         }
     }
@@ -337,7 +334,7 @@ public class ModularChannel {
             int streamIndex, WPParams wpParams, int y, int x) {
         int maxError;
         if (wpParams != null)
-            maxError = prePredictWP(wpParams, x, y);
+            maxError = prePredictWP(wpParams, y, x);
         else
             maxError = 0;
         return k -> propertyExpand(parent, channelIndex, streamIndex, wpParams, k, maxError, y, x);
@@ -364,20 +361,20 @@ public class ModularChannel {
             MATree refinedTree = tree.compactify(channelIndex, streamIndex, y);
             for (int x = 0; x < size.width; x++) {
                 MATree leafNode = refinedTree.walk(getWalkFunction(parent, channelIndex, streamIndex, wpParams, y, x));
-                int diff;
+                int packedDiff;
                 try {
                     int context = leafNode.getContext();
-                    diff = stream.readSymbol(reader, context, distMultiplier);
+                    packedDiff = stream.readSymbol(reader, context, distMultiplier);
                 } catch (IOException ioe) {
                     loggers.log(Loggers.LOG_VERBOSE, "Error at y=%d, x=%d, h=%d, w=%d, c=%d, s=%d%n", y, x,
                         size.height, size.width, channelIndex, streamIndex);
                     throw ioe;
                 }
-                int diff2 = MathHelper.unpackSigned(diff) * leafNode.getMultiplier() + leafNode.getOffset();
-                int trueValue = diff2 + prediction(y, x, leafNode.getPredictor());
+                int diff = MathHelper.unpackSigned(packedDiff) * leafNode.getMultiplier() + leafNode.getOffset();
+                int trueValue = diff + (int) prediction(y, x, leafNode.getPredictor());
                 buffer[y][x] = trueValue;
                 if (useWP) {
-                    long v3 = addBits(trueValue);
+                    long v3 = ((long) trueValue) << 3;
                     for (int e = 0; e < 4; e++) {
                         error[e][y & 1][x] = (Math.abs(subpred[e] - v3) + 3L) >> 3;
                     }
@@ -441,14 +438,15 @@ public class ModularChannel {
             }
         }
         if (orig.size.height > res.size.height)
-            System.arraycopy(orig.buffer[res.size.height], 0, channel.buffer[2*res.size.height], 0, channel.size.width);
+            System.arraycopy(orig.buffer[res.size.height], 0, channel.buffer[2*res.size.height],
+                0, channel.size.width);
 
         return channel;
     }
 
     @Override
     public String toString() {
-        return String.format("ModularChannel [decoded=%s, size=%s, vshift=%s, hshift=%s, origin=%s, forceWP=%s]",
-                decoded, size, vshift, hshift, origin, forceWP);
+        return String.format("%s [decoded=%s, size=%s, vshift=%s, hshift=%s, origin=%s, forceWP=%s]",
+            "ModularChannel", decoded, size, vshift, hshift, origin, forceWP);
     }
 }
